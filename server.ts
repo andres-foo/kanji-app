@@ -195,7 +195,8 @@ const CSS = `
 --added-bg:light-dark(#E6F7EC,#101F16);--added-line:light-dark(#BFE3CC,#2A4F36);--added-row-line:light-dark(#D8EEDF,#23432E);--added-dash:light-dark(#A9D9BA,#3B6E4A);
 --unfinished-bg:light-dark(#FEE2E2,#2A1216);--unfinished-line:light-dark(#FCA5A5,#7F1D1D);--unfinished-row-line:light-dark(#FAD1D1,#3A1B1E);--unfinished-dash:light-dark(#F87171,#B91C1C);
 --focus-ring:light-dark(#7C3AED,#C4B5FD);--mark-bg:light-dark(#E9D5FF,#7C3AED);--mark-text:light-dark(#3B0764,#FFFFFF);--logo-bg:#7C3AED;--logo-fg:#FFFFFF;
---sug-border:light-dark(#D9D2F2,#3A3352);--clear-bg:light-dark(#E4DEF6,#332D47);--clear-text:light-dark(#4B3F8F,#D6CCF7)}
+--sug-border:light-dark(#D9D2F2,#3A3352);--clear-bg:light-dark(#E4DEF6,#332D47);--clear-text:light-dark(#4B3F8F,#D6CCF7);
+--ink-1:light-dark(var(--bg),#0C0A14);--ink-2:light-dark(var(--bg),#070610);--ink-border:light-dark(var(--line),#443B67);--ink-text:light-dark(var(--text),#F6F0E2);--ink-shadow:light-dark(0 6px 18px rgba(30,27,58,.08),0 0 0 1px rgba(167,139,250,.14),0 14px 30px rgba(0,0,0,.55))}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{color-scheme:dark}
 body{margin:0;font-family:Nunito,system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh}
@@ -276,6 +277,8 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .meanbig.no-kw{margin:0;font-size:40px}
 .lab{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:2px}
 .story{font-size:19px;line-height:1.7;max-width:60ch}
+.story-paper{position:relative;overflow:hidden;max-width:64ch;padding:24px 26px;border-radius:14px;border:1px solid var(--ink-border);border-left:5px solid var(--accent);color:var(--ink-text);background:linear-gradient(180deg,var(--ink-1),var(--ink-2));box-shadow:var(--ink-shadow)}
+.story-paper .story{max-width:none;line-height:1.7}
 .details{border-top:1px solid var(--line)}
 .details-toggle{margin:0}
 .details-toggle button{width:100%;display:flex;align-items:center;justify-content:space-between;height:52px;padding:0;border:0;background:none;color:inherit;font:900 15px Nunito,system-ui,sans-serif;cursor:pointer}
@@ -435,7 +438,7 @@ ${img
 </div>
 <div class="right">
 <div>${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div></div>
-${k.story ? `<div><div class="lab">Story</div><div class="story">${esc(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
+${k.story ? `<div class="story-paper"><div class="story">${esc(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 <div class="details${detailsOpen ? " open" : ""}" id="details">
 <form class="details-toggle" method="post" action="/details/toggle">
 <input type="hidden" name="details" value="${detailsOpen ? "closed" : "open"}">
