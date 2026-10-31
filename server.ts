@@ -28,13 +28,31 @@ const likeEsc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
 const toKata = (s: string) => s.replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
 const toHira = (s: string) => s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
 // the database separates meanings with ";": show them separated by commas
-const meanings = (s: unknown) => esc(String(s ?? "").split(";").map((m) => m.trim()).filter(Boolean).join(", "));
+const meaningsText = (s: unknown) => String(s ?? "").split(";").map((m) => m.trim()).filter(Boolean).join(", ");
+const meanings = (s: unknown) => esc(meaningsText(s));
+const readingList = (s: string | null) => (s ? s.split(/[、,;\s]+/).filter(Boolean).join("、") : "");
 const nullsLast = (a: number | null, b: number | null) => (a ?? Infinity) - (b ?? Infinity);
 const enc = encodeURIComponent;
 
 const SEARCH_MIN = 2;
 const singleCjk = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]$/u;
 const shortQuery = (q: string) => [...q].length < SEARCH_MIN && !singleCjk.test(q);
+const regexEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const highlight = (text: string | null | undefined, q: string) => {
+  const value = String(text ?? "");
+  const needles = [...new Set([q, toHira(q), toKata(q)].filter(Boolean))].sort((a, b) => b.length - a.length);
+  if (!value || !needles.length) return esc(value);
+  let re: RegExp;
+  try { re = new RegExp(needles.map(regexEsc).join("|"), "giu"); } catch { return esc(value); }
+  let out = "";
+  let last = 0;
+  for (const match of value.matchAll(re)) {
+    const i = match.index ?? 0;
+    out += esc(value.slice(last, i)) + `<mark>${esc(match[0])}</mark>`;
+    last = i + match[0].length;
+  }
+  return out + esc(value.slice(last));
+};
 
 // ---------- preferences ----------
 type Theme = "light" | "dark";
@@ -107,9 +125,9 @@ function search(q: string) {
   const lits = [...new Set(q.match(/\p{Script=Han}/gu) ?? [])].slice(0, 12);
   const pat = (s: string) => `%${likeEsc(s)}%`;
 
-  // kanji: literal, meanings, on/kun readings (ignoring "." and "-" okurigana marks)
-  const kc: string[] = [`CAST(meanings AS TEXT) LIKE ? ESCAPE '\\'`];
-  const kp: string[] = [pat(q)];
+  // kanji: literal, keyword, meanings, on/kun readings (ignoring "." and "-" okurigana marks)
+  const kc: string[] = [`CAST(meanings AS TEXT) LIKE ? ESCAPE '\\'`, `CAST(keyword AS TEXT) LIKE ? ESCAPE '\\'`];
+  const kp: string[] = [pat(q), pat(q)];
   if (lits.length) { kc.push(`literal IN (${lits.map(() => "?").join(",")})`); kp.push(...lits); }
   if (hasKana) {
     for (const v of kana) {
@@ -158,13 +176,14 @@ const CSS = `
 --rem-border:light-dark(#9AD7AE,#3F7D53);--rem-text:light-dark(#166534,#86EFAC);
 --in-bg:light-dark(#E6F7EC,#15291D);--in-hover:light-dark(#F0FBF4,#1B3525);
 --added-bg:light-dark(#E6F7EC,#101F16);--added-line:light-dark(#BFE3CC,#2A4F36);--added-row-line:light-dark(#D8EEDF,#23432E);--added-dash:light-dark(#A9D9BA,#3B6E4A);
---focus-ring:light-dark(#7C3AED,#C4B5FD);--logo-bg:#7C3AED;--logo-fg:#FFFFFF;
+--focus-ring:light-dark(#7C3AED,#C4B5FD);--mark-bg:light-dark(#E9D5FF,#7C3AED);--mark-text:light-dark(#3B0764,#FFFFFF);--logo-bg:#7C3AED;--logo-fg:#FFFFFF;
 --sug-border:light-dark(#D9D2F2,#3A3352);--clear-bg:light-dark(#E4DEF6,#332D47);--clear-text:light-dark(#4B3F8F,#D6CCF7)}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{color-scheme:dark}
 body{margin:0;font-family:Nunito,system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh}
 body.added{background:var(--added-bg);--line:var(--added-line);--row-line:var(--added-row-line);--dash:var(--added-dash)}
 .k{font-family:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif}
+mark{background:var(--mark-bg);color:var(--mark-text);border-radius:3px;padding:0 .08em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 a{color:inherit;text-decoration:none}
 a:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -196,15 +215,18 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .sug:hover{border-color:var(--accent)}
 .sug .tag{width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent-strong);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
 .sug .to{font-size:22px;font-weight:700;color:var(--accent-strong);margin-left:auto}
-.r{display:grid;grid-template-columns:96px 1fr auto;gap:16px;align-items:center;padding:14px 24px;border-top:1px solid var(--row-line)}
+.r{display:grid;grid-template-columns:112px 1fr auto;gap:20px;align-items:center;padding:16px 24px;border-top:1px solid var(--row-line)}
 .w{display:grid;grid-template-columns:180px 160px 1fr auto 92px;gap:16px;align-items:center;padding:14px 24px;border-top:1px solid var(--row-line);scroll-margin-top:90px}
 .box>:first-child{border-top:0}
 .r:hover{background:var(--surface-hover)}
 .in,.in:hover{background:var(--in-bg)}
-.rk{font-size:46px;font-weight:700;line-height:1}
-.rm{display:flex;flex-direction:column;gap:3px;min-width:0}
+.rk{font-size:58px;font-weight:700;line-height:1;justify-self:center}
+.rm{display:flex;flex-direction:column;gap:4px;min-width:0}
 .mean{font-size:18px;font-weight:800}
 .kw{font-size:13px;font-weight:900;color:var(--accent-strong)}
+.readings{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:13px;font-weight:700;line-height:1.35;color:var(--muted)}
+.readings>span{min-width:0;overflow-wrap:anywhere}
+.rlab{font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-right:4px}
 .wk{font-size:28px;font-weight:700}.alt{display:block;font-size:13px;font-weight:700;color:var(--muted);font-family:Nunito,system-ui,sans-serif}
 .kana{font-size:15px;font-weight:700;color:var(--muted)}.wm{font-size:17px;font-weight:700}
 .badges{display:flex;gap:6px;flex-wrap:wrap}
@@ -235,7 +257,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
 @media(max-width:900px){.detail{flex-direction:column;gap:24px}.left{width:100%;align-items:center}.ds{grid-template-columns:1fr 1fr}.w{grid-template-columns:1fr auto;gap:6px 16px}.w .wm,.w .kana,.w .badges{grid-column:1}.w form{grid-column:2;grid-row:1}}
-@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kwbig{font-size:44px}.r{grid-template-columns:64px 1fr;padding:12px 16px}.r .badges{grid-column:2}}
+@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kwbig{font-size:44px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
 const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
@@ -265,7 +287,7 @@ const layout = (title: string, q: string, body: string, added = false) => {
 <a class="brand" href="/"><span class="logo k">漢</span><span>Kanji</span></a>
 <form class="s" action="/" method="get" role="search">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-<input name="q" value="${esc(q)}" placeholder="Kanji, English meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
+<input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 </form>${themeToggle(back)}</header>
 <main>${body}</main></body></html>`;
@@ -274,19 +296,28 @@ ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 const html = (s: string, status = 200) =>
   new Response(s, { status, headers: { "content-type": "text/html; charset=utf-8" } });
 
+const readingsRow = (k: Kanji, q: string) => {
+  const on = readingList(k.onReadings);
+  const kun = readingList(k.kunReadings);
+  if (!on && !kun) return "";
+  const part = (label: string, value: string) =>
+    value ? `<span><span class="rlab">${label}</span>${highlight(value, q)}</span>` : "";
+  return `<span class="readings">${part("On", on)}${part("Kun", kun)}</span>`;
+};
+
 const kanjiRow = (k: Kanji, q: string) => `
 <a class="r${k.added === 1 ? " in" : ""}" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">
 <span class="rk k">${esc(k.literal)}</span>
-<span class="rm"><span class="mean">${meanings(k.meanings)}</span>${k.keyword ? `<span class="kw">${esc(k.keyword)}</span>` : ""}</span>
+<span class="rm"><span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${k.keyword ? `<span class="kw">${highlight(k.keyword, q)}</span>` : ""}${readingsRow(k, q)}</span>
 <span class="badges">${k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${k.jlpt ? `<span class="b">N${esc(k.jlpt)}</span>` : ""}${k.kanken ? `<span class="b">Kanken ${esc(k.kanken)}</span>` : ""}</span></a>`;
 
-const wordRow = (w: Word, back: string) => {
+const wordRow = (w: Word, back: string, q: string) => {
   const inList = w.added === 1;
   return `
 <div class="w${inList ? " in" : ""}" id="w${w.id}">
-<span class="k wk">${esc(w.kanji || w.kana)}${w.kanji_alternative ? `<span class="alt">also ${esc(w.kanji_alternative)}</span>` : ""}</span>
-<span class="kana">${w.kanji ? esc(w.kana) : ""}</span>
-<span class="wm">${meanings(w.meanings)}</span>
+<span class="k wk">${highlight(w.kanji || w.kana, q)}${w.kanji_alternative ? `<span class="alt">also ${highlight(w.kanji_alternative, q)}</span>` : ""}</span>
+<span class="kana">${w.kanji ? highlight(w.kana, q) : ""}</span>
+<span class="wm">${highlight(meaningsText(w.meanings), q)}</span>
 <span class="badges">${inList ? `<span class="sr">In your study list</span>` : ""}${w.jlpt ? `<span class="b">N${esc(w.jlpt)}</span>` : ""}${w.freq_wiki ? `<span class="b">#${esc(w.freq_wiki)}</span>` : ""}</span>
 <form method="post" action="/words/${w.id}/toggle"><input type="hidden" name="back" value="${esc(back)}">
 <button class="btn ${inList ? "rem" : "add"}" type="submit">${inList ? "Remove" : "Add"}</button></form>
@@ -307,7 +338,7 @@ function home(url: URL) {
   const q = (raw ?? "").trim().slice(0, 100);
   const t = url.searchParams.get("type");
   const type = t === "kanji" || t === "words" ? t : "all";
-  if (!q) return html(layout("Kanji", "", `<div class="box empty">${raw === null ? "Search by kanji, English meaning, reading, or romaji." : "Enter at least two characters to search."}</div>`));
+  if (!q) return html(layout("Kanji", "", `<div class="box empty">${raw === null ? "Search by kanji, keyword, meaning, reading, or romaji." : "Enter at least two characters to search."}</div>`));
   if (shortQuery(q)) return html(layout("Search", q, `<div class="box empty">Enter at least two characters to search.</div>`));
 
   const { kanji, words } = search(q);
@@ -319,7 +350,7 @@ function home(url: URL) {
   if (type !== "words" && kanji.length)
     body += `<section><h2>Kanji</h2><div class="box">${kanji.map((k) => kanjiRow(k, q)).join("")}</div></section>`;
   if (type !== "kanji" && words.length)
-    body += `<section><h2>Words</h2><div class="box">${words.map((w) => wordRow(w, back)).join("")}</div></section>`;
+    body += `<section><h2>Words</h2><div class="box">${words.map((w) => wordRow(w, back, q)).join("")}</div></section>`;
   if (!kanji.length && !words.length) body += `<div class="box empty">Nothing found for “${esc(q)}”. Try another spelling or a shorter search.</div>`;
   return html(layout(`${q} – Kanji`, q, body));
 }
@@ -336,7 +367,7 @@ function linkKanji(s: string | null, q: string) {
 }
 
 const plain = (v: unknown) => (v ? esc(v) : "–");
-const readings = (s: string | null) => (s ? esc(s.split(/[、,;\s]+/).filter(Boolean).join("、")) : "–");
+const readings = (s: string | null) => { const value = readingList(s); return value ? esc(value) : "–"; };
 
 async function kanjiPage(literal: string, url: URL) {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
