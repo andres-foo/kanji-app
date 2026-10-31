@@ -262,6 +262,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .add{border:2px solid var(--add-border);color:var(--add-text)}.rem{border:2px solid var(--rem-border);color:var(--rem-text)}
 .empty{padding:48px 24px;text-align:center;color:var(--muted);font-weight:700}
 .back{display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:15px;color:var(--accent-strong);height:40px}
+.pagetop{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .kanji-card{margin-top:12px;padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--surface)}
 .kanji-card.added{--line:var(--added-line);--row-line:var(--added-row-line);--dash:var(--added-dash);background:var(--added-bg);border-color:var(--added-line)}
 .kanji-card.unfinished{--line:var(--unfinished-line);--row-line:var(--unfinished-row-line);--dash:var(--unfinished-dash);background:var(--unfinished-bg);border-color:var(--unfinished-line)}
@@ -418,16 +419,20 @@ async function kanjiPage(literal: string, url: URL) {
   const state = k.unfinished === 1 ? "unfinished" : k.added === 1 ? "added" : "";
   const status = state === "unfinished" ? `<span class="sr">Unfinished</span>` : state === "added" ? `<span class="sr">In your study list</span>` : "";
   const item = (label: string, v: string) => `<div><div class="lab">${label}</div><div class="val">${v}</div></div>`;
+  const inList = k.added === 1;
+  const self = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
   const detailsOpen = requestContext.getStore()?.detailsOpen ?? true;
-  const here = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}#details`;
+  const here = `${self}#details`;
   const detailsBody = detailsOpen ? `<div class="ds">
 ${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : "–")}${item("Kanken", plain(k.kanken))}${item("Grade", plain(k.grade))}
 ${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
 ${item("Components", linkKanji(k.components, q))}${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.other_forms, q))}
 </div>` : "";
   const body = `
-<div><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
+<div class="pagetop"><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
 ${status}
+<form method="post" action="/kanji/${enc(k.literal)}/toggle"><input type="hidden" name="back" value="${esc(self)}">
+<button class="btn ${inList ? "rem" : "add"}" type="submit" aria-label="${inList ? `Remove ${esc(k.literal)} from your study list` : `Add ${esc(k.literal)} to your study list`}">${inList ? "Remove" : "Add"}</button></form></div>
 <div class="kanji-card${state ? ` ${state}` : ""}">
 <div class="detail">
 <div class="left">
@@ -464,6 +469,25 @@ async function toggleWord(req: Request, id: number) {
   return new Response(null, { status: 303, headers: { location: `${back}#w${id}` } });
 }
 
+// flip kanjis.added between 0 and 1 (a newly added kanji starts out unfinished), then go back to the kanji page
+async function toggleKanji(req: Request, literal: string) {
+  if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
+  const form = await req.formData();
+  const back = safeBack(form.get("back"));
+  try {
+    db.run(
+      `UPDATE kanjis
+       SET added = CASE WHEN COALESCE(added, 0) = 1 THEN 0 ELSE 1 END,
+           unfinished = CASE WHEN COALESCE(added, 0) = 1 THEN 0 ELSE 1 END
+       WHERE literal = ?`,
+      [literal],
+    );
+  } catch (e) {
+    return html(layout("Error", "", `<div class="box empty">Could not update the kanji: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+  }
+  return new Response(null, { status: 303, headers: { location: back } });
+}
+
 // store the explicit theme (or clear it) in a cookie, then go back to where the user was
 async function setTheme(req: Request) {
   if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
@@ -498,6 +522,10 @@ Bun.serve({
 
       if (path === "/details/toggle") return req.method === "POST" ? toggleDetails(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/theme") return req.method === "POST" ? setTheme(req) : new Response("Method not allowed", { status: 405 });
+      const kanjiToggle = path.match(/^\/kanji\/([^/]+)\/toggle$/);
+      if (kanjiToggle) {
+        return req.method === "POST" ? toggleKanji(req, kanjiToggle[1]) : new Response("Method not allowed", { status: 405 });
+      }
       const toggle = path.match(/^\/words\/(\d+)\/toggle$/);
       if (toggle) {
         return req.method === "POST" ? toggleWord(req, Number(toggle[1])) : new Response("Method not allowed", { status: 405 });
