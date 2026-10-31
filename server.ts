@@ -282,7 +282,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .add{border:2px solid var(--add-border);color:var(--add-text)}.rem{border:2px solid var(--rem-border);color:var(--rem-text)}
 .edit{border:2px solid var(--field-border);display:inline-flex;align-items:center;justify-content:center}
 .actions{display:flex;align-items:center;gap:10px}.actions form{margin:0}
-.editf{min-width:0;display:flex;flex-direction:column;gap:18px}
+.editf{min-width:0;display:flex;flex-direction:column;gap:18px;margin-top:28px}
 .editf label.fl{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;color:var(--muted)}
 .editf input[type=text],.editf textarea{width:100%;padding:10px 14px;border-radius:12px;background:var(--field-bg);border:2px solid var(--field-border);color:var(--text);font:700 16px Nunito,system-ui,sans-serif}
 .editf textarea{min-height:180px;resize:vertical;line-height:1.6}
@@ -571,13 +571,13 @@ ${editing
 <div class="big k">${esc(k.literal)}</div>
 ${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div>
 </div>
-${editing ? editForm : componentButtons(k.components)}
+${componentButtons(k.components)}
 </div>
 ${img
       ? `<div class="pic"><img src="/img/${enc(k.literal)}" alt="Image for ${esc(k.literal)}"></div>`
       : `<div class="pic ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>No image yet: add ${esc(k.literal)}.jpg or ${esc(k.literal)}.png</div>`}
 </div>
-${editing ? "" : `${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
+${editing ? editForm : `${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 ${detailsBlock}
 ${exampleWords(k.literal)}`}
 </div>`;
