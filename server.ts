@@ -312,6 +312,23 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .comp:hover{background:var(--btn-hover);border-color:var(--accent)}
 .comp .k{font-size:28px;font-weight:700;line-height:1}
 .comp .ckw{font-size:13px;font-weight:900;color:var(--accent-strong);text-transform:uppercase}
+.examples{border-top:1px solid var(--line);padding-top:16px}
+.ex-head{font:900 15px Nunito,system-ui,sans-serif;margin-bottom:12px}
+.exs{display:flex;flex-wrap:wrap;gap:10px}
+.exw{position:relative}
+.ex{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;background:var(--btn-bg);border:2px solid var(--field-border)}
+.ex:hover{background:var(--btn-hover);border-color:var(--accent)}
+.ex.added{border-color:var(--rem-border)}.ex.added:hover{border-color:var(--rem-text)}
+.ex .k{font-size:22px;font-weight:700}
+.tip{display:none;pointer-events:none;position:absolute;z-index:20;top:calc(100% + 8px);left:0;width:max-content;min-width:240px;max-width:min(380px,80vw);padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--ink-border);box-shadow:var(--ink-shadow);color:var(--text)}
+.exw:hover .tip,.exw:focus-within .tip{display:block}
+.tip .wk{display:block;font-size:24px;margin-bottom:6px}
+.tip .wm{font-size:15px}
+.exmore{margin-top:12px}.exmore .exs{margin-top:12px}
+.exmore summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:10px;border:2px solid var(--field-border);background:var(--btn-bg);font:800 13px Nunito,system-ui,sans-serif}
+.exmore summary::-webkit-details-marker{display:none}
+.exmore summary:hover{background:var(--btn-hover)}
+.s-open{display:none}.exmore[open] .s-closed{display:none}.exmore[open] .s-open{display:inline}
 .story{font-size:19px;line-height:1.7;max-width:60ch}
 .story-paper{position:relative;overflow:hidden;max-width:64ch;padding:24px 26px;border-radius:14px;border:1px solid var(--ink-border);border-left:5px solid var(--accent);color:var(--ink-text);background:linear-gradient(180deg,var(--ink-1),var(--ink-2));box-shadow:var(--ink-shadow)}
 .story-paper .story{max-width:none;line-height:1.7}
@@ -449,6 +466,33 @@ function linkKanji(s: string | null, q: string) {
 const plain = (v: unknown) => (v ? esc(v) : "–");
 const readings = (s: string | null) => { const value = readingList(s); return value ? esc(value) : "–"; };
 
+// example words containing the kanji: added ones first, then words with a jlpt level or wiki frequency;
+// the rest are hidden behind a toggle (a native <details>, so no JavaScript is needed)
+function exampleWords(literal: string) {
+  const pat = `%${likeEsc(literal)}%`;
+  const words = db.query(`SELECT * FROM examples WHERE kanji LIKE ? ESCAPE '\\' OR kanji_alternative LIKE ? ESCAPE '\\'`).all(pat, pat) as Word[];
+  if (!words.length) return "";
+  const rank = (w: Word) => (w.added === 1 ? 0 : w.jlpt || w.freq_wiki || w.kanji?.includes("(P)") ? 1 : 2);
+  words.sort((a, b) => rank(a) - rank(b) || nullsLast(a.freq_wiki || null, b.freq_wiki || null) || (b.jlpt ?? 0) - (a.jlpt ?? 0));
+
+  const button = (w: Word) => {
+    const added = w.added === 1;
+    const target = (w.kanji ? splitKanjiMarker(w.kanji).text : "") || w.kana || "";
+    const label = w.kanji || w.kana || "";
+    const face = `<span class="k">${esc(label)}</span>${w.jlpt ? `<span class="b">N${esc(w.jlpt)}</span>` : ""}${w.freq_wiki ? `<span class="b">#${esc(w.freq_wiki)}</span>` : ""}`;
+    const tip = `<span class="tip"><span class="k wk">${esc(label)}${w.kanji && w.kana ? `<span class="kana">「${esc(w.kana)}」</span>` : ""}${w.kanji_alternative ? `<span class="alt">also ${esc(w.kanji_alternative)}</span>` : ""}</span><span class="wm">${meaningGroups(w.meanings).map((m) => `<span class="sense">${esc(m)}</span>`).join("")}</span></span>`;
+    return `<span class="exw"><a class="ex${added ? " added" : ""}" href="/?q=${enc(target)}" aria-label="Search for ${esc(target)}${added ? " (in your study list)" : ""}">${face}</a>${tip}</span>`;
+  };
+
+  const shown = words.filter((w) => rank(w) < 2);
+  const hidden = words.filter((w) => rank(w) === 2);
+  return `<div class="examples">
+<div class="ex-head">Examples</div>
+${shown.length ? `<div class="exs">${shown.map(button).join("")}</div>` : ""}
+${hidden.length ? `<details class="exmore"><summary><span class="s-closed">Show ${hidden.length} more</span><span class="s-open">Hide ${hidden.length} more</span></summary><div class="exs">${hidden.map(button).join("")}</div></details>` : ""}
+</div>`;
+}
+
 // one button per component character, linking to a search for it; shows its keyword when it is a kanji in the database
 function componentButtons(s: string | null) {
   const chars = [...new Set([...(s ?? "")].filter((c) => !/[\s,、;；，]/.test(c)))];
@@ -528,6 +572,7 @@ ${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).re
 </form>
 ${detailsBody}
 </div>
+${exampleWords(k.literal)}
 </div>`}
 </div></div></div>`;
   return html(layout(`${k.literal} – Kanji`, q, body));
