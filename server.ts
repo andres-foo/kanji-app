@@ -28,9 +28,25 @@ const likeEsc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
 const toKata = (s: string) => s.replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
 const toHira = (s: string) => s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
 // the database separates meanings with ";": show them separated by commas
-const meaningsText = (s: unknown) => String(s ?? "").split(";").map((m) => m.trim()).filter(Boolean).join(", ");
+const meaningsList = (s: unknown) => String(s ?? "").split(";").map((m) => m.trim()).filter(Boolean);
+// synonyms after a numbered definition stay on its line until the next (n) marker
+const meaningGroups = (s: unknown) => {
+  const groups: string[] = [];
+  const startsDefinition = /^(?:\([^)]*\)\s*)?\(\d+\)(?:\s|$)/;
+  for (const part of meaningsList(s)) {
+    if (part === "(P)") continue;
+    if (!groups.length || startsDefinition.test(part)) groups.push(part);
+    else groups[groups.length - 1] += `, ${part}`;
+  }
+  return groups;
+};
+const meaningsText = (s: unknown) => meaningsList(s).join(", ");
 const meanings = (s: unknown) => esc(meaningsText(s));
 const readingList = (s: string | null) => (s ? s.split(/[、,;\s]+/).filter(Boolean).join("、") : "");
+const splitKanjiMarker = (kanji: string) => {
+  const match = /^(.*?)\s*(\([^)]*\))$/.exec(kanji);
+  return match ? { text: match[1].trim(), marker: match[2] } : { text: kanji, marker: "" };
+};
 const nullsLast = (a: number | null, b: number | null) => (a ?? Infinity) - (b ?? Infinity);
 const enc = encodeURIComponent;
 
@@ -216,7 +232,12 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .sug .tag{width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent-strong);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
 .sug .to{font-size:22px;font-weight:700;color:var(--accent-strong);margin-left:auto}
 .r{display:grid;grid-template-columns:112px 1fr auto;gap:20px;align-items:center;padding:16px 24px;border-top:1px solid var(--row-line)}
-.w{display:grid;grid-template-columns:180px 160px 1fr auto 92px;gap:16px;align-items:center;padding:14px 24px;border-top:1px solid var(--row-line);scroll-margin-top:90px}
+.w{display:flex;flex-direction:column;gap:8px;padding:14px 24px;border-top:1px solid var(--row-line);scroll-margin-top:90px}
+.wtop{display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:center;min-width:0}
+.wtop .badges{justify-self:end}
+.wm{font-size:17px;font-weight:700;line-height:1.45;display:flex;flex-direction:column;gap:1px;min-width:0}
+.sense{display:block;position:relative;min-width:0;padding-left:18px;overflow-wrap:anywhere}
+.sense::before{content:"•";position:absolute;left:2px;top:.35em;color:var(--muted);font-size:12px;font-weight:900}
 .box>:first-child{border-top:0}
 .r:hover{background:var(--surface-hover)}
 .in,.in:hover{background:var(--in-bg)}
@@ -227,8 +248,10 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .readings{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:13px;font-weight:700;line-height:1.35;color:var(--muted)}
 .readings>span{min-width:0;overflow-wrap:anywhere}
 .rlab{font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-right:4px}
-.wk{font-size:28px;font-weight:700}.alt{display:block;font-size:13px;font-weight:700;color:var(--muted);font-family:Nunito,system-ui,sans-serif}
-.kana{font-size:15px;font-weight:700;color:var(--muted)}.wm{font-size:17px;font-weight:700}
+.wk{font-size:28px;font-weight:700;min-width:0}.alt{display:block;font-size:13px;font-weight:700;color:var(--muted);font-family:Nunito,system-ui,sans-serif}
+.wordlink:hover{color:var(--accent-strong);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.kmarker{font-size:14px;font-weight:800;color:var(--muted);font-family:Nunito,system-ui,sans-serif;margin-left:2px}
+.kana{font-size:19px;font-weight:700;color:var(--muted);margin-left:6px}
 .badges{display:flex;gap:6px;flex-wrap:wrap}
 .b{font-size:12px;font-weight:800;padding:4px 10px;border-radius:10px;background:var(--badge-bg);color:var(--badge-text)}
 .btn{width:92px;height:36px;border-radius:10px;background:var(--btn-bg);color:var(--text);font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}
@@ -256,7 +279,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .ds{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 24px;padding-bottom:20px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
-@media(max-width:900px){.detail{flex-direction:column;gap:24px}.left{width:100%;align-items:center}.ds{grid-template-columns:1fr 1fr}.w{grid-template-columns:1fr auto;gap:6px 16px}.w .wm,.w .kana,.w .badges{grid-column:1}.w form{grid-column:2;grid-row:1}}
+@media(max-width:900px){.detail{flex-direction:column;gap:24px}.left{width:100%;align-items:center}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
 @media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kwbig{font-size:44px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
@@ -313,14 +336,19 @@ const kanjiRow = (k: Kanji, q: string) => `
 
 const wordRow = (w: Word, back: string, q: string) => {
   const inList = w.added === 1;
+  const { text: kanji, marker } = w.kanji ? splitKanjiMarker(w.kanji) : { text: "", marker: "" };
+  const word = w.kanji
+    ? `${kanji ? `<a class="wordlink" href="/?q=${enc(kanji)}" aria-label="Search for ${esc(kanji)}">${highlight(kanji, q)}</a>` : ""}${marker ? `<span class="kmarker">${esc(marker)}</span>` : ""}`
+    : highlight(w.kana, q);
   return `
 <div class="w${inList ? " in" : ""}" id="w${w.id}">
-<span class="k wk">${highlight(w.kanji || w.kana, q)}${w.kanji_alternative ? `<span class="alt">also ${highlight(w.kanji_alternative, q)}</span>` : ""}</span>
-<span class="kana">${w.kanji ? highlight(w.kana, q) : ""}</span>
-<span class="wm">${highlight(meaningsText(w.meanings), q)}</span>
+<div class="wtop">
+<span class="k wk">${word}${w.kanji && w.kana ? `<span class="kana">「${highlight(w.kana, q)}」</span>` : ""}${w.kanji_alternative ? `<span class="alt">also ${highlight(w.kanji_alternative, q)}</span>` : ""}</span>
 <span class="badges">${inList ? `<span class="sr">In your study list</span>` : ""}${w.jlpt ? `<span class="b">N${esc(w.jlpt)}</span>` : ""}${w.freq_wiki ? `<span class="b">#${esc(w.freq_wiki)}</span>` : ""}</span>
 <form method="post" action="/words/${w.id}/toggle"><input type="hidden" name="back" value="${esc(back)}">
 <button class="btn ${inList ? "rem" : "add"}" type="submit">${inList ? "Remove" : "Add"}</button></form>
+</div>
+<div class="wm">${meaningGroups(w.meanings).map((m) => `<span class="sense">${highlight(m, q)}</span>`).join("")}</div>
 </div>`;
 };
 
