@@ -281,7 +281,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .add{border:2px solid var(--add-border);color:var(--add-text)}.rem{border:2px solid var(--rem-border);color:var(--rem-text)}
 .edit{border:2px solid var(--field-border);display:inline-flex;align-items:center;justify-content:center}
 .actions{display:flex;align-items:center;gap:10px}.actions form{margin:0}
-.editf{flex:1;min-width:0;display:flex;flex-direction:column;gap:18px;padding-top:12px}
+.editf{min-width:0;display:flex;flex-direction:column;gap:18px}
 .editf label.fl{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;color:var(--muted)}
 .editf input[type=text],.editf textarea{width:100%;padding:10px 14px;border-radius:12px;background:var(--field-bg);border:2px solid var(--field-border);color:var(--text);font:700 16px Nunito,system-ui,sans-serif}
 .editf textarea{min-height:180px;resize:vertical;line-height:1.6}
@@ -296,14 +296,17 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .kanji-card{margin-top:12px;padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--surface)}
 .kanji-card.added{--line:var(--added-line);--row-line:var(--added-row-line);--dash:var(--added-dash);background:var(--added-bg);border-color:var(--added-line)}
 .kanji-card.unfinished{--line:var(--unfinished-line);--row-line:var(--unfinished-row-line);--dash:var(--unfinished-dash);background:var(--unfinished-bg);border-color:var(--unfinished-line)}
-.detail{display:flex;gap:56px;align-items:flex-start}
-.left{display:flex;flex-direction:column;gap:20px;flex:none;width:300px}
-.big{font-size:230px;font-weight:500;line-height:1;text-align:center}
-.pic{width:300px;aspect-ratio:1;border-radius:20px;overflow:hidden}
+.detail{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px 56px;align-items:start}
+.top{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:36px;align-items:center}
+.big{grid-row:1/3;grid-column:1;font-size:170px;font-weight:500;line-height:1;text-align:center}
+.kwbig{grid-column:2;grid-row:1;align-self:end}
+.meanbig{grid-column:2;grid-row:2;align-self:start}
+.meanbig.no-kw{grid-row:1/3;align-self:center}
+.pic{width:300px;max-width:100%;aspect-ratio:1;border-radius:20px;overflow:hidden}
 .pic img{width:100%;height:100%;object-fit:cover;display:block}
 .ph{border:2px dashed var(--dash);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:13px;font-weight:700;text-align:center;padding:16px}
-.right{flex:1;min-width:0;display:flex;flex-direction:column;gap:28px;padding-top:12px}
-.kwbig{font-size:48px;font-weight:900;line-height:1.05;overflow-wrap:anywhere;color:var(--accent-strong);text-transform:uppercase}
+.right{min-width:0;display:flex;flex-direction:column;gap:28px}
+.kwbig{font-size:44px;font-weight:900;line-height:1.05;overflow-wrap:anywhere;color:var(--accent-strong);text-transform:uppercase}
 .meanbig{font-size:22px;font-weight:700;margin-top:10px;color:var(--text)}
 .meanbig.no-kw{margin:0;font-size:40px}
 .lab{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:2px}
@@ -312,7 +315,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .comp:hover{background:var(--btn-hover);border-color:var(--accent)}
 .comp .k{font-size:28px;font-weight:700;line-height:1}
 .comp .ckw{font-size:13px;font-weight:900;color:var(--accent-strong);text-transform:uppercase}
-.examples{border-top:1px solid var(--line);padding-top:16px}
+.examples{border-top:1px solid var(--line);padding-top:16px;margin-top:28px}
 .ex-head{font:900 15px Nunito,system-ui,sans-serif;margin-bottom:12px}
 .exs{display:flex;flex-wrap:wrap;gap:10px}
 .exw{position:relative}
@@ -329,15 +332,15 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .exmore summary::-webkit-details-marker{display:none}
 .exmore summary:hover{background:var(--btn-hover)}
 .s-open{display:none}.exmore[open] .s-closed{display:none}.exmore[open] .s-open{display:inline}
-.story{font-size:19px;line-height:1.7;max-width:60ch}
-.story-paper{position:relative;overflow:hidden;max-width:64ch;padding:24px 26px;border-radius:14px;border:1px solid var(--ink-border);border-left:5px solid var(--accent);color:var(--ink-text);background:linear-gradient(180deg,var(--ink-1),var(--ink-2));box-shadow:var(--ink-shadow)}
+.story{font-size:19px;line-height:1.7}
+.story-paper{position:relative;overflow:hidden;margin-top:28px;padding:24px 26px;border-radius:14px;border:1px solid var(--ink-border);border-left:5px solid var(--accent);color:var(--ink-text);background:linear-gradient(180deg,var(--ink-1),var(--ink-2));box-shadow:var(--ink-shadow)}
 .story-paper .story{max-width:none;line-height:1.7}
 .story_keyword{color:var(--accent-strong);font-weight:800}
 .story_component{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.2em}
 .story_note{background:light-dark(#FEF08A,#4D4210);border-radius:4px;padding:0 .25em}
 .story_link{color:var(--accent-strong);text-decoration:underline dotted;text-decoration-thickness:2px;text-underline-offset:.2em}
 .story_link:hover{text-decoration-style:solid}
-.details{border-top:1px solid var(--line)}
+.details{border-top:1px solid var(--line);margin-top:28px}
 .details-toggle{margin:0}
 .details-toggle button{width:100%;display:flex;align-items:center;justify-content:space-between;height:52px;padding:0;border:0;background:none;color:inherit;font:900 15px Nunito,system-ui,sans-serif;cursor:pointer}
 .details-toggle svg{color:var(--muted);transform:rotate(180deg)}
@@ -345,8 +348,8 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .ds{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 24px;padding-bottom:20px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
-@media(max-width:900px){.kanji-card{padding:20px}.detail{flex-direction:column;gap:24px}.left{width:100%;align-items:center}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
-@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:36px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
+@media(max-width:900px){.kanji-card{padding:20px}.detail{grid-template-columns:minmax(0,1fr);gap:24px}.pic{margin:0 auto}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
+@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
 const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
@@ -543,6 +546,14 @@ ${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : 
 ${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
 ${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.other_forms, q))}
 </div>` : "";
+  const detailsBlock = `<div class="details${detailsOpen ? " open" : ""}" id="details">
+<form class="details-toggle" method="post" action="/details/toggle">
+<input type="hidden" name="details" value="${detailsOpen ? "closed" : "open"}">
+<input type="hidden" name="back" value="${esc(here)}">
+<button type="submit" aria-expanded="${detailsOpen}"><span>Details</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+</form>
+${detailsBody}
+</div>`;
   const body = `
 <div class="pagetop"><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
 ${status}
@@ -554,27 +565,21 @@ ${editing
 <button class="btn ${inList ? "rem" : "add"}" type="submit" aria-label="${inList ? `Remove ${esc(k.literal)} from your study list` : `Add ${esc(k.literal)} to your study list`}">${inList ? "Remove" : "Add"}</button></form></div></div>
 <div class="kanji-card${state ? ` ${state}` : ""}">
 <div class="detail">
-<div class="left">
+<div class="right">
+<div class="top">
 <div class="big k">${esc(k.literal)}</div>
+${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div>
+</div>
+${editing ? editForm : componentButtons(k.components)}
+</div>
 ${img
       ? `<div class="pic"><img src="/img/${enc(k.literal)}" alt="Image for ${esc(k.literal)}"></div>`
       : `<div class="pic ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>No image yet: add ${esc(k.literal)}.jpg or ${esc(k.literal)}.png</div>`}
 </div>
-${editing ? editForm : `<div class="right">
-<div>${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div></div>
-${componentButtons(k.components)}
-${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
-<div class="details${detailsOpen ? " open" : ""}" id="details">
-<form class="details-toggle" method="post" action="/details/toggle">
-<input type="hidden" name="details" value="${detailsOpen ? "closed" : "open"}">
-<input type="hidden" name="back" value="${esc(here)}">
-<button type="submit" aria-expanded="${detailsOpen}"><span>Details</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
-</form>
-${detailsBody}
-</div>
-${exampleWords(k.literal)}
-</div>`}
-</div></div></div>`;
+${editing ? "" : `${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
+${detailsBlock}
+${exampleWords(k.literal)}`}
+</div>`;
   return html(layout(`${k.literal} – Kanji`, q, body));
 }
 
