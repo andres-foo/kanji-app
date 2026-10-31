@@ -307,6 +307,11 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .meanbig{font-size:22px;font-weight:700;margin-top:10px;color:var(--text)}
 .meanbig.no-kw{margin:0;font-size:40px}
 .lab{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:2px}
+.comps{display:flex;flex-wrap:wrap;gap:10px}
+.comp{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;border-radius:12px;background:var(--btn-bg);border:2px solid var(--field-border)}
+.comp:hover{background:var(--btn-hover);border-color:var(--accent)}
+.comp .k{font-size:28px;font-weight:700;line-height:1}
+.comp .ckw{font-size:13px;font-weight:900;color:var(--accent-strong);text-transform:uppercase}
 .story{font-size:19px;line-height:1.7;max-width:60ch}
 .story-paper{position:relative;overflow:hidden;max-width:64ch;padding:24px 26px;border-radius:14px;border:1px solid var(--ink-border);border-left:5px solid var(--accent);color:var(--ink-text);background:linear-gradient(180deg,var(--ink-1),var(--ink-2));box-shadow:var(--ink-shadow)}
 .story-paper .story{max-width:none;line-height:1.7}
@@ -444,6 +449,21 @@ function linkKanji(s: string | null, q: string) {
 const plain = (v: unknown) => (v ? esc(v) : "–");
 const readings = (s: string | null) => { const value = readingList(s); return value ? esc(value) : "–"; };
 
+// one button per component character, linking to a search for it; shows its keyword when it is a kanji in the database
+function componentButtons(s: string | null) {
+  const chars = [...new Set([...(s ?? "")].filter((c) => !/[\s,、;；，]/.test(c)))];
+  if (!chars.length) return "";
+  const keywords = new Map(
+    (db.query(`SELECT literal, keyword FROM kanjis WHERE literal IN (${chars.map(() => "?").join(",")})`).all(...chars) as { literal: string; keyword: string | null }[])
+      .map((r) => [r.literal, keywordText(r.keyword)]),
+  );
+  const buttons = chars.map((c) => {
+    const kw = keywords.get(c);
+    return `<a class="comp" href="/?q=${enc(c)}" aria-label="Search for ${esc(c)}${kw ? ` (${esc(kw)})` : ""}"><span class="k">${esc(c)}</span>${kw ? `<span class="ckw">${esc(kw)}</span>` : ""}</a>`;
+  });
+  return `<div class="comps">${buttons.join("")}</div>`;
+}
+
 async function kanjiPage(literal: string, url: URL) {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const k = db.query(`SELECT * FROM kanjis WHERE literal = ?`).get(literal) as Kanji | null;
@@ -477,7 +497,7 @@ ${field("related", "Related", k.related)}
   const detailsBody = detailsOpen ? `<div class="ds">
 ${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : "–")}${item("Kanken", plain(k.kanken))}${item("Grade", plain(k.grade))}
 ${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
-${item("Components", linkKanji(k.components, q))}${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.other_forms, q))}
+${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.other_forms, q))}
 </div>` : "";
   const body = `
 <div class="pagetop"><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
@@ -498,6 +518,7 @@ ${img
 </div>
 ${editing ? editForm : `<div class="right">
 <div>${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div></div>
+${componentButtons(k.components)}
 ${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 <div class="details${detailsOpen ? " open" : ""}" id="details">
 <form class="details-toggle" method="post" action="/details/toggle">
