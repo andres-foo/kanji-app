@@ -321,6 +321,8 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .comps{display:flex;flex-wrap:wrap;gap:10px}
 .comp{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;border-radius:12px;background:var(--btn-bg);border:2px solid var(--field-border)}
 .comp:hover{background:var(--btn-hover);border-color:var(--accent)}
+.comp.added,.comp.added:hover{border-color:var(--added-bar)}
+.comp.unfinished,.comp.unfinished:hover{border-color:var(--unfinished-bar)}
 .comp .k{font-size:28px;font-weight:700;line-height:1}
 .comp .ckw{font-size:13px;font-weight:900;color:var(--accent-strong);text-transform:uppercase}
 .examples{border-top:1px solid var(--line);padding-top:16px;margin-top:28px}
@@ -504,6 +506,24 @@ ${hidden.length ? `<details class="exmore"><summary><span class="s-closed">Show 
 </div>`;
 }
 
+// every other kanji that lists this one as a component, as links to those kanji (green/red border when added/unfinished)
+function componentOf(literal: string, q: string) {
+  const rows = db.query(`SELECT literal, keyword, jlpt, frequency, added, unfinished FROM kanjis WHERE components LIKE ? ESCAPE '\\' AND literal != ?`)
+    .all(`%${likeEsc(literal)}%`, literal) as Pick<Kanji, "literal" | "keyword" | "jlpt" | "frequency" | "added" | "unfinished">[];
+  if (!rows.length) return "";
+  rows.sort((a, b) => (b.jlpt ?? 0) - (a.jlpt ?? 0) || nullsLast(a.frequency, b.frequency));
+  const buttons = rows.map((r) => {
+    const state = r.unfinished === 1 ? "unfinished" : r.added === 1 ? "added" : "";
+    const kw = keywordText(r.keyword);
+    const status = state === "unfinished" ? " (unfinished)" : state === "added" ? " (in your study list)" : "";
+    return `<a class="comp${state ? ` ${state}` : ""}" href="/kanji/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}" aria-label="Open ${esc(r.literal)}${kw ? ` (${esc(kw)})` : ""}${status}"><span class="k">${esc(r.literal)}</span>${kw ? `<span class="ckw">${esc(kw)}</span>` : ""}</a>`;
+  });
+  return `<div class="examples">
+<div class="ex-head">Component for:</div>
+<div class="exs">${buttons.join("")}</div>
+</div>`;
+}
+
 // one button per component character, linking to a search for it; shows its keyword when it is a kanji in the database
 function componentButtons(s: string | null) {
   const chars = [...new Set([...(s ?? "")].filter((c) => !/[\s,、;；，]/.test(c)))];
@@ -596,7 +616,8 @@ ${picBlock}
 </div>
 ${editing ? editForm : `${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 ${detailsBlock}
-${exampleWords(k.literal)}`}
+${exampleWords(k.literal)}
+${componentOf(k.literal, q)}`}
 </div>`;
   return html(layout(`${k.literal} – Kanji`, q, body));
 }
