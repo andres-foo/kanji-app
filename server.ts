@@ -6,7 +6,7 @@ const PORT = Number(process.env.PORT ?? 3000);
 const DB_PATH = process.env.DB_PATH ?? "./kanji.db";
 const IMAGES_DIR = process.env.IMAGES_DIR ?? "./images";
 
-// Opened read-write: the only write is the add/remove toggle on `examples.added`.
+// Opened read-write: writes are the add/remove toggles and the kanji edit form.
 const db = new Database(DB_PATH, { readwrite: true });
 
 type Kanji = {
@@ -14,7 +14,7 @@ type Kanji = {
   strokes: number | null; jlpt: number | null; frequency: number | null; grade: number | null;
   heisg6: number | null; components: string | null; other_forms: string | null;
   kanken: number | null; story: string | null; related: string | null; keyword: string | null;
-  added: number | null; unfinished: number | null;
+  added: number | null; unfinished: number | null; is_component: number | null;
 };
 type Word = {
   id: number; kanji: string | null; kana: string | null; meanings: string | null;
@@ -262,6 +262,17 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .btn{width:92px;height:36px;border-radius:10px;background:var(--btn-bg);color:var(--text);font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}
 .btn:hover{background:var(--btn-hover)}.in .btn:hover{background:var(--in-hover)}
 .add{border:2px solid var(--add-border);color:var(--add-text)}.rem{border:2px solid var(--rem-border);color:var(--rem-text)}
+.edit{border:2px solid var(--field-border);display:inline-flex;align-items:center;justify-content:center}
+.actions{display:flex;align-items:center;gap:10px}.actions form{margin:0}
+.editf{flex:1;min-width:0;display:flex;flex-direction:column;gap:18px;padding-top:12px}
+.editf label.fl{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;color:var(--muted)}
+.editf input[type=text],.editf textarea{width:100%;padding:10px 14px;border-radius:12px;background:var(--field-bg);border:2px solid var(--field-border);color:var(--text);font:700 16px Nunito,system-ui,sans-serif}
+.editf textarea{min-height:180px;resize:vertical;line-height:1.6}
+.editf input[type=text]:focus,.editf textarea:focus{border-color:var(--accent);background:var(--field-focus-bg);outline:0}
+.checks{display:flex;gap:28px;flex-wrap:wrap}
+.check{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+.formbtns{display:flex;gap:10px}
 .empty{padding:48px 24px;text-align:center;color:var(--muted);font-weight:700}
 .back{display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:15px;color:var(--accent-strong);height:40px}
 .pagetop{display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -425,6 +436,22 @@ async function kanjiPage(literal: string, url: URL) {
   const self = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
   const detailsOpen = requestContext.getStore()?.detailsOpen ?? true;
   const here = `${self}#details`;
+  const editing = url.searchParams.get("edit") === "1";
+  const editHref = `/kanji/${enc(k.literal)}?${q ? `q=${enc(q)}&` : ""}edit=1`;
+  const field = (name: string, label: string, value: string | null) =>
+    `<label class="fl">${label}<input type="text" name="${name}" value="${esc(value)}" autocomplete="off"></label>`;
+  const check = (name: string, label: string, on: boolean) =>
+    `<label class="check"><input type="checkbox" name="${name}" value="1"${on ? " checked" : ""}>${label}</label>`;
+  const editForm = `<form class="editf" method="post" action="/kanji/${enc(k.literal)}/edit">
+<input type="hidden" name="back" value="${esc(self)}">
+${field("keyword", "Keyword", k.keyword)}
+${field("components", "Components", k.components)}
+${field("other_forms", "Other forms", k.other_forms)}
+${field("related", "Related", k.related)}
+<label class="fl">Story<textarea name="story">${esc(k.story)}</textarea></label>
+<div class="checks">${check("unfinished", "Unfinished", k.unfinished === 1)}${check("is_component", "Is component", k.is_component === 1)}</div>
+<div class="formbtns"><button class="btn add" type="submit">Save</button><a class="btn edit" href="${esc(self)}">Cancel</a></div>
+</form>`;
   const detailsBody = detailsOpen ? `<div class="ds">
 ${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : "–")}${item("Kanken", plain(k.kanken))}${item("Grade", plain(k.grade))}
 ${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
@@ -433,8 +460,12 @@ ${item("Components", linkKanji(k.components, q))}${item("Related", linkKanji(k.r
   const body = `
 <div class="pagetop"><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
 ${status}
+<div class="actions">
+${editing
+      ? `<a class="btn edit" href="${esc(self)}">Cancel</a>`
+      : `<a class="btn edit" href="${esc(editHref)}" aria-label="Edit ${esc(k.literal)}">Edit</a>`}
 <form method="post" action="/kanji/${enc(k.literal)}/toggle"><input type="hidden" name="back" value="${esc(self)}">
-<button class="btn ${inList ? "rem" : "add"}" type="submit" aria-label="${inList ? `Remove ${esc(k.literal)} from your study list` : `Add ${esc(k.literal)} to your study list`}">${inList ? "Remove" : "Add"}</button></form></div>
+<button class="btn ${inList ? "rem" : "add"}" type="submit" aria-label="${inList ? `Remove ${esc(k.literal)} from your study list` : `Add ${esc(k.literal)} to your study list`}">${inList ? "Remove" : "Add"}</button></form></div></div>
 <div class="kanji-card${state ? ` ${state}` : ""}">
 <div class="detail">
 <div class="left">
@@ -443,7 +474,7 @@ ${img
       ? `<div class="pic"><img src="/img/${enc(k.literal)}" alt="Image for ${esc(k.literal)}"></div>`
       : `<div class="pic ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>No image yet: add ${esc(k.literal)}.jpg or ${esc(k.literal)}.png</div>`}
 </div>
-<div class="right">
+${editing ? editForm : `<div class="right">
 <div>${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div></div>
 ${k.story ? `<div class="story-paper"><div class="story">${esc(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 <div class="details${detailsOpen ? " open" : ""}" id="details">
@@ -454,7 +485,8 @@ ${k.story ? `<div class="story-paper"><div class="story">${esc(k.story).replace(
 </form>
 ${detailsBody}
 </div>
-</div></div></div></div>`;
+</div>`}
+</div></div></div>`;
   return html(layout(`${k.literal} – Kanji`, q, body));
 }
 
@@ -484,6 +516,27 @@ async function toggleKanji(req: Request, literal: string) {
        WHERE literal = ?`,
       [literal],
     );
+  } catch (e) {
+    return html(layout("Error", "", `<div class="box empty">Could not update the kanji: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+  }
+  return new Response(null, { status: 303, headers: { location: back } });
+}
+
+// save the edit form: text fields (empty -> NULL) and the two checkboxes (checked -> 1, unchecked -> 0)
+async function updateKanji(req: Request, literal: string) {
+  if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
+  const form = await req.formData();
+  const back = safeBack(form.get("back"));
+  const text = (name: string) => String(form.get(name) ?? "").replace(/\r\n?/g, "\n").trim() || null;
+  const flag = (name: string) => (form.get(name) ? 1 : 0);
+  try {
+    const result = db.run(
+      `UPDATE kanjis
+       SET keyword = ?, components = ?, other_forms = ?, related = ?, story = ?, unfinished = ?, is_component = ?
+       WHERE literal = ?`,
+      [text("keyword"), text("components"), text("other_forms"), text("related"), text("story"), flag("unfinished"), flag("is_component"), literal],
+    );
+    if (!result.changes) return html(layout("Not found", "", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
   } catch (e) {
     return html(layout("Error", "", `<div class="box empty">Could not update the kanji: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
   }
@@ -527,6 +580,10 @@ Bun.serve({
       const kanjiToggle = path.match(/^\/kanji\/([^/]+)\/toggle$/);
       if (kanjiToggle) {
         return req.method === "POST" ? toggleKanji(req, kanjiToggle[1]) : new Response("Method not allowed", { status: 405 });
+      }
+      const kanjiEdit = path.match(/^\/kanji\/([^/]+)\/edit$/);
+      if (kanjiEdit) {
+        return req.method === "POST" ? updateKanji(req, kanjiEdit[1]) : new Response("Method not allowed", { status: 405 });
       }
       const toggle = path.match(/^\/words\/(\d+)\/toggle$/);
       if (toggle) {
