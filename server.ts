@@ -410,7 +410,7 @@ async function kanjiPage(literal: string, url: URL) {
   const detailsBody = detailsOpen ? `<div class="ds">
 ${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : "–")}${item("Kanken", plain(k.kanken))}${item("Grade", plain(k.grade))}
 ${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
-${item("Components", linkKanji(k.components, q))}${item("Related", linkKanji(k.related, q))}${k.other_forms ? item("Other forms", linkKanji(k.other_forms, q)) : ""}
+${item("Components", linkKanji(k.components, q))}${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.other_forms, q))}
 </div>` : "";
   const body = `
 <div><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
