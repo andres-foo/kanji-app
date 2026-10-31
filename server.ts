@@ -241,7 +241,8 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .sense{display:block;position:relative;min-width:0;padding-left:18px;overflow-wrap:anywhere}
 .sense::before{content:"•";position:absolute;left:2px;top:.35em;color:var(--muted);font-size:12px;font-weight:900}
 .box>:first-child{border-top:0}
-.r:hover{background:var(--surface-hover)}
+.rklink{justify-self:center;display:flex;align-items:center;color:inherit;border-radius:14px}
+.rklink:hover .rk{color:var(--accent-strong);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
 .in,.in:hover{background:var(--in-bg)}
 .unfinished,.unfinished:hover{background:var(--unfinished-bg)}
 .rk{font-size:58px;font-weight:700;line-height:1;justify-self:center}
@@ -340,10 +341,10 @@ const readingsRow = (k: Kanji, q: string) => {
 const kanjiRow = (k: Kanji, q: string) => {
   const unfinished = k.unfinished === 1;
   return `
-<a class="r${unfinished ? " unfinished" : k.added === 1 ? " in" : ""}" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">
-<span class="rk k">${esc(k.literal)}</span>
+<div class="r${unfinished ? " unfinished" : k.added === 1 ? " in" : ""}">
+<a class="rklink" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}"><span class="rk k">${esc(k.literal)}</span></a>
 <span class="rm">${k.keyword ? `<span class="kw">${highlight(keywordText(k.keyword), q)}</span>` : ""}<span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${readingsRow(k, q)}</span>
-<span class="badges">${unfinished ? `<span class="sr">Unfinished</span>` : k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${k.jlpt ? `<span class="b">N${esc(k.jlpt)}</span>` : ""}${k.kanken ? `<span class="b">Kanken ${esc(k.kanken)}</span>` : ""}</span></a>`;
+<span class="badges">${unfinished ? `<span class="sr">Unfinished</span>` : k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${k.jlpt ? `<span class="b">N${esc(k.jlpt)}</span>` : ""}${k.kanken ? `<span class="b">Kanken ${esc(k.kanken)}</span>` : ""}</span></div>`;
 };
 
 const wordRow = (w: Word, back: string, q: string) => {
