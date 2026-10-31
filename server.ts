@@ -34,13 +34,18 @@ const meanings = (s: unknown) => esc(String(s ?? "").split(";").map((m) => m.tri
 const nullsLast = (a: number | null, b: number | null) => (a ?? Infinity) - (b ?? Infinity);
 const enc = encodeURIComponent;
 
-// ---------- theme ----------
+// ---------- preferences ----------
 type Theme = "light" | "dark";
-type RequestContext = { theme: Theme | null; back: string };
-// Request-scoped so concurrent requests don't share the cookie's theme.
+type RequestContext = { theme: Theme | null; detailsOpen: boolean; back: string };
+// Request-scoped so concurrent requests don't share the visitor's preferences.
 const requestContext = new AsyncLocalStorage<RequestContext>();
-const themeFrom = (req: Request): Theme | null =>
-  (/(?:^|;\s*)kanji_theme=(light|dark)(?:;|$)/.exec(req.headers.get("cookie") ?? "")?.[1] as Theme | undefined) ?? null;
+const cookieValue = (req: Request, name: string) =>
+  new RegExp(`(?:^|;\\s*)${name}=([^;]*)`).exec(req.headers.get("cookie") ?? "")?.[1] ?? null;
+const themeFrom = (req: Request): Theme | null => {
+  const value = cookieValue(req, "kanji_theme");
+  return value === "light" || value === "dark" ? value : null;
+};
+const detailsOpenFrom = (req: Request) => cookieValue(req, "kanji_details") !== "closed";
 const sameOrigin = (req: Request) => {
   const origin = req.headers.get("origin");
   if (!origin) return true;
@@ -161,7 +166,7 @@ body{margin:0;font-family:Nunito,system-ui,sans-serif;color:var(--text);backgrou
 body.added{background:var(--added-bg);--line:var(--added-line);--row-line:var(--added-row-line);--dash:var(--added-dash)}
 .k{font-family:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif}
 a{color:inherit;text-decoration:none}
-a:focus-visible,summary:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
+a:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 header{display:grid;grid-template-columns:1fr minmax(0,620px) 1fr;align-items:center;gap:24px;min-height:72px;padding:12px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:20px;justify-self:start}
@@ -221,11 +226,11 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .meanbig.no-kw{margin:0;font-size:40px;color:var(--text)}
 .lab{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:2px}
 .story{font-size:19px;line-height:1.7;max-width:60ch}
-details{border-top:1px solid var(--line)}
-summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;height:52px;font-weight:900;font-size:15px}
-summary::-webkit-details-marker{display:none}
-summary svg{color:var(--muted)}
-details:not([open]) summary svg{transform:rotate(180deg)}
+.details{border-top:1px solid var(--line)}
+.details-toggle{margin:0}
+.details-toggle button{width:100%;display:flex;align-items:center;justify-content:space-between;height:52px;padding:0;border:0;background:none;color:inherit;font:900 15px Nunito,system-ui,sans-serif;cursor:pointer}
+.details-toggle svg{color:var(--muted);transform:rotate(180deg)}
+.details.open .details-toggle svg{transform:none}
 .ds{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 24px;padding-bottom:20px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
@@ -338,6 +343,13 @@ async function kanjiPage(literal: string, url: URL) {
 
   const img = await findImage(k.literal);
   const item = (label: string, v: string) => `<div><div class="lab">${label}</div><div class="val">${v}</div></div>`;
+  const detailsOpen = requestContext.getStore()?.detailsOpen ?? true;
+  const here = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}#details`;
+  const detailsBody = detailsOpen ? `<div class="ds">
+${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : "–")}${item("Kanken", plain(k.kanken))}${item("Grade", plain(k.grade))}
+${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
+${item("Components", linkKanji(k.components, q))}${item("Related", linkKanji(k.related, q))}${k.other_forms ? item("Other forms", linkKanji(k.other_forms, q)) : ""}
+</div>` : "";
   const body = `
 <div><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
 ${k.added === 1 ? `<span class="sr">In your study list</span>` : ""}
@@ -351,12 +363,14 @@ ${img
 <div class="right">
 <div>${k.keyword ? `<div class="kwbig">${esc(k.keyword)}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div></div>
 ${k.story ? `<div><div class="lab">Story</div><div class="story">${esc(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
-<details open><summary>Details<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></summary>
-<div class="ds">
-${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : "–")}${item("Kanken", plain(k.kanken))}${item("Grade", plain(k.grade))}
-${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
-${item("Components", linkKanji(k.components, q))}${item("Related", linkKanji(k.related, q))}${k.other_forms ? item("Other forms", linkKanji(k.other_forms, q)) : ""}
-</div></details>
+<div class="details${detailsOpen ? " open" : ""}" id="details">
+<form class="details-toggle" method="post" action="/details/toggle">
+<input type="hidden" name="details" value="${detailsOpen ? "closed" : "open"}">
+<input type="hidden" name="back" value="${esc(here)}">
+<button type="submit" aria-expanded="${detailsOpen}"><span>Details</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+</form>
+${detailsBody}
+</div>
 </div></div></div>`;
   return html(layout(`${k.literal} – Kanji`, q, body, k.added === 1));
 }
@@ -387,15 +401,26 @@ async function setTheme(req: Request) {
   return new Response(null, { status: 303, headers });
 }
 
+// remember whether the details table is shown, then go back to the kanji page
+async function toggleDetails(req: Request) {
+  if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
+  const form = await req.formData();
+  const open = form.get("details") === "open";
+  const headers = new Headers({ location: safeBack(form.get("back")) });
+  headers.set("set-cookie", `kanji_details=${open ? "open" : "closed"}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly`);
+  return new Response(null, { status: 303, headers });
+}
+
 // ---------- server ----------
 Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
-    return requestContext.run({ theme: themeFrom(req), back: url.pathname + url.search }, async () => {
+    return requestContext.run({ theme: themeFrom(req), detailsOpen: detailsOpenFrom(req), back: url.pathname + url.search }, async () => {
       let path: string;
       try { path = decodeURIComponent(url.pathname); } catch { return html(layout("Bad request", "", `<div class="box empty">Bad request.</div>`), 400); }
 
+      if (path === "/details/toggle") return req.method === "POST" ? toggleDetails(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/theme") return req.method === "POST" ? setTheme(req) : new Response("Method not allowed", { status: 405 });
       const toggle = path.match(/^\/words\/(\d+)\/toggle$/);
       if (toggle) {

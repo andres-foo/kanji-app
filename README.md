@@ -4,7 +4,8 @@ Server-rendered Bun app (no frontend JavaScript) over your SQLite database.
 
 Light and dark themes are available from the header toggle. The choice is stored in a
 `kanji_theme` cookie; with no cookie the page follows the operating system's
-`prefers-color-scheme` setting.
+`prefers-color-scheme` setting. The kanji Details section likewise remembers whether
+it was left open or closed in a `kanji_details` cookie.
 
     bun run start            # http://localhost:3000
     DB_PATH=/path/to/kanji.db IMAGES_DIR=/path/to/images PORT=3000 bun run start
