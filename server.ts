@@ -43,6 +43,7 @@ const meaningGroups = (s: unknown) => {
 const meaningsText = (s: unknown) => meaningsList(s).join(", ");
 const meanings = (s: unknown) => esc(meaningsText(s));
 const readingList = (s: string | null) => (s ? s.split(/[、,;\s]+/).filter(Boolean).join("、") : "");
+const keywordText = (s: string | null) => (s ? s.split(";").map((k) => k.trim()).filter(Boolean).join(", ") : "");
 const splitKanjiMarker = (kanji: string) => {
   const match = /^(.*?)\s*(\([^)]*\))$/.exec(kanji);
   return match ? { text: match[1].trim(), marker: match[2] } : { text: kanji, marker: "" };
@@ -266,9 +267,9 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .pic img{width:100%;height:100%;object-fit:cover;display:block}
 .ph{border:2px dashed var(--dash);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:13px;font-weight:700;text-align:center;padding:16px}
 .right{flex:1;min-width:0;display:flex;flex-direction:column;gap:28px;padding-top:12px}
-.kwbig{font-size:64px;font-weight:900;line-height:1.05;overflow-wrap:anywhere}
-.meanbig{font-size:22px;font-weight:700;margin-top:10px;color:var(--accent-strong)}
-.meanbig.no-kw{margin:0;font-size:40px;color:var(--text)}
+.kwbig{font-size:48px;font-weight:900;line-height:1.05;overflow-wrap:anywhere;color:var(--accent-strong);text-transform:uppercase}
+.meanbig{font-size:22px;font-weight:700;margin-top:10px;color:var(--text)}
+.meanbig.no-kw{margin:0;font-size:40px}
 .lab{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:2px}
 .story{font-size:19px;line-height:1.7;max-width:60ch}
 .details{border-top:1px solid var(--line)}
@@ -280,7 +281,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
 @media(max-width:900px){.detail{flex-direction:column;gap:24px}.left{width:100%;align-items:center}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
-@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kwbig{font-size:44px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
+@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kwbig{font-size:36px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
 const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
@@ -331,7 +332,7 @@ const readingsRow = (k: Kanji, q: string) => {
 const kanjiRow = (k: Kanji, q: string) => `
 <a class="r${k.added === 1 ? " in" : ""}" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">
 <span class="rk k">${esc(k.literal)}</span>
-<span class="rm">${k.keyword ? `<span class="kw">${highlight(k.keyword, q)}</span>` : ""}<span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${readingsRow(k, q)}</span>
+<span class="rm">${k.keyword ? `<span class="kw">${highlight(keywordText(k.keyword), q)}</span>` : ""}<span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${readingsRow(k, q)}</span>
 <span class="badges">${k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${k.jlpt ? `<span class="b">N${esc(k.jlpt)}</span>` : ""}${k.kanken ? `<span class="b">Kanken ${esc(k.kanken)}</span>` : ""}</span></a>`;
 
 const wordRow = (w: Word, back: string, q: string) => {
@@ -423,7 +424,7 @@ ${img
       : `<div class="pic ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>No image yet: add ${esc(k.literal)}.jpg or ${esc(k.literal)}.png</div>`}
 </div>
 <div class="right">
-<div>${k.keyword ? `<div class="kwbig">${esc(k.keyword)}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div></div>
+<div>${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div></div>
 ${k.story ? `<div><div class="lab">Story</div><div class="story">${esc(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 <div class="details${detailsOpen ? " open" : ""}" id="details">
 <form class="details-toggle" method="post" action="/details/toggle">
