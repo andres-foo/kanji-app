@@ -14,7 +14,7 @@ type Kanji = {
   strokes: number | null; jlpt: number | null; frequency: number | null; grade: number | null;
   heisg6: number | null; components: string | null; other_forms: string | null;
   kanken: number | null; story: string | null; related: string | null; keyword: string | null;
-  added: number | null;
+  added: number | null; unfinished: number | null;
 };
 type Word = {
   id: number; kanji: string | null; kana: string | null; meanings: string | null;
@@ -193,12 +193,12 @@ const CSS = `
 --rem-border:light-dark(#9AD7AE,#3F7D53);--rem-text:light-dark(#166534,#86EFAC);
 --in-bg:light-dark(#E6F7EC,#15291D);--in-hover:light-dark(#F0FBF4,#1B3525);
 --added-bg:light-dark(#E6F7EC,#101F16);--added-line:light-dark(#BFE3CC,#2A4F36);--added-row-line:light-dark(#D8EEDF,#23432E);--added-dash:light-dark(#A9D9BA,#3B6E4A);
+--unfinished-bg:light-dark(#FEE2E2,#2A1216);--unfinished-line:light-dark(#FCA5A5,#7F1D1D);--unfinished-row-line:light-dark(#FAD1D1,#3A1B1E);--unfinished-dash:light-dark(#F87171,#B91C1C);
 --focus-ring:light-dark(#7C3AED,#C4B5FD);--mark-bg:light-dark(#E9D5FF,#7C3AED);--mark-text:light-dark(#3B0764,#FFFFFF);--logo-bg:#7C3AED;--logo-fg:#FFFFFF;
 --sug-border:light-dark(#D9D2F2,#3A3352);--clear-bg:light-dark(#E4DEF6,#332D47);--clear-text:light-dark(#4B3F8F,#D6CCF7)}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{color-scheme:dark}
 body{margin:0;font-family:Nunito,system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh}
-body.added{background:var(--added-bg);--line:var(--added-line);--row-line:var(--added-row-line);--dash:var(--added-dash)}
 .k{font-family:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif}
 mark{background:var(--mark-bg);color:var(--mark-text);border-radius:3px;padding:0 .08em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 a{color:inherit;text-decoration:none}
@@ -242,6 +242,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .box>:first-child{border-top:0}
 .r:hover{background:var(--surface-hover)}
 .in,.in:hover{background:var(--in-bg)}
+.unfinished,.unfinished:hover{background:var(--unfinished-bg)}
 .rk{font-size:58px;font-weight:700;line-height:1;justify-self:center}
 .rm{display:flex;flex-direction:column;gap:4px;min-width:0}
 .mean{font-size:18px;font-weight:800}
@@ -260,7 +261,10 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .add{border:2px solid var(--add-border);color:var(--add-text)}.rem{border:2px solid var(--rem-border);color:var(--rem-text)}
 .empty{padding:48px 24px;text-align:center;color:var(--muted);font-weight:700}
 .back{display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:15px;color:var(--accent-strong);height:40px}
-.detail{display:flex;gap:56px;align-items:flex-start;margin-top:12px}
+.kanji-card{margin-top:12px;padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--surface)}
+.kanji-card.added{--line:var(--added-line);--row-line:var(--added-row-line);--dash:var(--added-dash);background:var(--added-bg);border-color:var(--added-line)}
+.kanji-card.unfinished{--line:var(--unfinished-line);--row-line:var(--unfinished-row-line);--dash:var(--unfinished-dash);background:var(--unfinished-bg);border-color:var(--unfinished-line)}
+.detail{display:flex;gap:56px;align-items:flex-start}
 .left{display:flex;flex-direction:column;gap:20px;flex:none;width:300px}
 .big{font-size:230px;font-weight:500;line-height:1;text-align:center}
 .pic{width:300px;aspect-ratio:1;border-radius:20px;overflow:hidden}
@@ -280,8 +284,8 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .ds{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 24px;padding-bottom:20px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
-@media(max-width:900px){.detail{flex-direction:column;gap:24px}.left{width:100%;align-items:center}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
-@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kwbig{font-size:36px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
+@media(max-width:900px){.kanji-card{padding:20px}.detail{flex-direction:column;gap:24px}.left{width:100%;align-items:center}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
+@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:36px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
 const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
@@ -297,7 +301,7 @@ const themeButton = (theme: Theme, label: string, icon: string, back: string) =>
 const themeToggle = (back: string) =>
   `<div class="themes">${themeButton("light", "Light", sunIcon, back)}${themeButton("dark", "Dark", moonIcon, back)}</div>`;
 
-const layout = (title: string, q: string, body: string, added = false) => {
+const layout = (title: string, q: string, body: string) => {
   const ctx = requestContext.getStore();
   const theme = ctx?.theme;
   const back = ctx?.back ?? "/";
@@ -306,7 +310,7 @@ const layout = (title: string, q: string, body: string, added = false) => {
 <meta name="color-scheme" content="light dark">
 <title>${esc(title)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
-<style>${CSS}</style></head><body${added ? ' class="added"' : ""}>
+<style>${CSS}</style></head><body>
 <header>
 <a class="brand" href="/"><span class="logo k">漢</span><span>Kanji</span></a>
 <form class="s" action="/" method="get" role="search">
@@ -329,11 +333,14 @@ const readingsRow = (k: Kanji, q: string) => {
   return `<span class="readings">${part("On", on)}${part("Kun", kun)}</span>`;
 };
 
-const kanjiRow = (k: Kanji, q: string) => `
-<a class="r${k.added === 1 ? " in" : ""}" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">
+const kanjiRow = (k: Kanji, q: string) => {
+  const unfinished = k.unfinished === 1;
+  return `
+<a class="r${unfinished ? " unfinished" : k.added === 1 ? " in" : ""}" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">
 <span class="rk k">${esc(k.literal)}</span>
 <span class="rm">${k.keyword ? `<span class="kw">${highlight(keywordText(k.keyword), q)}</span>` : ""}<span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${readingsRow(k, q)}</span>
-<span class="badges">${k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${k.jlpt ? `<span class="b">N${esc(k.jlpt)}</span>` : ""}${k.kanken ? `<span class="b">Kanken ${esc(k.kanken)}</span>` : ""}</span></a>`;
+<span class="badges">${unfinished ? `<span class="sr">Unfinished</span>` : k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${k.jlpt ? `<span class="b">N${esc(k.jlpt)}</span>` : ""}${k.kanken ? `<span class="b">Kanken ${esc(k.kanken)}</span>` : ""}</span></a>`;
+};
 
 const wordRow = (w: Word, back: string, q: string) => {
   const inList = w.added === 1;
@@ -405,6 +412,8 @@ async function kanjiPage(literal: string, url: URL) {
   if (!k) return html(layout("Not found", q, `<div><a class="back" href="${back}">Back</a></div><div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
 
   const img = await findImage(k.literal);
+  const state = k.unfinished === 1 ? "unfinished" : k.added === 1 ? "added" : "";
+  const status = state === "unfinished" ? `<span class="sr">Unfinished</span>` : state === "added" ? `<span class="sr">In your study list</span>` : "";
   const item = (label: string, v: string) => `<div><div class="lab">${label}</div><div class="val">${v}</div></div>`;
   const detailsOpen = requestContext.getStore()?.detailsOpen ?? true;
   const here = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}#details`;
@@ -415,7 +424,8 @@ ${item("Components", linkKanji(k.components, q))}${item("Related", linkKanji(k.r
 </div>` : "";
   const body = `
 <div><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
-${k.added === 1 ? `<span class="sr">In your study list</span>` : ""}
+${status}
+<div class="kanji-card${state ? ` ${state}` : ""}">
 <div class="detail">
 <div class="left">
 <div class="big k">${esc(k.literal)}</div>
@@ -434,8 +444,8 @@ ${k.story ? `<div><div class="lab">Story</div><div class="story">${esc(k.story).
 </form>
 ${detailsBody}
 </div>
-</div></div></div>`;
-  return html(layout(`${k.literal} – Kanji`, q, body, k.added === 1));
+</div></div></div></div>`;
+  return html(layout(`${k.literal} – Kanji`, q, body));
 }
 
 // flip examples.added between 0 and 1, then go back to where the user was
