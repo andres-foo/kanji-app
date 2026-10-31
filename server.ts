@@ -71,6 +71,23 @@ const highlight = (text: string | null | undefined, q: string) => {
   return out + esc(value.slice(last));
 };
 
+// Story markup: =keyword=  _component_  ?note?  #link#  (markers may nest, except inside a link).
+// Works on the raw text and escapes every piece, so the "#" in HTML entities can never be mistaken for a marker.
+const STORY_MARKUP = /=([^=\n]+)=|_([^_\n]+)_|\?([^?\n]+)\?|#([^#\n]+)#/g;
+function storyHtml(s: string): string {
+  let out = "";
+  let last = 0;
+  for (const m of s.matchAll(STORY_MARKUP)) {
+    out += esc(s.slice(last, m.index));
+    last = (m.index ?? 0) + m[0].length;
+    if (m[1] !== undefined) out += `<span class="story_keyword">${storyHtml(m[1])}</span>`;
+    else if (m[2] !== undefined) out += `<span class="story_component">${storyHtml(m[2])}</span>`;
+    else if (m[3] !== undefined) out += `<span class="story_note">${storyHtml(m[3])}</span>`;
+    else out += `<a class="story_link" href="/?q=${enc(m[4].trim())}">${esc(m[4])}</a>`;
+  }
+  return out + esc(s.slice(last));
+}
+
 // ---------- preferences ----------
 type Theme = "light" | "dark";
 type RequestContext = { theme: Theme | null; detailsOpen: boolean; back: string };
@@ -293,6 +310,11 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .story{font-size:19px;line-height:1.7;max-width:60ch}
 .story-paper{position:relative;overflow:hidden;max-width:64ch;padding:24px 26px;border-radius:14px;border:1px solid var(--ink-border);border-left:5px solid var(--accent);color:var(--ink-text);background:linear-gradient(180deg,var(--ink-1),var(--ink-2));box-shadow:var(--ink-shadow)}
 .story-paper .story{max-width:none;line-height:1.7}
+.story_keyword{color:var(--accent-strong);font-weight:800}
+.story_component{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.2em}
+.story_note{background:light-dark(#FEF08A,#4D4210);border-radius:4px;padding:0 .25em}
+.story_link{color:var(--accent-strong);text-decoration:underline dotted;text-decoration-thickness:2px;text-underline-offset:.2em}
+.story_link:hover{text-decoration-style:solid}
 .details{border-top:1px solid var(--line)}
 .details-toggle{margin:0}
 .details-toggle button{width:100%;display:flex;align-items:center;justify-content:space-between;height:52px;padding:0;border:0;background:none;color:inherit;font:900 15px Nunito,system-ui,sans-serif;cursor:pointer}
@@ -476,7 +498,7 @@ ${img
 </div>
 ${editing ? editForm : `<div class="right">
 <div>${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div></div>
-${k.story ? `<div class="story-paper"><div class="story">${esc(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
+${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 <div class="details${detailsOpen ? " open" : ""}" id="details">
 <form class="details-toggle" method="post" action="/details/toggle">
 <input type="hidden" name="details" value="${detailsOpen ? "closed" : "open"}">
