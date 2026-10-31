@@ -1,12 +1,13 @@
 import { Database } from "bun:sqlite";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { join } from "node:path";
+import { unlink } from "node:fs/promises";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DB_PATH = process.env.DB_PATH ?? "./kanji.db";
 const IMAGES_DIR = process.env.IMAGES_DIR ?? "./images";
 
-// Opened read-write: writes are the add/remove toggles and the kanji edit form.
+// Opened read-write: writes are the add/remove toggles, the kanji edit form and image upload/removal (IMAGES_DIR must be writable too).
 const db = new Database(DB_PATH, { readwrite: true });
 
 type Kanji = {
@@ -303,7 +304,13 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .kwbig{grid-column:2;grid-row:1;align-self:end}
 .meanbig{grid-column:2;grid-row:2;align-self:start}
 .meanbig.no-kw{grid-row:1/3;align-self:center}
-.pic{width:300px;max-width:100%;aspect-ratio:1;border-radius:20px;overflow:hidden}
+.picwrap{position:relative;width:300px;max-width:100%}
+.pic{width:100%;aspect-ratio:1;border-radius:20px;overflow:hidden}
+.picbtns{position:absolute;right:10px;bottom:10px;display:flex;gap:8px}
+.picbtns form{margin:0}
+.picbtn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--text);font:800 12px Nunito,system-ui,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.picbtn:hover{background:var(--btn-hover);border-color:var(--accent)}
+.picbtn:focus-within{outline:3px solid var(--focus-ring);outline-offset:2px}
 .pic img{width:100%;height:100%;object-fit:cover;display:block}
 .ph{border:2px dashed var(--dash);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:13px;font-weight:700;text-align:center;padding:16px}
 .right{min-width:0;display:flex;flex-direction:column;gap:28px}
@@ -349,7 +356,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .ds{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 24px;padding-bottom:20px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
-@media(max-width:900px){.kanji-card{padding:20px}.detail{grid-template-columns:minmax(0,1fr);gap:24px}.pic{margin:0 auto}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
+@media(max-width:900px){.kanji-card{padding:20px}.detail{grid-template-columns:minmax(0,1fr);gap:24px}.picwrap{margin:0 auto}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
 @media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
@@ -547,6 +554,18 @@ ${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : 
 ${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
 ${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.other_forms, q))}
 </div>` : "";
+  const lit = esc(k.literal);
+  const imgForm = `<input type="hidden" name="back" value="${esc(editHref)}">`;
+  const picBlock = `<div class="picwrap">
+${img
+      ? `<div class="pic"><img src="/img/${enc(k.literal)}" alt="Image for ${lit}"></div>`
+      : `<div class="pic ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>No image yet</div>`}
+${editing ? `<div class="picbtns">
+<form method="post" action="/kanji/${enc(k.literal)}/image" enctype="multipart/form-data">${imgForm}
+<label class="picbtn"><input class="sr" type="file" name="image" accept="image/jpeg,image/png" aria-label="Upload an image for ${lit}" onchange="this.form.requestSubmit()">Upload</label></form>
+${img ? `<form method="post" action="/kanji/${enc(k.literal)}/image/delete" data-msg="Remove the image for ${lit}?" onsubmit="return confirm(this.dataset.msg)">${imgForm}
+<button class="picbtn" type="submit" aria-label="Remove the image for ${lit}">Remove</button></form>` : ""}
+</div>` : ""}</div>`;
   const detailsBlock = `<div class="details${detailsOpen ? " open" : ""}" id="details">
 <form class="details-toggle" method="post" action="/details/toggle">
 <input type="hidden" name="details" value="${detailsOpen ? "closed" : "open"}">
@@ -573,9 +592,7 @@ ${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<di
 </div>
 ${componentButtons(k.components)}
 </div>
-${img
-      ? `<div class="pic"><img src="/img/${enc(k.literal)}" alt="Image for ${esc(k.literal)}"></div>`
-      : `<div class="pic ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>No image yet: add ${esc(k.literal)}.jpg or ${esc(k.literal)}.png</div>`}
+${picBlock}
 </div>
 ${editing ? editForm : `${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 ${detailsBlock}
@@ -637,6 +654,66 @@ async function updateKanji(req: Request, literal: string) {
   return new Response(null, { status: 303, headers: { location: back } });
 }
 
+// ---------- images ----------
+const IMAGE_EXTS = ["jpg", "png"] as const;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+const imagePath = (literal: string, ext: string) => join(IMAGES_DIR, `${literal}.${ext}`);
+const imageExtsOnDisk = async (literal: string) => {
+  const found: string[] = [];
+  for (const ext of IMAGE_EXTS) if (await Bun.file(imagePath(literal, ext)).exists()) found.push(ext);
+  return found;
+};
+// delete every image of the kanji except the format being kept, then verify nothing else is left; returns an error message or null
+async function removeImages(literal: string, keep?: string): Promise<string | null> {
+  for (const ext of IMAGE_EXTS) {
+    if (ext === keep) continue;
+    try { await unlink(imagePath(literal, ext)); }
+    catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") return `Could not delete ${literal}.${ext}: ${(e as Error).message}`; }
+  }
+  const left = (await imageExtsOnDisk(literal)).filter((ext) => ext !== keep);
+  return left.length ? `Old image files are still present for ${literal}: ${left.map((e) => `${literal}.${e}`).join(", ")}.` : null;
+}
+const sniffImage = (b: Uint8Array): "png" | "jpg" | null =>
+  b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 && b[4] === 0x0d && b[5] === 0x0a && b[6] === 0x1a && b[7] === 0x0a ? "png"
+    : b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? "jpg" : null;
+const imageError = (msg: string, status: number) =>
+  html(layout("Error", "", `<div class="box empty">${esc(msg)}</div>`), status);
+const kanjiExists = (literal: string) =>
+  [...literal].length === 1 && !!db.query(`SELECT 1 FROM kanjis WHERE literal = ?`).get(literal);
+
+// replace the kanji's image with an uploaded jpg/png and make sure no file of the other format remains
+async function uploadImage(req: Request, literal: string) {
+  if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
+  if (!kanjiExists(literal)) return imageError(`“${literal}” is not in the database.`, 404);
+  const form = await req.formData();
+  const back = safeBack(form.get("back"));
+  const file = form.get("image");
+  if (!(file instanceof File) || file.size === 0) return imageError("No image was selected.", 400);
+  if (file.size > MAX_IMAGE_BYTES) return imageError(`The image is too large (max ${MAX_IMAGE_BYTES / 1024 / 1024} MB).`, 413);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const ext = sniffImage(bytes);
+  if (!ext) return imageError("Only JPEG and PNG images are supported.", 415);
+  try {
+    await Bun.write(imagePath(literal, ext), bytes);
+  } catch (e) {
+    return imageError(`Could not save the image: ${(e as Error).message}. Is the images folder writable?`, 500);
+  }
+  const problem = await removeImages(literal, ext);
+  if (problem) return imageError(problem, 500);
+  return new Response(null, { status: 303, headers: { location: back } });
+}
+
+// delete the kanji's image (every format) and verify it is gone
+async function deleteImage(req: Request, literal: string) {
+  if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
+  if (!kanjiExists(literal)) return imageError(`“${literal}” is not in the database.`, 404);
+  const form = await req.formData();
+  const back = safeBack(form.get("back"));
+  const problem = await removeImages(literal);
+  if (problem) return imageError(problem, 500);
+  return new Response(null, { status: 303, headers: { location: back } });
+}
+
 // store the explicit theme (or clear it) in a cookie, then go back to where the user was
 async function setTheme(req: Request) {
   if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
@@ -674,6 +751,11 @@ Bun.serve({
       const kanjiToggle = path.match(/^\/kanji\/([^/]+)\/toggle$/);
       if (kanjiToggle) {
         return req.method === "POST" ? toggleKanji(req, kanjiToggle[1]) : new Response("Method not allowed", { status: 405 });
+      }
+      const kanjiImage = path.match(/^\/kanji\/([^/]+)\/image(\/delete)?$/);
+      if (kanjiImage) {
+        if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+        return kanjiImage[2] ? deleteImage(req, kanjiImage[1]) : uploadImage(req, kanjiImage[1]);
       }
       const kanjiEdit = path.match(/^\/kanji\/([^/]+)\/edit$/);
       if (kanjiEdit) {
