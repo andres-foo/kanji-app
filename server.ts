@@ -328,14 +328,17 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .examples{border-top:1px solid var(--line);padding-top:16px;margin-top:28px}
 .ex-head{font:900 15px Nunito,system-ui,sans-serif;margin-bottom:12px}
 .exs{display:flex;flex-wrap:wrap;gap:10px}
-.exw{position:relative}
+.exw{position:relative;scroll-margin-top:90px}
 .ex{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;background:var(--btn-bg);border:2px solid var(--field-border)}
 .ex:hover{background:var(--btn-hover);border-color:var(--accent)}
 .ex.added{border-color:var(--rem-border)}.ex.added:hover{border-color:var(--rem-text)}
 .ex .k{font-size:22px;font-weight:700}
-.tip{display:none;pointer-events:none;position:absolute;z-index:20;top:calc(100% + 8px);left:0;width:max-content;min-width:240px;max-width:min(380px,80vw);padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--ink-border);box-shadow:var(--ink-shadow);color:var(--text)}
+.tip{display:none;position:absolute;z-index:20;top:100%;left:0;padding-top:8px;width:max-content;min-width:260px;max-width:min(380px,80vw)}
+.tipbox{padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--ink-border);box-shadow:var(--ink-shadow);color:var(--text)}
+.tiptop{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px}
+.tiptop form{margin:0;flex:none}
 .exw:hover .tip,.exw:focus-within .tip{display:block}
-.tip .wk{display:block;font-size:24px;margin-bottom:6px}
+.tip .wk{font-size:24px;min-width:0}
 .tip .wm{font-size:15px}
 .exmore{margin-top:12px}.exmore .exs{margin-top:12px}
 .exmore summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:10px;border:2px solid var(--field-border);background:var(--btn-bg);font:800 13px Nunito,system-ui,sans-serif}
@@ -481,7 +484,7 @@ const readings = (s: string | null) => { const value = readingList(s); return va
 
 // example words containing the kanji: added ones first, then words with a jlpt level or wiki frequency;
 // the rest are hidden behind a toggle (a native <details>, so no JavaScript is needed)
-function exampleWords(literal: string) {
+function exampleWords(literal: string, back: string) {
   const pat = `%${likeEsc(literal)}%`;
   const words = db.query(`SELECT * FROM examples WHERE kanji LIKE ? ESCAPE '\\' OR kanji_alternative LIKE ? ESCAPE '\\'`).all(pat, pat) as Word[];
   if (!words.length) return "";
@@ -493,8 +496,9 @@ function exampleWords(literal: string) {
     const target = (w.kanji ? splitKanjiMarker(w.kanji).text : "") || w.kana || "";
     const label = w.kanji || w.kana || "";
     const face = `<span class="k">${esc(label)}</span>${w.jlpt ? `<span class="b">N${esc(w.jlpt)}</span>` : ""}${w.freq_wiki ? `<span class="b">#${esc(w.freq_wiki)}</span>` : ""}`;
-    const tip = `<span class="tip"><span class="k wk">${esc(label)}${w.kanji && w.kana ? `<span class="kana">「${esc(w.kana)}」</span>` : ""}${w.kanji_alternative ? `<span class="alt">also ${esc(w.kanji_alternative)}</span>` : ""}</span><span class="wm">${meaningGroups(w.meanings).map((m) => `<span class="sense">${esc(m)}</span>`).join("")}</span></span>`;
-    return `<span class="exw"><a class="ex${added ? " added" : ""}" href="/?q=${enc(target)}" aria-label="Search for ${esc(target)}${added ? " (in your study list)" : ""}">${face}</a>${tip}</span>`;
+    const toggle = `<form method="post" action="/words/${w.id}/toggle"><input type="hidden" name="back" value="${esc(back)}"><button class="btn ${added ? "rem" : "add"}" type="submit">${added ? "Remove" : "Add"}</button></form>`;
+    const tip = `<div class="tip"><div class="tipbox"><div class="tiptop"><span class="k wk">${esc(label)}${w.kanji && w.kana ? `<span class="kana">「${esc(w.kana)}」</span>` : ""}${w.kanji_alternative ? `<span class="alt">also ${esc(w.kanji_alternative)}</span>` : ""}</span>${toggle}</div><span class="wm">${meaningGroups(w.meanings).map((m) => `<span class="sense">${esc(m)}</span>`).join("")}</span></div></div>`;
+    return `<div class="exw" id="w${w.id}"><a class="ex${added ? " added" : ""}" href="/?q=${enc(target)}" aria-label="Search for ${esc(target)}${added ? " (in your study list)" : ""}">${face}</a>${tip}</div>`;
   };
 
   const shown = words.filter((w) => rank(w) < 2);
@@ -616,7 +620,7 @@ ${picBlock}
 </div>
 ${editing ? editForm : `${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
 ${detailsBlock}
-${exampleWords(k.literal)}
+${exampleWords(k.literal, self)}
 ${componentOf(k.literal, q)}`}
 </div>`;
   return html(layout(`${k.literal} – Kanji`, q, body));
