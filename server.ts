@@ -5,8 +5,6 @@ import { join } from "node:path";
 const PORT = Number(process.env.PORT ?? 3000);
 const DB_PATH = process.env.DB_PATH ?? "./kanji.db";
 const IMAGES_DIR = process.env.IMAGES_DIR ?? "./images";
-const KANJI_LIMIT = 60;
-const WORD_LIMIT = 100;
 
 // Opened read-write: the only write is the add/remove toggle on `examples.added`.
 const db = new Database(DB_PATH, { readwrite: true });
@@ -33,6 +31,10 @@ const toHira = (s: string) => s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCh
 const meanings = (s: unknown) => esc(String(s ?? "").split(";").map((m) => m.trim()).filter(Boolean).join(", "));
 const nullsLast = (a: number | null, b: number | null) => (a ?? Infinity) - (b ?? Infinity);
 const enc = encodeURIComponent;
+
+const SEARCH_MIN = 2;
+const singleCjk = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]$/u;
+const shortQuery = (q: string) => [...q].length < SEARCH_MIN && !singleCjk.test(q);
 
 // ---------- preferences ----------
 type Theme = "light" | "dark";
@@ -115,21 +117,19 @@ function search(q: string) {
       kp.push(pat(v));
     }
   }
-  const kanji = (db.query(`SELECT * FROM kanjis WHERE ${kc.join(" OR ")} LIMIT 300`).all(...kp) as Kanji[])
+  const kanji = (db.query(`SELECT * FROM kanjis WHERE ${kc.join(" OR ")}`).all(...kp) as Kanji[])
     .sort((a, b) =>
       Number(lits.includes(b.literal)) - Number(lits.includes(a.literal)) ||
       (b.jlpt ?? 0) - (a.jlpt ?? 0) ||
-      nullsLast(a.frequency, b.frequency))
-    .slice(0, KANJI_LIMIT);
+      nullsLast(a.frequency, b.frequency));
 
   // words: kanji, kana, meanings (+ alternative spellings)
   const wc = [`kanji LIKE ? ESCAPE '\\'`, `CAST(meanings AS TEXT) LIKE ? ESCAPE '\\'`, `kanji_alternative LIKE ? ESCAPE '\\'`];
   const wp = [pat(q), pat(q), pat(q)];
   for (const v of kana) { wc.push(`kana LIKE ? ESCAPE '\\'`); wp.push(pat(v)); }
   const exact = (w: Word) => w.kanji === q || (w.kana !== null && kana.includes(w.kana));
-  const words = (db.query(`SELECT * FROM examples WHERE ${wc.join(" OR ")} LIMIT 500`).all(...wp) as Word[])
-    .sort((a, b) => Number(exact(b)) - Number(exact(a)) || nullsLast(a.freq_wiki, b.freq_wiki))
-    .slice(0, WORD_LIMIT);
+  const words = (db.query(`SELECT * FROM examples WHERE ${wc.join(" OR ")}`).all(...wp) as Word[])
+    .sort((a, b) => Number(exact(b)) - Number(exact(a)) || nullsLast(a.freq_wiki, b.freq_wiki));
 
   return { kanji, words };
 }
@@ -265,7 +265,7 @@ const layout = (title: string, q: string, body: string, added = false) => {
 <a class="brand" href="/"><span class="logo k">漢</span><span>Kanji</span></a>
 <form class="s" action="/" method="get" role="search">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-<input name="q" value="${esc(q)}" placeholder="Kanji, English meaning or reading" aria-label="Search" autocomplete="off" ${q ? "" : "autofocus"}>
+<input name="q" value="${esc(q)}" placeholder="Kanji, English meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 </form>${themeToggle(back)}</header>
 <main>${body}</main></body></html>`;
@@ -296,16 +296,19 @@ const wordRow = (w: Word, back: string) => {
 function suggestions(q: string, type: string) {
   const hira = romajiToHiragana(q);
   if (!hira) return "";
-  const link = (label: string, tag: string, text: string) =>
+  const link = (label: string, tag: string, text: string) => shortQuery(text) ? "" :
     `<a class="sug" href="/?q=${enc(text)}&type=${type}"><span class="tag k">${tag}</span><span>${label}</span><span class="to k">${esc(text)}</span></a>`;
-  return `<div class="sugs">${link("Search in hiragana", "あ", hira)}${link("Search in katakana", "ア", toKata(hira))}</div>`;
+  const links = `${link("Search in hiragana", "あ", hira)}${link("Search in katakana", "ア", toKata(hira))}`;
+  return links ? `<div class="sugs">${links}</div>` : "";
 }
 
 function home(url: URL) {
-  const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
+  const raw = url.searchParams.get("q");
+  const q = (raw ?? "").trim().slice(0, 100);
   const t = url.searchParams.get("type");
   const type = t === "kanji" || t === "words" ? t : "all";
-  if (!q) return html(layout("Kanji", "", `<div class="box empty">Search by kanji, English meaning, reading, or romaji.</div>`));
+  if (!q) return html(layout("Kanji", "", `<div class="box empty">${raw === null ? "Search by kanji, English meaning, reading, or romaji." : "Enter at least two characters to search."}</div>`));
+  if (shortQuery(q)) return html(layout("Search", q, `<div class="box empty">Enter at least two characters to search.</div>`));
 
   const { kanji, words } = search(q);
   const back = `/?q=${enc(q)}&type=${type}`;

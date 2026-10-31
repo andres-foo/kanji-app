@@ -12,6 +12,7 @@ it was left open or closed in a `kanji_details` cookie.
 
 - `DB_PATH` (default `./kanji.db`): opened read-only. Needs the `kanjis` and `examples` tables.
 - `IMAGES_DIR` (default `./images`): put `水.jpg` or `水.png` here (file name = the literal). Square images look best. They are picked up on the next page load.
+- Search requires at least two characters for text, but single kanji/kana lookups are allowed. Empty queries are rejected.
 - No dependencies: `bun:sqlite` is built in.
 
 Assumptions you can change at the top of `server.ts`:
