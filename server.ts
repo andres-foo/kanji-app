@@ -211,6 +211,7 @@ const CSS = `
 --in-bg:light-dark(#E6F7EC,#15291D);--in-hover:light-dark(#F0FBF4,#1B3525);
 --added-bg:light-dark(#E6F7EC,#101F16);--added-line:light-dark(#BFE3CC,#2A4F36);--added-row-line:light-dark(#D8EEDF,#23432E);--added-dash:light-dark(#A9D9BA,#3B6E4A);
 --unfinished-bg:light-dark(#FEE2E2,#2A1216);--unfinished-line:light-dark(#FCA5A5,#7F1D1D);--unfinished-row-line:light-dark(#FAD1D1,#3A1B1E);--unfinished-dash:light-dark(#F87171,#B91C1C);
+--added-bar:light-dark(#16A34A,#4ADE80);--unfinished-bar:light-dark(#DC2626,#F87171);
 --focus-ring:light-dark(#7C3AED,#C4B5FD);--mark-line:light-dark(#7C3AED,#C4B5FD);--logo-bg:#7C3AED;--logo-fg:#FFFFFF;
 --sug-border:light-dark(#D9D2F2,#3A3352);--clear-bg:light-dark(#E4DEF6,#332D47);--clear-text:light-dark(#4B3F8F,#D6CCF7);
 --ink-1:light-dark(var(--bg),#0C0A14);--ink-2:light-dark(var(--bg),#070610);--ink-border:light-dark(var(--line),#443B67);--ink-text:light-dark(var(--text),#F6F0E2);--ink-shadow:light-dark(0 6px 18px rgba(30,27,58,.08),0 0 0 1px rgba(167,139,250,.14),0 14px 30px rgba(0,0,0,.55))}
@@ -261,7 +262,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .rklink{justify-self:center;display:flex;align-items:center;color:inherit;border-radius:14px}
 .rklink:hover .rk{color:var(--accent-strong);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
 .in,.in:hover{background:var(--in-bg)}
-.unfinished,.unfinished:hover{background:var(--unfinished-bg)}
+.r.unfinished,.r.unfinished:hover{background:var(--unfinished-bg)}
 .rk{font-size:58px;font-weight:700;line-height:1;justify-self:center}
 .rm{display:flex;flex-direction:column;gap:4px;min-width:0}
 .mean{font-size:18px;font-weight:800}
@@ -294,8 +295,8 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .back{display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:15px;color:var(--accent-strong);height:40px}
 .pagetop{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .kanji-card{margin-top:12px;padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--surface)}
-.kanji-card.added{--line:var(--added-line);--row-line:var(--added-row-line);--dash:var(--added-dash);background:var(--added-bg);border-color:var(--added-line)}
-.kanji-card.unfinished{--line:var(--unfinished-line);--row-line:var(--unfinished-row-line);--dash:var(--unfinished-dash);background:var(--unfinished-bg);border-color:var(--unfinished-line)}
+.kanji-card.added{border-left:5px solid var(--added-bar)}
+.kanji-card.unfinished{border-left:5px solid var(--unfinished-bar)}
 .detail{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px 56px;align-items:start}
 .top{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:36px;align-items:center}
 .big{grid-row:1/3;grid-column:1;font-size:170px;font-weight:500;line-height:1;text-align:center}
@@ -333,7 +334,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .exmore summary:hover{background:var(--btn-hover)}
 .s-open{display:none}.exmore[open] .s-closed{display:none}.exmore[open] .s-open{display:inline}
 .story{font-size:19px;line-height:1.7}
-.story-paper{position:relative;overflow:hidden;margin-top:28px;padding:24px 26px;border-radius:14px;border:1px solid var(--ink-border);border-left:5px solid var(--accent);color:var(--ink-text);background:linear-gradient(180deg,var(--ink-1),var(--ink-2));box-shadow:var(--ink-shadow)}
+.story-paper{position:relative;overflow:hidden;margin-top:28px;padding:24px 26px;border-radius:14px;border:1px solid var(--accent);color:var(--ink-text);background:linear-gradient(180deg,var(--ink-1),var(--ink-2));box-shadow:var(--ink-shadow)}
 .story-paper .story{max-width:none;line-height:1.7}
 .story_keyword{color:var(--accent-strong);font-weight:800}
 .story_component{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.2em}
