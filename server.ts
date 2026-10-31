@@ -244,7 +244,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .rk{font-size:58px;font-weight:700;line-height:1;justify-self:center}
 .rm{display:flex;flex-direction:column;gap:4px;min-width:0}
 .mean{font-size:18px;font-weight:800}
-.kw{font-size:13px;font-weight:900;color:var(--accent-strong)}
+.kw{font-size:13px;font-weight:900;color:var(--accent-strong);text-transform:uppercase}
 .readings{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:13px;font-weight:700;line-height:1.35;color:var(--muted)}
 .readings>span{min-width:0;overflow-wrap:anywhere}
 .rlab{font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-right:4px}
@@ -331,7 +331,7 @@ const readingsRow = (k: Kanji, q: string) => {
 const kanjiRow = (k: Kanji, q: string) => `
 <a class="r${k.added === 1 ? " in" : ""}" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">
 <span class="rk k">${esc(k.literal)}</span>
-<span class="rm"><span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${k.keyword ? `<span class="kw">${highlight(k.keyword, q)}</span>` : ""}${readingsRow(k, q)}</span>
+<span class="rm">${k.keyword ? `<span class="kw">${highlight(k.keyword, q)}</span>` : ""}<span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${readingsRow(k, q)}</span>
 <span class="badges">${k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${k.jlpt ? `<span class="b">N${esc(k.jlpt)}</span>` : ""}${k.kanken ? `<span class="b">Kanken ${esc(k.kanken)}</span>` : ""}</span></a>`;
 
 const wordRow = (w: Word, back: string, q: string) => {
