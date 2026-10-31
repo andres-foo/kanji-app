@@ -194,14 +194,14 @@ const CSS = `
 --in-bg:light-dark(#E6F7EC,#15291D);--in-hover:light-dark(#F0FBF4,#1B3525);
 --added-bg:light-dark(#E6F7EC,#101F16);--added-line:light-dark(#BFE3CC,#2A4F36);--added-row-line:light-dark(#D8EEDF,#23432E);--added-dash:light-dark(#A9D9BA,#3B6E4A);
 --unfinished-bg:light-dark(#FEE2E2,#2A1216);--unfinished-line:light-dark(#FCA5A5,#7F1D1D);--unfinished-row-line:light-dark(#FAD1D1,#3A1B1E);--unfinished-dash:light-dark(#F87171,#B91C1C);
---focus-ring:light-dark(#7C3AED,#C4B5FD);--mark-bg:light-dark(#E9D5FF,#7C3AED);--mark-text:light-dark(#3B0764,#FFFFFF);--logo-bg:#7C3AED;--logo-fg:#FFFFFF;
+--focus-ring:light-dark(#7C3AED,#C4B5FD);--mark-line:light-dark(#7C3AED,#C4B5FD);--logo-bg:#7C3AED;--logo-fg:#FFFFFF;
 --sug-border:light-dark(#D9D2F2,#3A3352);--clear-bg:light-dark(#E4DEF6,#332D47);--clear-text:light-dark(#4B3F8F,#D6CCF7);
 --ink-1:light-dark(var(--bg),#0C0A14);--ink-2:light-dark(var(--bg),#070610);--ink-border:light-dark(var(--line),#443B67);--ink-text:light-dark(var(--text),#F6F0E2);--ink-shadow:light-dark(0 6px 18px rgba(30,27,58,.08),0 0 0 1px rgba(167,139,250,.14),0 14px 30px rgba(0,0,0,.55))}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{color-scheme:dark}
 body{margin:0;font-family:Nunito,system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh}
 .k{font-family:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif}
-mark{background:var(--mark-bg);color:var(--mark-text);border-radius:3px;padding:0 .08em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+mark{background:none;color:inherit;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.18em;text-decoration-color:var(--mark-line)}
 a{color:inherit;text-decoration:none}
 a:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -254,6 +254,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .rlab{font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-right:4px}
 .wk{font-size:28px;font-weight:700;min-width:0}.alt{display:block;font-size:13px;font-weight:700;color:var(--muted);font-family:Nunito,system-ui,sans-serif}
 .wordlink:hover{color:var(--accent-strong);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.wordlink:hover mark{text-decoration:none}
 .kmarker{font-size:14px;font-weight:800;color:var(--muted);font-family:Nunito,system-ui,sans-serif;margin-left:2px}
 .kana{font-size:19px;font-weight:700;color:var(--muted);margin-left:6px}
 .badges{display:flex;gap:6px;flex-wrap:wrap}
