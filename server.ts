@@ -404,6 +404,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .details-toggle button{width:100%;display:flex;align-items:center;justify-content:space-between;height:52px;padding:0;border:0;background:none;color:inherit;font:900 15px Nunito,system-ui,sans-serif;cursor:pointer}
 .details-toggle svg{color:var(--muted);transform:rotate(180deg)}
 .details.open .details-toggle svg{transform:none}
+.levels{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .ds{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 24px;padding-bottom:20px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
@@ -621,7 +622,7 @@ ${field("related", "Related", k.related)}
 <div class="formbtns"><button class="btn add" type="submit">Save</button><a class="btn edit" href="${esc(self)}">Cancel</a></div>
 </form>`;
   const detailsBody = detailsOpen ? `<div class="ds">
-${item("Strokes", plain(k.strokes))}${item("JLPT", jlptBadge(k, known) || "–")}${item("Kanken", kankenBadge(k, known, "") || "–")}${item("Grade", plain(k.grade))}
+${item("Strokes", plain(k.strokes))}${item("Grade", plain(k.grade))}
 ${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
 ${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.other_forms, q))}
 </div>` : "";
@@ -659,7 +660,7 @@ ${editing
 <div class="right">
 <div class="top">
 <div class="big k">${esc(k.literal)}</div>
-${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}</div>
+${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}${k.jlpt || k.kanken ? `<div class="levels">${jlptBadge(k, known)}${kankenBadge(k, known)}</div>` : ""}</div>
 </div>
 ${componentButtons(k.components)}
 </div>
