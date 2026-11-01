@@ -359,6 +359,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .back{display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:15px;color:var(--accent-strong);height:40px}
 .pagetop{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .pagetop .actions{margin-left:auto}
+.kanji-card .pagetop{margin-top:20px}
 .kanji-card{margin-top:12px;padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--surface)}
 .kanji-card.added{border-left:5px solid var(--added-bar)}
 .kanji-card.unfinished{border-left:5px solid var(--unfinished-bar)}
@@ -691,7 +692,7 @@ async function kanjiPage(literal: string, url: URL) {
     `<label class="fl">${label}<input type="text" name="${name}" value="${esc(value)}" autocomplete="off"></label>`;
   const check = (name: string, label: string, on: boolean) =>
     `<label class="check"><input type="checkbox" name="${name}" value="1"${on ? " checked" : ""}>${label}</label>`;
-  const editForm = `<form class="editf" method="post" action="/kanji/${enc(k.literal)}/edit">
+  const editForm = `<form class="editf" id="editform" method="post" action="/kanji/${enc(k.literal)}/edit">
 <input type="hidden" name="back" value="${esc(self)}">
 ${field("keyword", "Keyword", k.keyword)}
 ${field("components", "Components", k.components)}
@@ -699,7 +700,6 @@ ${field("other_forms", "Other forms", k.other_forms)}
 ${field("related", "Related", k.related)}
 <label class="fl">Story<textarea name="story">${esc(k.story)}</textarea></label>
 <div class="checks">${check("unfinished", "Unfinished", k.unfinished === 1)}${check("is_component", "Is component", k.is_component === 1)}</div>
-<div class="formbtns"><button class="btn add" type="submit">Save</button><a class="btn edit" href="${esc(self)}">Cancel</a></div>
 </form>`;
   const detailsBody = detailsOpen ? `<div class="ds">
 ${item("Strokes", plain(k.strokes))}${item("Grade", plain(k.grade))}
@@ -726,15 +726,16 @@ ${img ? `<form method="post" action="/kanji/${enc(k.literal)}/image/delete" data
 </form>
 ${detailsBody}
 </div>`;
-  const body = `
-<div class="pagetop">
+  // all actions live in this row at the bottom right; Save submits the edit form through its form attribute
+  const actionsRow = `<div class="pagetop">
 ${status}
 <div class="actions">
 ${editing
-      ? `<a class="btn edit" href="${esc(self)}">Cancel</a>`
+      ? `<a class="btn edit" href="${esc(self)}">Cancel</a><button class="btn add" type="submit" form="editform">Save</button>`
       : `<a class="btn edit" href="${esc(editHref)}" aria-label="Edit ${esc(k.literal)}">Edit</a>`}
 <form method="post" action="/kanji/${enc(k.literal)}/toggle"><input type="hidden" name="back" value="${esc(self)}">
-<button class="btn ${inList ? "rem" : "add"}" type="submit" aria-label="${inList ? `Remove ${esc(k.literal)} from your study list` : `Add ${esc(k.literal)} to your study list`}">${inList ? "Remove" : "Add"}</button></form></div></div>
+<button class="btn ${inList ? "rem" : "add"}" type="submit" aria-label="${inList ? `Remove ${esc(k.literal)} from your study list` : `Add ${esc(k.literal)} to your study list`}">${inList ? "Remove" : "Add"}</button></form></div></div>`;
+  const body = `
 <div class="kanji-card${state ? ` ${state}` : ""}">
 <div class="detail">
 <div class="right">
@@ -746,7 +747,9 @@ ${componentButtons(k.components)}
 </div>
 ${picBlock}
 </div>
-${editing ? editForm : `${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
+${k.story ? `<div class="story-paper"><div class="story">${storyHtml(k.story).replace(/\n/g, "<br>")}</div></div>` : ""}
+${editing ? `${editForm}
+${actionsRow}` : `${actionsRow}
 ${detailsBlock}
 ${exampleWords(k.literal, self)}
 ${componentOf(k.literal, q)}`}
