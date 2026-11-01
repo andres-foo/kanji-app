@@ -361,7 +361,31 @@ button.reviewbtn{border:0;cursor:pointer}
 .rvw{font-size:28px;font-weight:700;padding:8px 18px;border-radius:12px;background:var(--btn-bg);border:2px solid var(--field-border)}
 .navl{display:flex;align-items:center;gap:10px}
 .reviewbtn.small{min-width:0;padding:0 14px;font-size:14px;font-weight:800;background:var(--surface);border:1px solid var(--line);color:var(--text)}
+.reviewbtn.small.on,.reviewbtn.small.on:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .reviewbtn.small:hover{background:var(--surface-hover);border-color:var(--accent);filter:none}
+.stat{padding:22px;display:flex;flex-direction:column;gap:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.sc{padding:16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.sc b{font-size:28px;font-weight:900;line-height:1.1}
+.sc span{font-size:13px;font-weight:700;color:var(--muted)}
+.lg{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;font-weight:700;color:var(--muted)}
+.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+.sv{width:100%;height:auto;display:block}
+.sv text{fill:var(--muted);font:700 11px Nunito,system-ui,sans-serif}
+.sv .gl{stroke:var(--line);stroke-width:1}
+.sv .ax{stroke:var(--field-border);stroke-width:1}
+.tbw{overflow-x:auto}
+.at{width:100%;min-width:560px;border-collapse:collapse;font-size:14px}
+.at th{text-align:left;color:var(--muted);font-weight:800;font-size:12px;padding:8px;border-bottom:1px solid var(--line)}
+.at td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.at .num{text-align:right}
+.mix{display:flex;height:10px;border-radius:2px;overflow:hidden;gap:2px;min-width:140px}
+.mixn{font-size:11px;font-weight:700;color:var(--muted);margin-top:2px}
+.vd{display:inline-block;padding:3px 10px;border-radius:8px;font-weight:800;font-size:12px;white-space:nowrap}
+.vd.ok{background:light-dark(#DCFCE7,#14532D);color:light-dark(#14532D,#BBF7D0)}
+.vd.hard{background:light-dark(#FEE2E2,#7F1D1D);color:light-dark(#7F1D1D,#FECACA)}
+.vd.easy{background:light-dark(#FEF3C7,#78350F);color:light-dark(#78350F,#FDE68A)}
+.vd.none{background:var(--surface-hover);color:var(--muted)}
 .setbox{padding:28px}
 .setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
 .mlrow{display:grid;grid-template-columns:56px minmax(0,1fr) 110px;gap:12px;align-items:center;margin-top:10px}
@@ -581,7 +605,7 @@ const layout = (title: string, q: string, body: string, active = "", bar?: strin
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
 <style>${CSS}</style></head><body>
 <header>
-<div class="navl">${listsMenu(active)}<a class="reviewbtn small" href="/review">Review (${dueCount()})</a></div>
+<div class="navl">${listsMenu(active)}<a class="reviewbtn small" href="/review">Review (${dueCount()})</a><a class="reviewbtn small${active === "stats" ? " on" : ""}" href="/stats">Stats</a></div>
 <form class="s" action="/" method="get" role="search">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
 <input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
@@ -1194,6 +1218,178 @@ async function resetScores(req: Request) {
   }
 }
 
+// ---------- stats page ----------
+const STAT_RANGES = [30, 90, 180] as const;
+const BLUES = ["#cfe0f7", "#7fb0ea", "#2a78d6", "#184d94", "#0d2c57"]; // one hue, light to dark: the levels are ordered
+const SVG_W = 720;
+const SVG_H = 300;
+const PAD = { l: 46, r: 14, t: 12, b: 30 };
+const r1 = (x: number) => Math.round(x * 10) / 10;
+
+// date arithmetic on plain YYYY-MM-DD strings (no timezone involved)
+function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+// a "nice" step so that four steps cover the largest value
+function axisStep(v: number): number {
+  for (let p = 1; ; p *= 10) for (const m of [1, 2, 5]) if (4 * m * p >= v) return m * p;
+}
+
+function yAxis(ymax: number, step: number): string {
+  let out = "";
+  for (let v = 0; v <= ymax; v += step) {
+    const y = r1(PAD.t + (SVG_H - PAD.t - PAD.b) * (1 - v / ymax));
+    out += `<line class="${v === 0 ? "ax" : "gl"}" x1="${PAD.l}" x2="${SVG_W - PAD.r}" y1="${y}" y2="${y}"/><text x="${PAD.l - 8}" y="${y + 4}" text-anchor="end">${v}</text>`;
+  }
+  return out;
+}
+
+// stacked area chart; series are stacked from the first (bottom) to the last
+function areaChart(days: string[], series: { label: string; color: string; values: number[] }[], description: string): string {
+  const n = days.length;
+  const plotW = SVG_W - PAD.l - PAD.r;
+  const plotH = SVG_H - PAD.t - PAD.b;
+  const totals = days.map((_, i) => series.reduce((a, s) => a + s.values[i], 0));
+  const step = axisStep(Math.max(...totals, 1));
+  const ymax = step * 4;
+  const x = (i: number) => r1(PAD.l + (n === 1 ? plotW / 2 : (i * plotW) / (n - 1)));
+  const y = (v: number) => r1(PAD.t + plotH * (1 - v / ymax));
+  const cum = days.map(() => 0);
+  const areas = series.map((s) => {
+    const lower = [...cum];
+    s.values.forEach((v, i) => (cum[i] += v));
+    const top = cum.map((v, i) => `${x(i)},${y(v)}`);
+    const bottom = lower.map((v, i) => `${x(i)},${y(v)}`).reverse();
+    return `<path d="M${top.join("L")}L${bottom.join("L")}Z" fill="${s.color}"/>`;
+  });
+  const slot = plotW / n;
+  const hover = days.map((d, i) => `<rect x="${r1(PAD.l + i * slot)}" y="${PAD.t}" width="${r1(slot)}" height="${plotH}" fill="transparent"><title>${esc(d)}: ${series.map((s) => `${esc(s.label)} ${s.values[i]}`).join(", ")}</title></rect>`).join("");
+  const count = Math.min(6, n);
+  const ticks = Array.from({ length: count }, (_, j) => (count === 1 ? 0 : Math.round((j * (n - 1)) / (count - 1))));
+  const xlabels = [...new Set(ticks)].map((i) => `<text x="${x(i)}" y="${SVG_H - 8}" text-anchor="middle">${esc(days[i].slice(5))}</text>`).join("");
+  return `<svg class="sv" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img" aria-label="${esc(description)}"><title>${esc(description)}</title>${yAxis(ymax, step)}${areas.join("")}${xlabels}${hover}</svg>`;
+}
+
+function barChart(labels: string[], values: number[], titles: string[], color: string, description: string): string {
+  const n = labels.length;
+  const plotW = SVG_W - PAD.l - PAD.r;
+  const plotH = SVG_H - PAD.t - PAD.b;
+  const step = axisStep(Math.max(...values, 1));
+  const ymax = step * 4;
+  const slot = plotW / n;
+  const bw = Math.min(24, slot * 0.7);
+  const bars = values.map((v, i) => {
+    const h = r1((plotH * v) / ymax);
+    const bx = r1(PAD.l + i * slot + (slot - bw) / 2);
+    return `<g><title>${esc(titles[i])}</title><rect x="${bx}" y="${r1(PAD.t + plotH - h)}" width="${r1(bw)}" height="${h}" rx="3" fill="${color}"/></g>`;
+  }).join("");
+  const xlabels = labels.map((l, i) => `<text x="${r1(PAD.l + i * slot + slot / 2)}" y="${SVG_H - 8}" text-anchor="middle">${esc(l)}</text>`).join("");
+  return `<svg class="sv" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img" aria-label="${esc(description)}"><title>${esc(description)}</title>${yAxis(ymax, step)}${bars}${xlabels}</svg>`;
+}
+
+// too hard / about right / too easy, from the share of good + neutral answers at a level
+function verdict(total: number, okPct: number): { text: string; cls: string } {
+  if (total < 30) return { text: "Not enough data", cls: "none" };
+  if (okPct < 80) return { text: "Too hard", cls: "hard" };
+  if (okPct > 95) return { text: "Too easy", cls: "easy" };
+  return { text: "About right", cls: "ok" };
+}
+
+function statsPage(url: URL) {
+  try {
+    const range = STAT_RANGES.find((r) => String(r) === url.searchParams.get("days")) ?? 30;
+    const today = (db.query(`SELECT date('now', 'localtime') AS d`).get() as { d: string }).d;
+    const days = Array.from({ length: range }, (_, i) => addDays(today, i - (range - 1)));
+    const first = days[0];
+    const TYPES = `type IN ('bad', 'neutral', 'good')`;
+
+    // levels are grouped by label (the labels come from mastery_levels), ordered by score
+    const levels = masteryLevels();
+    const labels: string[] = [];
+    const groupOf = new Map<number, number>();
+    for (const m of levels) {
+      let g = labels.indexOf(m.label);
+      if (g < 0) g = labels.push(m.label) - 1;
+      groupOf.set(m.score, g);
+    }
+    const color = (g: number) => BLUES[labels.length <= 1 ? 0 : Math.round((g * (BLUES.length - 1)) / (labels.length - 1))];
+
+    // score of each added kanji at the end of each day: the "after" of its last review up to that day
+    // (kanji with an added_at date only count from that day on; without one they count for the whole period)
+    const kanji = db.query(`SELECT literal, added_at FROM kanjis WHERE COALESCE(added, 0) = 1`).all() as { literal: string; added_at: string | null }[];
+    const reviews = db.query(`SELECT kanji, date(date) AS d, "after" AS a FROM review_history WHERE ${TYPES} ORDER BY date, id`).all() as { kanji: string; d: string; a: number }[];
+    const byKanji = new Map<string, { d: string; a: number }[]>();
+    for (const r of reviews) (byKanji.get(r.kanji) ?? byKanji.set(r.kanji, []).get(r.kanji)!).push(r);
+    const counts = labels.map(() => days.map(() => 0));
+    const start = startScore();
+    for (const k of kanji) {
+      const list = byKanji.get(k.literal) ?? [];
+      const addedOn = /^\d{4}-\d{2}-\d{2}/.test(String(k.added_at ?? "")) ? String(k.added_at).slice(0, 10) : "";
+      let p = 0;
+      let score = start;
+      days.forEach((day, i) => {
+        while (p < list.length && list[p].d <= day) score = Math.round(Number(list[p++].a) || 0);
+        if (addedOn && addedOn > day) return;
+        counts[groupOf.get(Math.min(MAX_SCORE, Math.max(0, score))) ?? 0][i]++;
+      });
+    }
+    const last = days.length - 1;
+    const series = labels.map((label, g) => ({ label, color: color(g), values: counts[g] }));
+    const legend = series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.label)} ${s.values[last]}</span>`).join("");
+
+    // answers by the level the kanji was at when reviewed, inside the selected period
+    const answers = new Map<number, { bad: number; neutral: number; good: number }>();
+    for (const r of db.query(`SELECT "before" AS s, type, COUNT(*) AS n FROM review_history WHERE ${TYPES} AND date(date) >= ? GROUP BY "before", type`).all(first) as { s: number; type: ReviewResult; n: number }[]) {
+      const sc = Math.round(Number(r.s));
+      if (sc < 0 || sc > MAX_SCORE) continue;
+      const a = answers.get(sc) ?? { bad: 0, neutral: 0, good: 0 };
+      a[r.type] += r.n;
+      answers.set(sc, a);
+    }
+    let totalAll = 0;
+    let okAll = 0;
+    for (const a of answers.values()) { totalAll += a.bad + a.neutral + a.good; okAll += a.neutral + a.good; }
+    const tableRows = levels.map((m) => {
+      const a = answers.get(m.score) ?? { bad: 0, neutral: 0, good: 0 };
+      const t = a.bad + a.neutral + a.good;
+      const ok = t ? Math.round((100 * (a.neutral + a.good)) / t) : 0;
+      const pg = t ? Math.round((100 * a.good) / t) : 0;
+      const pn = t ? Math.round((100 * a.neutral) / t) : 0;
+      const pb = t ? 100 - pg - pn : 0;
+      const v = verdict(t, ok);
+      const mix = t
+        ? `<div class="mix"><span style="width:${pg}%;background:#1baf7a"></span><span style="width:${pn}%;background:#eda100"></span><span style="width:${pb}%;background:#e34948"></span></div><div class="mixn">${pg}% / ${pn}% / ${pb}%</div>`
+        : `<span class="mixn">no reviews yet</span>`;
+      return `<tr><td><b>${m.score}</b> · ${esc(m.label)}</td><td>${m.interval_days} ${m.interval_days === 1 ? "day" : "days"}</td><td class="num">${t.toLocaleString("en-US")}</td><td>${mix}</td><td class="num">${t ? ok + "%" : "–"}</td><td><span class="vd ${v.cls}">${v.text}</span></td></tr>`;
+    }).join("");
+
+    // already scheduled for the next 14 days (kanji that are overdue count as "due now")
+    const sched = new Map((db.query(`SELECT due_date AS d, COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND due_date > ? AND due_date <= ? GROUP BY due_date`).all(today, addDays(today, 14)) as { d: string; n: number }[]).map((r) => [r.d, r.n]));
+    const fDays = Array.from({ length: 14 }, (_, i) => addDays(today, i + 1));
+    const fValues = fDays.map((d) => sched.get(d) ?? 0);
+
+    const reviewedToday = (db.query(`SELECT COUNT(*) AS n FROM review_history WHERE ${TYPES} AND date(date) = ?`).get(today) as { n: number }).n;
+    const pill = (r: number) => `<a class="pill${r === range ? " on" : ""}" href="/stats?days=${r}">${r === 180 ? "6 months" : `${r} days`}</a>`;
+    const body = `<h1>STATS</h1>
+<div class="pills">${STAT_RANGES.map(pill).join("")}</div>
+<div class="cards">
+<div class="sc"><b>${kanji.length}</b><span>Kanji in your list</span></div>
+<div class="sc"><b>${dueCount()}</b><span>Due now</span></div>
+<div class="sc"><b>${reviewedToday}</b><span>Reviewed today</span></div>
+<div class="sc"><b>${totalAll ? Math.round((100 * okAll) / totalAll) + "%" : "–"}</b><span>Good or neutral, ${range === 180 ? "6 months" : `${range} days`}</span></div>
+</div>
+<section class="box stat"><h2>Kanji by level</h2><div class="lg">${legend}</div>${areaChart(days, series, `Kanji by level over the last ${range} days`)}</section>
+<section class="box stat"><h2>Coming up</h2><div class="lg"><span><b>${dueCount()}</b> due now (overdue plus today), then already scheduled:</span></div>${barChart(fDays.map((_, i) => `+${i + 1}`), fValues, fDays.map((d, i) => `${d}: ${fValues[i]} kanji`), BLUES[2], "Kanji already scheduled for each of the next 14 days")}</section>
+<section class="box stat"><h2>Answers by level</h2><div class="lg"><span><i style="background:#1baf7a"></i>Good</span><span><i style="background:#eda100"></i>Neutral</span><span><i style="background:#e34948"></i>Bad</span></div>
+<div class="tbw"><table class="at"><tr><th>Level</th><th>Interval</th><th class="num">Reviews</th><th>Answers</th><th class="num">Good or neutral</th><th>Verdict</th></tr>${tableRows}</table></div></section>`;
+    return html(layout("Stats – Kanji", "", body, "stats"));
+  } catch (e) {
+    return html(layout("Error", "", `<div class="box empty">Could not build the stats: ${esc((e as Error).message)}.</div>`), 500);
+  }
+}
+
 // ---------- server ----------
 Bun.serve({
   port: PORT,
@@ -1219,6 +1415,7 @@ Bun.serve({
 
       if (path === "/details/toggle") return req.method === "POST" ? toggleDetails(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/theme") return req.method === "POST" ? setTheme(req) : new Response("Method not allowed", { status: 405 });
+      if (path === "/stats") return statsPage(url);
       if (path === "/settings/reset-scores") return req.method === "POST" ? resetScores(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/settings") return req.method === "POST" ? saveSettings(req, url) : settingsPage(url);
       if (path === "/review") return reviewNext();
