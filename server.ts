@@ -358,6 +358,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .empty{padding:48px 24px;text-align:center;color:var(--muted);font-weight:700}
 .back{display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:15px;color:var(--accent-strong);height:40px}
 .pagetop{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pagetop .actions{margin-left:auto}
 .kanji-card{margin-top:12px;padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--surface)}
 .kanji-card.added{border-left:5px solid var(--added-bar)}
 .kanji-card.unfinished{border-left:5px solid var(--unfinished-bar)}
@@ -726,7 +727,7 @@ ${img ? `<form method="post" action="/kanji/${enc(k.literal)}/image/delete" data
 ${detailsBody}
 </div>`;
   const body = `
-<div class="pagetop"><a class="back" href="${back}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>${q ? "Back to results" : "Search"}</a>
+<div class="pagetop">
 ${status}
 <div class="actions">
 ${editing
