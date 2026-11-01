@@ -13,13 +13,12 @@ const db = new Database(DB_PATH, { readwrite: true });
 // ---------- settings (table `settings`: key / value) ----------
 // values are stored as text; a missing row, an unreadable table or a non-numeric value falls back to the default
 const SETTING_DEFAULTS = {
-  review_history_size: 20, // newest review_history rows whose kanji cannot be picked again
-  review_score_ceiling: 5, // a kanji's score never goes above this
-  review_score_floor: -6, // ... or below this
-  review_score_start: -4, // score given to a kanji the moment it is added, and the value "reset scores" sets
-  review_delta_bad: -2,
-  review_delta_neutral: 0,
-  review_delta_good: 1,
+  review_score_ceiling: 10, // a kanji's score never goes above this (the scale itself is 0 to 10)
+  review_score_floor: 0, // ... or below this
+  review_score_start: 0, // score given to a kanji the moment it is added, and the value "reset scores" sets
+  review_delta_bad: -3,
+  review_delta_neutral: 1,
+  review_delta_good: 2,
 } as const;
 type SettingKey = keyof typeof SETTING_DEFAULTS;
 
@@ -34,12 +33,60 @@ function setting(key: SettingKey): number {
   }
 }
 
+// ---------- mastery levels (table `mastery_levels`: score / label / interval_days) ----------
+// the score decides how many days pass until the kanji is due again. A missing row, an invalid row or a missing
+// table falls back to the built-in default for that score, so a review never fails because of it.
+const MAX_SCORE = 10;
+type Mastery = { score: number; label: string; interval_days: number };
+const MASTERY_DEFAULTS: Mastery[] = [
+  { score: 0, label: "New", interval_days: 1 },
+  { score: 1, label: "Learning", interval_days: 1 },
+  { score: 2, label: "Learning", interval_days: 2 },
+  { score: 3, label: "Learning", interval_days: 3 },
+  { score: 4, label: "Familiar", interval_days: 4 },
+  { score: 5, label: "Familiar", interval_days: 6 },
+  { score: 6, label: "Familiar", interval_days: 8 },
+  { score: 7, label: "Strong", interval_days: 12 },
+  { score: 8, label: "Strong", interval_days: 16 },
+  { score: 9, label: "Strong", interval_days: 20 },
+  { score: 10, label: "Mastered", interval_days: 25 },
+];
+
+function masteryLevels(): Mastery[] {
+  const levels = new Map(MASTERY_DEFAULTS.map((m) => [m.score, m]));
+  try {
+    for (const r of db.query(`SELECT score, label, interval_days FROM mastery_levels`).all() as Mastery[]) {
+      const score = Number(r.score);
+      const days = Math.floor(Number(r.interval_days));
+      if (Number.isInteger(score) && score >= 0 && score <= MAX_SCORE && String(r.label ?? "").trim() && days >= 1) {
+        levels.set(score, { score, label: String(r.label).trim(), interval_days: days });
+      }
+    }
+  } catch {
+    // table missing: the defaults above are used
+  }
+  return [...levels.values()].sort((a, b) => a.score - b.score);
+}
+const masteryFor = (score: number): Mastery => masteryLevels().find((m) => m.score === score) ?? MASTERY_DEFAULTS[0];
+
+// lowest and highest score allowed: the settings, but never outside the 0 to 10 scale
+function scoreBounds(): [number, number] {
+  const a = setting("review_score_floor");
+  const b = setting("review_score_ceiling");
+  return [Math.max(0, Math.min(a, b)), Math.min(MAX_SCORE, Math.max(a, b))];
+}
+const startScore = () => {
+  const [lo, hi] = scoreBounds();
+  return Math.min(hi, Math.max(lo, Math.round(setting("review_score_start"))));
+};
+
 type Kanji = {
   literal: string; meanings: string; onReadings: string | null; kunReadings: string | null;
   strokes: number | null; jlpt: number | null; frequency: number | null; grade: number | null;
   heisg6: number | null; components: string | null; other_forms: string | null;
   kanken: number | null; story: string | null; related: string | null; keyword: string | null;
   added: number | null; unfinished: number | null; is_component: number | null;
+  score?: number | null; last_reviewed?: string | null; due_date?: string | null;
 };
 type Word = {
   id: number; kanji: string | null; kana: string | null; meanings: string | null;
@@ -57,6 +104,14 @@ const toHira = (s: string) => s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCh
 type Priority = "high" | "medium" | "low" | "zero";
 // every kanji with added = 1 (unlike totalKnown, which only counts finished non-component ones)
 const addedCount = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1`).get() as { n: number }).n;
+// kanji in the study list that can be reviewed now: due today or earlier, or never scheduled
+const dueCount = () => {
+  try {
+    return (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND (due_date IS NULL OR due_date <= date('now', 'localtime'))`).get() as { n: number }).n;
+  } catch {
+    return 0; // e.g. the due_date column does not exist yet; never break every page because of a counter
+  }
+};
 const totalKnown = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND is_component IS NULL AND COALESCE(unfinished, 0) = 0`).get() as { n: number }).n;
 
 // each level is "high" once it is within the accumulated range, the next level is "medium", the rest "low"
@@ -309,6 +364,10 @@ button.reviewbtn{border:0;cursor:pointer}
 .reviewbtn.small:hover{background:var(--surface-hover);border-color:var(--accent);filter:none}
 .setbox{padding:28px}
 .setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.mlrow{display:grid;grid-template-columns:56px minmax(0,1fr) 110px;gap:12px;align-items:center;margin-top:10px}
+.mlhead{font-weight:800;font-size:12px;color:var(--muted);margin-top:18px}
+.mlscore{font-weight:900;font-size:18px;text-align:center}
+.setbox .resetrow{margin-top:32px;padding-top:24px;border-top:1px solid var(--line)}
 .resetrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .resetrow .hint{flex:1;min-width:200px}
 .hint{font-weight:700;font-size:12px;line-height:1.4;color:var(--muted)}
@@ -522,7 +581,7 @@ const layout = (title: string, q: string, body: string, active = "", bar?: strin
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
 <style>${CSS}</style></head><body>
 <header>
-<div class="navl">${listsMenu(active)}<a class="reviewbtn small" href="/review">Review</a></div>
+<div class="navl">${listsMenu(active)}<a class="reviewbtn small" href="/review">Review (${dueCount()})</a></div>
 <form class="s" action="/" method="get" role="search">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
 <input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
@@ -748,6 +807,11 @@ async function kanjiPage(literal: string, url: URL) {
   const state = k.added === 1 ? (k.unfinished === 1 ? "unfinished" : "added") : "";
   const status = state === "unfinished" ? `<span class="sr">Unfinished</span>` : state === "added" ? `<span class="sr">In your study list</span>` : "";
   const known = totalKnown();
+  // the mastery label (from the score) is only shown for kanji in the study list
+  const masteryScore = Math.round(Number(k.score ?? 0) || 0);
+  const masteryBadge = k.added === 1
+    ? `<span class="b" title="Score ${masteryScore} · ${k.due_date ? `next review ${esc(k.due_date)}` : "due now"}">${esc(masteryFor(masteryScore).label)}</span>`
+    : "";
   const item = (label: string, v: string) => `<div><div class="lab">${label}</div><div class="val">${v}</div></div>`;
   const inList = k.added === 1;
   const self = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
@@ -808,7 +872,7 @@ ${editing
 <div class="right">
 <div class="top">
 <div class="big k">${esc(k.literal)}</div>
-${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}${k.jlpt || k.kanken ? `<div class="levels">${jlptBadge(k, known)}${kankenBadge(k, known)}</div>` : ""}</div>
+${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}${k.jlpt || k.kanken || masteryBadge ? `<div class="levels">${jlptBadge(k, known)}${kankenBadge(k, known)}${masteryBadge}</div>` : ""}</div>
 </div>
 ${componentButtons(k.components)}
 </div>
@@ -851,9 +915,11 @@ async function toggleKanji(req: Request, literal: string) {
       `UPDATE kanjis
        SET added = CASE WHEN COALESCE(added, 0) = 1 THEN 0 ELSE 1 END,
            unfinished = CASE WHEN COALESCE(added, 0) = 1 THEN 0 ELSE 1 END,
-           score = CASE WHEN COALESCE(added, 0) = 1 THEN score ELSE ? END
+           score = CASE WHEN COALESCE(added, 0) = 1 THEN score ELSE ? END,
+           due_date = CASE WHEN COALESCE(added, 0) = 1 THEN due_date ELSE NULL END,
+           last_reviewed = CASE WHEN COALESCE(added, 0) = 1 THEN last_reviewed ELSE NULL END
        WHERE literal = ?`,
-      [setting("review_score_start"), literal],
+      [startScore(), literal],
     );
   } catch (e) {
     return html(layout("Error", "", `<div class="box empty">Could not update the kanji: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
@@ -966,32 +1032,35 @@ async function toggleDetails(req: Request) {
 }
 
 // ---------- review ----------
-// picks the added kanji with the lowest score that is not among the last review_history_size reviewed ones;
-// only the newest rows of review_history count, so it works even if the table holds more than that.
+// the next kanji to review: added kanji that are due (due today or earlier, or never scheduled), the most overdue first,
+// then the one reviewed longest ago (never reviewed first), then the lowest score, then random.
 // Read-only: nothing is recorded until a result button is pressed.
 function pickReviewKanji(): string | null {
-  const size = Math.max(0, Math.trunc(setting("review_history_size")));
-  // normal case first; only if every added kanji was reviewed recently, fall back to avoiding just the latest one, then nothing
-  for (const n of [size, 1, 0]) {
-    const k = db.query(
-      `SELECT literal FROM kanjis
-       WHERE COALESCE(added, 0) = 1
-         AND literal NOT IN (SELECT kanji FROM review_history ORDER BY date DESC, id DESC LIMIT ${n})
-       ORDER BY COALESCE(score, 0) ASC, RANDOM() LIMIT 1`,
-    ).get() as { literal: string } | null;
-    if (k) return k.literal;
-  }
-  return null;
+  const k = db.query(
+    `SELECT literal FROM kanjis
+     WHERE COALESCE(added, 0) = 1 AND (due_date IS NULL OR due_date <= date('now', 'localtime'))
+     ORDER BY due_date ASC, last_reviewed ASC, COALESCE(score, 0) ASC, RANDOM() LIMIT 1`,
+  ).get() as { literal: string } | null;
+  return k?.literal ?? null;
 }
 
 // /review: only chooses the next kanji and redirects to its own page; nothing is recorded until a result button is pressed there
 function reviewNext() {
   try {
     const literal = pickReviewKanji();
-    if (!literal) return html(layout("Review – Kanji", "", `<div class="box empty">No kanji in your list to review yet.</div>`));
+    if (!literal) {
+      const added = (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1`).get() as { n: number }).n;
+      if (!added) return html(layout("Review – Kanji", "", `<div class="box empty">No kanji in your list to review yet.</div>`));
+      const next = db.query(
+        `SELECT due_date, COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND due_date > date('now', 'localtime')
+         GROUP BY due_date ORDER BY due_date LIMIT 1`,
+      ).get() as { due_date: string; n: number } | null;
+      const when = next ? `<br>Next up: ${next.n} kanji due on ${esc(next.due_date)}.` : "";
+      return html(layout("Review – Kanji", "", `<div class="box empty">Nothing to review right now.${when}</div>`));
+    }
     return new Response(null, { status: 303, headers: { location: `/review/${enc(literal)}` } });
   } catch (e) {
-    return html(layout("Error", "", `<div class="box empty">Could not choose a kanji to review: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+    return html(layout("Error", "", `<div class="box empty">Could not choose a kanji to review: ${esc((e as Error).message)}. Did you add the last_reviewed and due_date columns?</div>`), 500);
   }
 }
 
@@ -1007,8 +1076,9 @@ function reviewPage(literal: string) {
   return html(layout("Review – Kanji", "", body, "", bar));
 }
 
-// bad / neutral (the Review button) / good: change the score by the amounts from the settings (default -2 / 0 / +1) within the floor and ceiling, record the review in review_history
-// (score before and after, and the type as text), then go on to the next kanji. Rows are never deleted: the table is a permanent log.
+// bad / neutral / good: change the score by the amounts from the settings (default -3 / +1 / +2) within the bounds,
+// schedule the next review from the new score's interval in mastery_levels (a bad answer is due again today),
+// and record the review in review_history (score before and after, type as text). Rows are never deleted: it is a permanent log.
 const REVIEW_DELTA_KEYS = { bad: "review_delta_bad", neutral: "review_delta_neutral", good: "review_delta_good" } as const;
 type ReviewResult = keyof typeof REVIEW_DELTA_KEYS;
 
@@ -1018,51 +1088,52 @@ async function reviewResult(req: Request, literal: string, result: ReviewResult)
     const found = db.transaction(() => {
       const k = db.query(`SELECT score FROM kanjis WHERE literal = ?`).get(literal) as { score: number | null } | null;
       if (!k) return false;
-      const before = Number(k.score ?? 0) || 0;
-      // the new score is kept between the floor and the ceiling from the settings
-      const lo = Math.min(setting("review_score_floor"), setting("review_score_ceiling"));
-      const hi = Math.max(setting("review_score_floor"), setting("review_score_ceiling"));
+      const before = Math.round(Number(k.score ?? 0) || 0);
+      const [lo, hi] = scoreBounds();
       const after = Math.min(hi, Math.max(lo, Math.round(before + setting(REVIEW_DELTA_KEYS[result]))));
-      db.run(`UPDATE kanjis SET score = ? WHERE literal = ?`, [after, literal]);
+      const days = result === "bad" ? 0 : masteryFor(after).interval_days;
+      db.run(
+        `UPDATE kanjis SET score = ?, last_reviewed = date('now', 'localtime'), due_date = date('now', 'localtime', ?) WHERE literal = ?`,
+        [after, `+${days} days`, literal],
+      );
       db.run(`INSERT INTO review_history (kanji, date, "before", "after", type) VALUES (?, datetime('now', 'localtime'), ?, ?, ?)`, [literal, before, after, result]);
       return true;
     })();
     if (!found) return html(layout("Not found", "", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
   } catch (e) {
-    return html(layout("Error", "", `<div class="box empty">Could not save the review: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+    return html(layout("Error", "", `<div class="box empty">Could not save the review: ${esc((e as Error).message)}. Is the database file writable, and do the last_reviewed and due_date columns exist?</div>`), 500);
   }
   return new Response(null, { status: 303, headers: { location: "/review" } });
 }
 
 // ---------- settings page ----------
-type SettingField = { key: SettingKey; label: string; hint: string; min?: number };
-const SETTING_FIELDS: { title: string; fields: SettingField[] }[] = [
-  {
-    title: "Review",
-    fields: [
-      { key: "review_history_size", label: "Recent kanji to skip", hint: "How many of the latest reviewed kanji cannot be picked again.", min: 0 },
-      { key: "review_score_ceiling", label: "Score ceiling", hint: "A kanji's score never goes above this." },
-      { key: "review_score_floor", label: "Score floor", hint: "A kanji's score never goes below this." },
-      { key: "review_score_start", label: "Starting score", hint: "Score a kanji gets when you add it, and what “Reset scores” sets." },
-      { key: "review_delta_bad", label: "Bad", hint: "Score change when you press Bad." },
-      { key: "review_delta_neutral", label: "Neutral", hint: "Score change when you press Neutral." },
-      { key: "review_delta_good", label: "Good", hint: "Score change when you press Good." },
-    ],
-  },
+const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = [
+  { key: "review_delta_bad", label: "Bad", hint: "Score change when you press Bad." },
+  { key: "review_delta_neutral", label: "Neutral", hint: "Score change when you press Neutral." },
+  { key: "review_delta_good", label: "Good", hint: "Score change when you press Good." },
 ];
-
+// the score scale (0 to 10) and the starting score live in the settings table and are edited in the database; this page
+// edits the score changes for Bad / Neutral / Good and the mastery levels (label and days until the next review), and resets scores.
 function settingsPage(url: URL, errors: string[] = [], submitted?: Record<string, string>, status = 200) {
   const resetCount = url.searchParams.get("reset");
   const notice = errors.length
     ? `<p class="notice err">${errors.map(esc).join("<br>")}</p>`
     : url.searchParams.get("saved") === "1" ? `<p class="notice ok">Settings saved.</p>`
-      : resetCount !== null ? `<p class="notice ok">Scores of ${esc(resetCount)} added kanji were reset to ${esc(url.searchParams.get("to") ?? "")}.</p>` : "";
-  const groups = SETTING_FIELDS.map((g) => `<section><h2>${esc(g.title)}</h2><div class="setgrid">${g.fields.map((f) => `<label class="fl">${esc(f.label)}
-<input type="number" step="1"${f.min !== undefined ? ` min="${f.min}"` : ""} name="${f.key}" value="${esc(submitted?.[f.key] ?? String(setting(f.key)))}" required>
-<span class="hint">${esc(f.hint)}</span></label>`).join("")}</div></section>`).join("");
-  const resetRow = `<div class="resetrow"><button class="reviewbtn bad" type="submit" form="resetform">Reset scores</button><span class="hint">Sets the score of every added kanji to the starting score (currently ${setting("review_score_start")}). It uses the saved value, so save any change to it first.</span></div>`;
-  const body = `<h1>SETTINGS</h1>${notice}<div class="box setbox"><form class="editf" style="margin-top:0" method="post" action="/settings">${groups}${resetRow}<div class="formbtns"><button class="reviewbtn" type="submit">Save</button></div></form>
-<form id="resetform" method="post" action="/settings/reset-scores" data-msg="Reset the score of every added kanji to ${setting("review_score_start")}? This cannot be undone." onsubmit="return confirm(this.dataset.msg)"></form></div>`;
+      : resetCount !== null ? `<p class="notice ok">${esc(resetCount)} added kanji were reset to score ${esc(url.searchParams.get("to") ?? "")} and are due now.</p>` : "";
+  const rows = masteryLevels().map((m) => `<div class="mlrow"><span class="mlscore">${m.score}</span>
+<input type="text" maxlength="30" name="label_${m.score}" value="${esc(submitted?.[`label_${m.score}`] ?? m.label)}" aria-label="Label for score ${m.score}" required>
+<input type="number" step="1" min="1" max="3650" name="days_${m.score}" value="${esc(submitted?.[`days_${m.score}`] ?? String(m.interval_days))}" aria-label="Days until next review for score ${m.score}" required></div>`).join("");
+  const body = `<h1>SETTINGS</h1>${notice}<div class="box setbox">
+<form class="editf" style="margin-top:0" method="post" action="/settings">
+<section><h2>Score changes</h2><div class="setgrid">${DELTA_FIELDS.map((f) => `<label class="fl">${f.label}
+<input type="number" step="1" min="-10" max="10" name="${f.key}" value="${esc(submitted?.[f.key] ?? String(setting(f.key)))}" required>
+<span class="hint">${f.hint}</span></label>`).join("")}</div></section>
+<section><h2>Mastery levels</h2>
+<p class="hint">After a review, the kanji's new score decides when it is due again. The label is shown on the kanji page. A bad answer is always due again today.</p>
+<div class="mlrow mlhead"><span>Score</span><span>Label</span><span>Days</span></div>${rows}</section>
+<div class="formbtns"><button class="reviewbtn" type="submit">Save</button></div></form>
+<form class="resetrow" method="post" action="/settings/reset-scores" data-msg="Reset every added kanji to score ${startScore()} and make them all due now? This cannot be undone." onsubmit="return confirm(this.dataset.msg)">
+<button class="reviewbtn bad" type="submit">Reset scores</button><span class="hint">Sets every added kanji to the starting score (${startScore()}) and makes it due now.</span></form></div>`;
   return html(layout("Settings – Kanji", "", body), status);
 }
 
@@ -1070,40 +1141,56 @@ async function saveSettings(req: Request, url: URL) {
   if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
   const form = await req.formData();
   const submitted: Record<string, string> = {};
-  const values = {} as Record<SettingKey, number>;
+  const levels: Mastery[] = [];
+  const deltas: [SettingKey, number][] = [];
   const errors: string[] = [];
-  for (const f of SETTING_FIELDS.flatMap((g) => g.fields)) {
+  for (const f of DELTA_FIELDS) {
     const text = String(form.get(f.key) ?? "").trim();
     submitted[f.key] = text;
     const n = Number(text);
-    if (text === "" || !Number.isInteger(n)) errors.push(`${f.label} must be a whole number.`);
-    else if (f.min !== undefined && n < f.min) errors.push(`${f.label} must be at least ${f.min}.`);
-    else values[f.key] = n;
+    if (text === "" || !Number.isInteger(n) || n < -10 || n > 10) errors.push(`${f.label} must be a whole number from -10 to 10.`);
+    else deltas.push([f.key, n]);
   }
-  if (!errors.length && values.review_score_floor > values.review_score_ceiling) errors.push("The score floor cannot be higher than the score ceiling.");
-  if (!errors.length && (values.review_score_start < values.review_score_floor || values.review_score_start > values.review_score_ceiling)) errors.push("The starting score must be between the floor and the ceiling.");
+  for (let score = 0; score <= MAX_SCORE; score++) {
+    const label = String(form.get(`label_${score}`) ?? "").trim();
+    const daysText = String(form.get(`days_${score}`) ?? "").trim();
+    submitted[`label_${score}`] = label;
+    submitted[`days_${score}`] = daysText;
+    const days = Number(daysText);
+    if (!label) errors.push(`Score ${score}: the label cannot be empty.`);
+    else if (label.length > 30) errors.push(`Score ${score}: the label is too long (30 characters at most).`);
+    if (daysText === "" || !Number.isInteger(days) || days < 1 || days > 3650) errors.push(`Score ${score}: days must be a whole number from 1 to 3650.`);
+    levels.push({ score, label, interval_days: days });
+  }
   if (errors.length) return settingsPage(url, errors, submitted, 400);
   try {
     db.transaction(() => {
-      for (const [key, value] of Object.entries(values)) {
+      for (const [key, value] of deltas) {
         db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, String(value)]);
+      }
+      for (const m of levels) {
+        db.run(
+          `INSERT INTO mastery_levels (score, label, interval_days) VALUES (?, ?, ?)
+           ON CONFLICT(score) DO UPDATE SET label = excluded.label, interval_days = excluded.interval_days`,
+          [m.score, m.label, m.interval_days],
+        );
       }
     })();
   } catch (e) {
-    return settingsPage(url, [`Could not save the settings: ${(e as Error).message}. Is the database file writable?`], submitted, 500);
+    return settingsPage(url, [`Could not save the settings: ${(e as Error).message}. Do the settings and mastery_levels tables exist?`], submitted, 500);
   }
   return new Response(null, { status: 303, headers: { location: "/settings?saved=1" } });
 }
 
-// sets the score of every added kanji to the starting score from the settings
+// sets every added kanji to the starting score and makes it due now (no due date, never reviewed)
 async function resetScores(req: Request) {
   if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
-  const start = setting("review_score_start");
+  const start = startScore();
   try {
-    const res = db.run(`UPDATE kanjis SET score = ? WHERE COALESCE(added, 0) = 1`, [start]);
+    const res = db.run(`UPDATE kanjis SET score = ?, due_date = NULL, last_reviewed = NULL WHERE COALESCE(added, 0) = 1`, [start]);
     return new Response(null, { status: 303, headers: { location: `/settings?reset=${res.changes}&to=${start}` } });
   } catch (e) {
-    return settingsPage(new URL(req.url), [`Could not reset the scores: ${(e as Error).message}. Is the database file writable?`], undefined, 500);
+    return settingsPage(new URL(req.url), [`Could not reset the scores: ${(e as Error).message}. Is the database file writable, and do the last_reviewed and due_date columns exist?`], undefined, 500);
   }
 }
 
