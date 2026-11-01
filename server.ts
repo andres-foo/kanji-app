@@ -267,6 +267,9 @@ a{color:inherit;text-decoration:none}
 a:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 header{display:grid;grid-template-columns:1fr minmax(0,620px) 1fr;align-items:center;gap:24px;min-height:72px;padding:12px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
+.menu{display:flex;gap:8px;padding:8px 32px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
+.menu a{display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:10px;font-weight:800;font-size:14px;color:var(--text);white-space:nowrap}
+.menu a:hover{background:var(--btn-hover);color:var(--accent-strong)}
 .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:20px;justify-self:start}
 .logo{width:40px;height:40px;border-radius:12px;background:var(--logo-bg);color:var(--logo-fg);display:flex;align-items:center;justify-content:center;font-size:22px}
 form.s{display:flex;align-items:center;gap:10px;height:46px;padding:0 16px;border-radius:14px;background:var(--field-bg);border:2px solid var(--field-border)}
@@ -409,7 +412,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
 @media(max-width:900px){.kanji-card{padding:20px}.detail{grid-template-columns:minmax(0,1fr);gap:24px}.picwrap{margin:0 auto}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
-@media(max-width:560px){header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
+@media(max-width:560px){.menu{padding:8px 16px}header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
 const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
@@ -442,6 +445,7 @@ const layout = (title: string, q: string, body: string) => {
 <input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 </form>${themeToggle(back)}</header>
+<nav class="menu" aria-label="Main"><a href="/my-list">My list</a><a href="/jlpt">JLPT</a><a href="/kanken">KANKEN</a></nav>
 <main>${body}</main></body></html>`;
 };
 
