@@ -270,6 +270,13 @@ header{display:grid;grid-template-columns:1fr minmax(0,620px) 1fr;align-items:ce
 .menu{display:flex;gap:8px;padding:8px 32px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
 .menu a{display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:10px;font-weight:800;font-size:14px;color:var(--text);white-space:nowrap}
 .menu a:hover{background:var(--btn-hover);color:var(--accent-strong)}
+.menu a.on,.menu a.on:hover{background:var(--accent);color:var(--on-accent)}
+.kgrid{display:flex;flex-wrap:wrap;gap:8px}
+.kt{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:inherit;border-radius:12px;background:var(--btn-bg);border:2px solid var(--field-border)}
+.kt:hover{background:var(--btn-hover);border-color:var(--accent)}
+.kt.added,.kt.added:hover{border-color:var(--added-bar)}
+.kt.unfinished,.kt.unfinished:hover{border-color:var(--unfinished-bar)}
+.cnt{font-weight:700;color:var(--muted);font-size:14px;margin-left:6px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:20px;justify-self:start}
 .logo{width:40px;height:40px;border-radius:12px;background:var(--logo-bg);color:var(--logo-fg);display:flex;align-items:center;justify-content:center;font-size:22px}
 form.s{display:flex;align-items:center;gap:10px;height:46px;padding:0 16px;border-radius:14px;background:var(--field-bg);border:2px solid var(--field-border)}
@@ -287,6 +294,7 @@ form.s input{flex:1;min-width:0;background:none;border:0;color:inherit;caret-col
 [data-theme="dark"] .themes .to-dark{display:none}
 @media(prefers-color-scheme:dark){:root:not([data-theme]) .themes .to-light{display:inline-flex}:root:not([data-theme]) .themes .to-dark{display:none}}
 main{max-width:1040px;margin:0 auto;padding:28px 32px 48px;display:flex;flex-direction:column;gap:28px}
+h1{font-size:28px;font-weight:900;margin:0}
 h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
 .pills{display:flex;gap:10px;flex-wrap:wrap}
@@ -428,7 +436,7 @@ const themeButton = (theme: Theme, label: string, icon: string, back: string) =>
 const themeToggle = (back: string) =>
   `<div class="themes">${themeButton("light", "Light", sunIcon, back)}${themeButton("dark", "Dark", moonIcon, back)}</div>`;
 
-const layout = (title: string, q: string, body: string) => {
+const layout = (title: string, q: string, body: string, active = "") => {
   const ctx = requestContext.getStore();
   const theme = ctx?.theme;
   const back = ctx?.back ?? "/";
@@ -445,7 +453,7 @@ const layout = (title: string, q: string, body: string) => {
 <input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 </form>${themeToggle(back)}</header>
-<nav class="menu" aria-label="Main"><a href="/my-list">My list</a><a href="/jlpt">JLPT</a><a href="/kanken">KANKEN</a></nav>
+<nav class="menu" aria-label="Main">${([["my-list", "My list"], ["jlpt", "JLPT"], ["kanken", "KANKEN"]] as const).map(([id, label]) => `<a href="/${id}"${active === id ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
 <main>${body}</main></body></html>`;
 };
 
@@ -462,7 +470,7 @@ const readingsRow = (k: Kanji, q: string) => {
 };
 
 const kanjiRow = (k: Kanji, q: string, total: number) => {
-  const unfinished = k.unfinished === 1;
+  const unfinished = k.added === 1 && k.unfinished === 1;
   return `
 <div class="r${unfinished ? " unfinished" : k.added === 1 ? " in" : ""}">
 <a class="rklink" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}"><span class="rk k">${esc(k.literal)}</span></a>
@@ -495,6 +503,24 @@ function suggestions(q: string, type: string) {
     `<a class="sug" href="/?q=${enc(text)}&type=${type}"><span class="tag k">${tag}</span><span>${label}</span><span class="to k">${esc(text)}</span></a>`;
   const links = `${link("Search in hiragana", "あ", hira)}${link("Search in katakana", "ア", toKata(hira))}`;
   return links ? `<div class="sugs">${links}</div>` : "";
+}
+
+// every kanji with a JLPT level, grouped by level (N5 first), shown as plain characters coloured by study state
+function jlptPage() {
+  const rows = db.query(`SELECT literal, jlpt, frequency, added, unfinished FROM kanjis WHERE jlpt IS NOT NULL AND jlpt > 0`)
+    .all() as Pick<Kanji, "literal" | "jlpt" | "frequency" | "added" | "unfinished">[];
+  const levels = new Map<number, typeof rows>();
+  for (const r of rows) levels.set(Number(r.jlpt), [...(levels.get(Number(r.jlpt)) ?? []), r]);
+  const sections = [...levels.keys()].sort((a, b) => b - a).map((lvl) => {
+    const list = levels.get(lvl)!.sort((a, b) => nullsLast(a.frequency, b.frequency) || a.literal.localeCompare(b.literal));
+    const tiles = list.map((r) => {
+      const state = r.added === 1 ? (r.unfinished === 1 ? "unfinished" : "added") : "";
+      const status = state === "unfinished" ? " (unfinished)" : state === "added" ? " (in your study list)" : "";
+      return `<a class="kt k${state ? ` ${state}` : ""}" href="/kanji/${enc(r.literal)}" aria-label="Open ${esc(r.literal)}${status}">${esc(r.literal)}</a>`;
+    }).join("");
+    return `<section><h2>JLPT ${lvl}<span class="cnt">(${list.length} ${list.length === 1 ? "character" : "characters"})</span></h2><div class="kgrid">${tiles}</div></section>`;
+  });
+  return html(layout("JLPT – Kanji", "", `<h1>JLPT</h1>` + (sections.join("") || `<div class="box empty">No kanji have a JLPT level.</div>`), "jlpt"));
 }
 
 function home(url: URL) {
@@ -568,7 +594,7 @@ function componentOf(literal: string, q: string) {
   if (!rows.length) return "";
   rows.sort((a, b) => (b.jlpt ?? 0) - (a.jlpt ?? 0) || nullsLast(a.frequency, b.frequency));
   const buttons = rows.map((r) => {
-    const state = r.unfinished === 1 ? "unfinished" : r.added === 1 ? "added" : "";
+    const state = r.added === 1 ? (r.unfinished === 1 ? "unfinished" : "added") : "";
     const kw = keywordText(r.keyword);
     const status = state === "unfinished" ? " (unfinished)" : state === "added" ? " (in your study list)" : "";
     return `<a class="comp${state ? ` ${state}` : ""}" href="/kanji/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}" aria-label="Open ${esc(r.literal)}${kw ? ` (${esc(kw)})` : ""}${status}"><span class="k">${esc(r.literal)}</span>${kw ? `<span class="ckw">${esc(kw)}</span>` : ""}</a>`;
@@ -601,7 +627,7 @@ async function kanjiPage(literal: string, url: URL) {
   if (!k) return html(layout("Not found", q, `<div><a class="back" href="${back}">Back</a></div><div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
 
   const img = await findImage(k.literal);
-  const state = k.unfinished === 1 ? "unfinished" : k.added === 1 ? "added" : "";
+  const state = k.added === 1 ? (k.unfinished === 1 ? "unfinished" : "added") : "";
   const status = state === "unfinished" ? `<span class="sr">Unfinished</span>` : state === "added" ? `<span class="sr">In your study list</span>` : "";
   const known = totalKnown();
   const item = (label: string, v: string) => `<div><div class="lab">${label}</div><div class="val">${v}</div></div>`;
@@ -843,6 +869,7 @@ Bun.serve({
         return req.method === "POST" ? toggleWord(req, Number(toggle[1])) : new Response("Method not allowed", { status: 405 });
       }
       if (path === "/") return home(url);
+      if (path === "/jlpt") return jlptPage();
       if (path.startsWith("/kanji/")) return kanjiPage(path.slice(7), url);
       if (path.startsWith("/img/")) {
         const f = await findImage(path.slice(5));
