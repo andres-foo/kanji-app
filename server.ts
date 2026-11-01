@@ -31,6 +31,8 @@ const toHira = (s: string) => s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCh
 
 // ---------- study priority (depends on how many kanji are added) ----------
 type Priority = "high" | "medium" | "low" | "zero";
+// every kanji with added = 1 (unlike totalKnown, which only counts finished non-component ones)
+const addedCount = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1`).get() as { n: number }).n;
 const totalKnown = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND is_component IS NULL AND COALESCE(unfinished, 0) = 0`).get() as { n: number }).n;
 
 // each level is "high" once it is within the accumulated range, the next level is "medium", the rest "low"
@@ -276,6 +278,10 @@ header{display:grid;grid-template-columns:1fr minmax(0,620px) 1fr;align-items:ce
 .kt:hover{background:var(--btn-hover);border-color:var(--accent)}
 .kt.added,.kt.added:hover{border-color:var(--added-bar)}
 .kt.unfinished,.kt.unfinished:hover{border-color:var(--unfinished-bar)}
+.summary{margin:0;font-weight:800;font-size:22px;color:var(--text)}
+.summary b{font-weight:900;font-size:28px}
+.summary .fin{color:var(--added-bar)}
+.summary .unfin{color:var(--unfinished-bar)}
 .cnt{font-weight:700;color:var(--muted);font-size:14px;margin-left:6px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:20px;justify-self:start}
 .logo{width:40px;height:40px;border-radius:12px;background:var(--logo-bg);color:var(--logo-fg);display:flex;align-items:center;justify-content:center;font-size:22px}
@@ -453,7 +459,7 @@ const layout = (title: string, q: string, body: string, active = "") => {
 <input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 </form>${themeToggle(back)}</header>
-<nav class="menu" aria-label="Main">${([["my-list", "My list"], ["jlpt", "JLPT"], ["kanken", "KANKEN"]] as const).map(([id, label]) => `<a href="/${id}"${active === id ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
+<nav class="menu" aria-label="Main">${([["my-list", `MY LIST (${addedCount()})`], ["jlpt", "JLPT"], ["kanken", "KANKEN"]] as const).map(([id, label]) => `<a href="/${id}"${active === id ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
 <main>${body}</main></body></html>`;
 };
 
@@ -505,6 +511,14 @@ function suggestions(q: string, type: string) {
   return links ? `<div class="sugs">${links}</div>` : "";
 }
 
+// one plain character tile linking to the kanji page; green when added, red when added but unfinished, no marking otherwise
+const kanjiTile = (r: Pick<Kanji, "literal" | "added" | "unfinished">) => {
+  const state = r.added === 1 ? (r.unfinished === 1 ? "unfinished" : "added") : "";
+  const status = state === "unfinished" ? " (unfinished)" : state === "added" ? " (in your study list)" : "";
+  return `<a class="kt k${state ? ` ${state}` : ""}" href="/kanji/${enc(r.literal)}" aria-label="Open ${esc(r.literal)}${status}">${esc(r.literal)}</a>`;
+};
+const countLabel = (n: number) => `<span class="cnt">(${n} ${n === 1 ? "character" : "characters"})</span>`;
+
 // every kanji with a level in the given column, grouped by level (easiest first), shown as plain characters coloured by study state
 function levelPage(column: "jlpt" | "kanken", label: string, active: string) {
   const rows = db.query(`SELECT literal, ${column} AS lvl, frequency, added, unfinished FROM kanjis WHERE ${column} IS NOT NULL AND ${column} > 0`)
@@ -514,14 +528,48 @@ function levelPage(column: "jlpt" | "kanken", label: string, active: string) {
   // JLPT counts down from 5 to 1 and Kanken from 10 to 1, so the highest number is always the easiest level
   const sections = [...levels.keys()].sort((a, b) => b - a).map((lvl) => {
     const list = levels.get(lvl)!.sort((a, b) => nullsLast(a.frequency, b.frequency) || a.literal.localeCompare(b.literal));
-    const tiles = list.map((r) => {
-      const state = r.added === 1 ? (r.unfinished === 1 ? "unfinished" : "added") : "";
-      const status = state === "unfinished" ? " (unfinished)" : state === "added" ? " (in your study list)" : "";
-      return `<a class="kt k${state ? ` ${state}` : ""}" href="/kanji/${enc(r.literal)}" aria-label="Open ${esc(r.literal)}${status}">${esc(r.literal)}</a>`;
-    }).join("");
-    return `<section><h2>${label} ${lvl}<span class="cnt">(${list.length} ${list.length === 1 ? "character" : "characters"})</span></h2><div class="kgrid">${tiles}</div></section>`;
+    const tiles = list.map(kanjiTile).join("");
+    return `<section><h2>${label} ${lvl}${countLabel(list.length)}</h2><div class="kgrid">${tiles}</div></section>`;
   });
   return html(layout(`${label} – Kanji`, "", `<h1>${label}</h1>` + (sections.join("") || `<div class="box empty">No kanji have a ${label} level.</div>`), active));
+}
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+// every added kanji, grouped either by the month it was added (newest first) or by score (lowest first)
+function myListPage(url: URL) {
+  const by = url.searchParams.get("by") === "score" ? "score" : "date";
+  const rows = db.query(`SELECT literal, added, unfinished, score, added_at, frequency FROM kanjis WHERE COALESCE(added, 0) = 1`)
+    .all() as (Pick<Kanji, "literal" | "added" | "unfinished" | "frequency"> & { score: number | null; added_at: string | null })[];
+
+  // group key -> { heading, sort position, kanji }; kanji without a date/score go in a last group
+  const groups = new Map<string, { heading: string; order: number; list: typeof rows }>();
+  const put = (key: string, heading: string, order: number, r: (typeof rows)[number]) => {
+    const g = groups.get(key) ?? { heading, order, list: [] };
+    g.list.push(r);
+    groups.set(key, g);
+  };
+  for (const r of rows) {
+    if (by === "date") {
+      const m = /^(\d{4})-(\d{2})/.exec(String(r.added_at ?? ""));
+      if (m && Number(m[2]) >= 1 && Number(m[2]) <= 12) put(`${m[1]}-${m[2]}`, `${MONTHS[Number(m[2]) - 1]} ${m[1]}`, -(Number(m[1]) * 12 + Number(m[2])), r);
+      else put("none", "No date", Infinity, r);
+    } else if (r.score === null || r.score === undefined) put("none", "No score", Infinity, r);
+    else put(`s${r.score}`, `Score ${r.score}`, Number(r.score), r);
+  }
+  const addedAt = (r: (typeof rows)[number]) => String(r.added_at ?? "");
+  const sections = [...groups.values()].sort((a, b) => a.order - b.order).map((g) => {
+    g.list.sort((a, b) => (by === "date" ? addedAt(b).localeCompare(addedAt(a)) : 0) || nullsLast(a.frequency, b.frequency) || a.literal.localeCompare(b.literal));
+    return `<section><h2>${esc(g.heading)}${countLabel(g.list.length)}</h2><div class="kgrid">${g.list.map(kanjiTile).join("")}</div></section>`;
+  });
+  const pill = (id: string, text: string) => `<a class="pill${by === id ? " on" : ""}" href="/my-list?by=${id}">${text}</a>`;
+  const unfinishedCount = rows.filter((r) => r.unfinished === 1).length;
+  const summary = rows.length
+    ? `<p class="summary"><b class="fin">${rows.length - unfinishedCount}</b> finished, <b class="unfin">${unfinishedCount}</b> unfinished</p>`
+    : "";
+  const body = `<h1>MY LIST (${rows.length})</h1>${summary}<div class="pills">${pill("date", "By date added")}${pill("score", "By score")}</div>`
+    + (sections.join("") || `<div class="box empty">No kanji in your list yet.</div>`);
+  return html(layout("My list – Kanji", "", body, "my-list"));
 }
 
 function home(url: URL) {
@@ -870,6 +918,7 @@ Bun.serve({
         return req.method === "POST" ? toggleWord(req, Number(toggle[1])) : new Response("Method not allowed", { status: 405 });
       }
       if (path === "/") return home(url);
+      if (path === "/my-list") return myListPage(url);
       if (path === "/jlpt") return levelPage("jlpt", "JLPT", "jlpt");
       if (path === "/kanken") return levelPage("kanken", "KANKEN", "kanken");
       if (path.startsWith("/kanji/")) return kanjiPage(path.slice(7), url);
