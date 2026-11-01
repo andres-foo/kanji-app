@@ -505,12 +505,13 @@ function suggestions(q: string, type: string) {
   return links ? `<div class="sugs">${links}</div>` : "";
 }
 
-// every kanji with a JLPT level, grouped by level (N5 first), shown as plain characters coloured by study state
-function jlptPage() {
-  const rows = db.query(`SELECT literal, jlpt, frequency, added, unfinished FROM kanjis WHERE jlpt IS NOT NULL AND jlpt > 0`)
-    .all() as Pick<Kanji, "literal" | "jlpt" | "frequency" | "added" | "unfinished">[];
+// every kanji with a level in the given column, grouped by level (easiest first), shown as plain characters coloured by study state
+function levelPage(column: "jlpt" | "kanken", label: string, active: string) {
+  const rows = db.query(`SELECT literal, ${column} AS lvl, frequency, added, unfinished FROM kanjis WHERE ${column} IS NOT NULL AND ${column} > 0`)
+    .all() as (Pick<Kanji, "literal" | "frequency" | "added" | "unfinished"> & { lvl: number })[];
   const levels = new Map<number, typeof rows>();
-  for (const r of rows) levels.set(Number(r.jlpt), [...(levels.get(Number(r.jlpt)) ?? []), r]);
+  for (const r of rows) levels.set(Number(r.lvl), [...(levels.get(Number(r.lvl)) ?? []), r]);
+  // JLPT counts down from 5 to 1 and Kanken from 10 to 1, so the highest number is always the easiest level
   const sections = [...levels.keys()].sort((a, b) => b - a).map((lvl) => {
     const list = levels.get(lvl)!.sort((a, b) => nullsLast(a.frequency, b.frequency) || a.literal.localeCompare(b.literal));
     const tiles = list.map((r) => {
@@ -518,9 +519,9 @@ function jlptPage() {
       const status = state === "unfinished" ? " (unfinished)" : state === "added" ? " (in your study list)" : "";
       return `<a class="kt k${state ? ` ${state}` : ""}" href="/kanji/${enc(r.literal)}" aria-label="Open ${esc(r.literal)}${status}">${esc(r.literal)}</a>`;
     }).join("");
-    return `<section><h2>JLPT ${lvl}<span class="cnt">(${list.length} ${list.length === 1 ? "character" : "characters"})</span></h2><div class="kgrid">${tiles}</div></section>`;
+    return `<section><h2>${label} ${lvl}<span class="cnt">(${list.length} ${list.length === 1 ? "character" : "characters"})</span></h2><div class="kgrid">${tiles}</div></section>`;
   });
-  return html(layout("JLPT – Kanji", "", `<h1>JLPT</h1>` + (sections.join("") || `<div class="box empty">No kanji have a JLPT level.</div>`), "jlpt"));
+  return html(layout(`${label} – Kanji`, "", `<h1>${label}</h1>` + (sections.join("") || `<div class="box empty">No kanji have a ${label} level.</div>`), active));
 }
 
 function home(url: URL) {
@@ -869,7 +870,8 @@ Bun.serve({
         return req.method === "POST" ? toggleWord(req, Number(toggle[1])) : new Response("Method not allowed", { status: 405 });
       }
       if (path === "/") return home(url);
-      if (path === "/jlpt") return jlptPage();
+      if (path === "/jlpt") return levelPage("jlpt", "JLPT", "jlpt");
+      if (path === "/kanken") return levelPage("kanken", "KANKEN", "kanken");
       if (path.startsWith("/kanji/")) return kanjiPage(path.slice(7), url);
       if (path.startsWith("/img/")) {
         const f = await findImage(path.slice(5));
