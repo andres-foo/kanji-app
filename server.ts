@@ -262,8 +262,8 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .box>:first-child{border-top:0}
 .rklink{justify-self:center;display:flex;align-items:center;color:inherit;border-radius:14px}
 .rklink:hover .rk{color:var(--accent-strong);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
-.in,.in:hover{background:var(--in-bg)}
-.r.unfinished,.r.unfinished:hover{background:var(--unfinished-bg)}
+.r.in,.w.in{border-left:5px solid var(--added-bar)}
+.r.unfinished{border-left:5px solid var(--unfinished-bar)}
 .rk{font-size:58px;font-weight:700;line-height:1;justify-self:center}
 .rm{display:flex;flex-direction:column;gap:4px;min-width:0}
 .mean{font-size:18px;font-weight:800}
@@ -279,7 +279,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .badges{display:flex;gap:6px;flex-wrap:wrap}
 .b{font-size:12px;font-weight:800;padding:4px 10px;border-radius:10px;background:var(--badge-bg);color:var(--badge-text)}
 .btn{width:92px;height:36px;border-radius:10px;background:var(--btn-bg);color:var(--text);font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}
-.btn:hover{background:var(--btn-hover)}.in .btn:hover{background:var(--in-hover)}
+.btn:hover{background:var(--btn-hover)}
 .add{border:2px solid var(--add-border);color:var(--add-text)}.rem{border:2px solid var(--rem-border);color:var(--rem-text)}
 .edit{border:2px solid var(--field-border);display:inline-flex;align-items:center;justify-content:center}
 .actions{display:flex;align-items:center;gap:10px}.actions form{margin:0}
