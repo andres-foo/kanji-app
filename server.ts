@@ -287,7 +287,7 @@ const CSS = `
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{color-scheme:dark}
 body{margin:0;font-family:Nunito,system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh}
-.k{font-family:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif}
+.k{font-family:"Jigmo-Full","Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif}
 mark{background:none;color:inherit;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.18em;text-decoration-color:var(--mark-line)}
 a{color:inherit;text-decoration:none}
 a:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
@@ -480,6 +480,9 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .ds{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 24px;padding-bottom:20px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
+@font-face { font-family: 'Jigmo-Full'; src: url('/fonts/Jigmo.ttf') format('truetype'); unicode-range: U+4E00-9FFF, U+3400-4DBF; font-display: swap; }
+@font-face { font-family: 'Jigmo-Full'; src: url('/fonts/Jigmo2.ttf') format('truetype'); unicode-range: U+20000-2EFFF; font-display: swap; }
+@font-face { font-family: 'Jigmo-Full'; src: url('/fonts/Jigmo3.ttf') format('truetype'); unicode-range: U+30000-323AF; font-display: swap; }
 @media(max-width:900px){.kanji-card{padding:20px}.detail{grid-template-columns:minmax(0,1fr);gap:24px}.picwrap{margin:0 auto}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
 @media(max-width:560px){.reviewbar{padding:10px 16px}header{padding:12px 16px;gap:12px}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.rvbig{font-size:150px}.rvw{font-size:22px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
@@ -1107,8 +1110,22 @@ async function resetScores(req: Request) {
 // ---------- server ----------
 Bun.serve({
   port: PORT,
+  hostname: "0.0.0.0",
   async fetch(req) {
     const url = new URL(req.url);
+
+    if (url.pathname.startsWith("/fonts/")) {
+      const filePath = `.${url.pathname}`; // Maps to ./fonts/Jigmo.ttf
+      const file = Bun.file(filePath);
+
+      return new Response(file, {
+        headers: {
+          "Content-Type": "font/ttf",
+          "Access-Control-Allow-Origin": "*", // 👈 This allows the tablet to download it
+        },
+      });
+    }
+
     return requestContext.run({ theme: themeFrom(req), detailsOpen: detailsOpenFrom(req), back: url.pathname + url.search }, async () => {
       let path: string;
       try { path = decodeURIComponent(url.pathname); } catch { return html(layout("Bad request", "", `<div class="box empty">Bad request.</div>`), 400); }
