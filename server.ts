@@ -10,6 +10,30 @@ const IMAGES_DIR = process.env.IMAGES_DIR ?? "./images";
 // Opened read-write: writes are the add/remove toggles, the kanji edit form and image upload/removal (IMAGES_DIR must be writable too).
 const db = new Database(DB_PATH, { readwrite: true });
 
+// ---------- settings (table `settings`: key / value) ----------
+// values are stored as text; a missing row, an unreadable table or a non-numeric value falls back to the default
+const SETTING_DEFAULTS = {
+  review_history_size: 20, // newest review_history rows whose kanji cannot be picked again
+  review_score_ceiling: 5, // a kanji's score never goes above this
+  review_score_floor: -6, // ... or below this
+  review_score_start: -4, // score given to a kanji the moment it is added, and the value "reset scores" sets
+  review_delta_bad: -2,
+  review_delta_neutral: 0,
+  review_delta_good: 1,
+} as const;
+type SettingKey = keyof typeof SETTING_DEFAULTS;
+
+function setting(key: SettingKey): number {
+  try {
+    const row = db.query(`SELECT value FROM settings WHERE key = ?`).get(key) as { value: string | null } | null;
+    const text = String(row?.value ?? "").trim();
+    const n = Number(text);
+    return text !== "" && Number.isFinite(n) ? n : SETTING_DEFAULTS[key];
+  } catch {
+    return SETTING_DEFAULTS[key];
+  }
+}
+
 type Kanji = {
   literal: string; meanings: string; onReadings: string | null; kunReadings: string | null;
   strokes: number | null; jlpt: number | null; frequency: number | null; grade: number | null;
@@ -269,6 +293,28 @@ a{color:inherit;text-decoration:none}
 a:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;min-height:72px;padding:12px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
+.reviewbar{display:flex;justify-content:center;gap:12px;padding:10px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
+.reviewbtn{display:inline-flex;align-items:center;justify-content:center;height:40px;min-width:160px;padding:0 28px;border-radius:12px;background:var(--accent);color:var(--on-accent);font:900 15px Nunito,system-ui,sans-serif}
+.reviewbtn:hover{filter:brightness(1.1)}
+button.reviewbtn{border:0;cursor:pointer}
+.reviewbar form{margin:0;display:flex}
+.reviewbtn.good{background:var(--added-bar);color:light-dark(#FFFFFF,#052E16)}
+.reviewbtn.bad{background:var(--unfinished-bar);color:light-dark(#FFFFFF,#450A0A)}
+.rv{display:flex;flex-direction:column;align-items:center;gap:36px;padding:48px 28px}
+.rvbig{font-size:220px;font-weight:500;line-height:1}
+.rvwords{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.rvw{font-size:28px;font-weight:700;padding:8px 18px;border-radius:12px;background:var(--btn-bg);border:2px solid var(--field-border)}
+.navl{display:flex;align-items:center;gap:10px}
+.reviewbtn.small{min-width:0;padding:0 14px;font-size:14px;font-weight:800;background:var(--surface);border:1px solid var(--line);color:var(--text)}
+.reviewbtn.small:hover{background:var(--surface-hover);border-color:var(--accent);filter:none}
+.setbox{padding:28px}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.resetrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.resetrow .hint{flex:1;min-width:200px}
+.hint{font-weight:700;font-size:12px;line-height:1.4;color:var(--muted)}
+.notice{margin:0;padding:12px 16px;border-radius:12px;font-weight:800;font-size:14px}
+.notice.ok{background:light-dark(#DCFCE7,#14532D);color:light-dark(#14532D,#BBF7D0)}
+.notice.err{background:light-dark(#FEE2E2,#7F1D1D);color:light-dark(#7F1D1D,#FECACA)}
 .dd{position:relative}
 .ddlabel{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--text);font:800 14px Nunito,system-ui,sans-serif;white-space:nowrap}
 .ddlabel::after{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg)}
@@ -296,6 +342,7 @@ form.s:focus-within{border-color:var(--accent);background:var(--field-focus-bg)}
 form.s>svg{flex:none;color:var(--muted)}
 form.s input{flex:1;min-width:0;background:none;border:0;color:inherit;caret-color:var(--accent);font:700 16px Nunito,system-ui,sans-serif;outline:0}
 .clear{width:26px;height:26px;border-radius:13px;background:var(--clear-bg);color:var(--clear-text);display:flex;align-items:center;justify-content:center;font-size:15px}
+.hr{display:flex;align-items:center;gap:10px;justify-self:end}
 .themes{display:flex;justify-self:end}
 .theme-f{margin:0;display:flex}
 .theme-btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--text);font:800 14px Nunito,system-ui,sans-serif;cursor:pointer}
@@ -354,9 +401,9 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .actions{display:flex;align-items:center;gap:10px}.actions form{margin:0}
 .editf{min-width:0;display:flex;flex-direction:column;gap:18px;margin-top:28px}
 .editf label.fl{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;color:var(--muted)}
-.editf input[type=text],.editf textarea{width:100%;padding:10px 14px;border-radius:12px;background:var(--field-bg);border:2px solid var(--field-border);color:var(--text);font:700 16px Nunito,system-ui,sans-serif}
+.editf input[type=text],.editf input[type=number],.editf textarea{width:100%;padding:10px 14px;border-radius:12px;background:var(--field-bg);border:2px solid var(--field-border);color:var(--text);font:700 16px Nunito,system-ui,sans-serif}
 .editf textarea{min-height:180px;resize:vertical;line-height:1.6}
-.editf input[type=text]:focus,.editf textarea:focus{border-color:var(--accent);background:var(--field-focus-bg);outline:0}
+.editf input[type=text]:focus,.editf input[type=number]:focus,.editf textarea:focus{border-color:var(--accent);background:var(--field-focus-bg);outline:0}
 .checks{display:flex;gap:28px;flex-wrap:wrap}
 .check{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;cursor:pointer}
 .check input{width:20px;height:20px;accent-color:var(--accent)}
@@ -434,9 +481,10 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
 @media(max-width:900px){.kanji-card{padding:20px}.detail{grid-template-columns:minmax(0,1fr);gap:24px}.picwrap{margin:0 auto}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
-@media(max-width:560px){header{padding:12px 16px;gap:12px}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
+@media(max-width:560px){.reviewbar{padding:10px 16px}header{padding:12px 16px;gap:12px}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.rvbig{font-size:150px}.rvw{font-size:22px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
+const gearIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
 const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
 const moonIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`;
 
@@ -460,7 +508,7 @@ const listsMenu = (active: string) => {
   return `<div class="dd"><a class="ddlabel${onList ? " on" : ""}" href="/${current[0]}"${onList ? ' aria-current="page"' : ""}>${current[1]}</a><div class="ddmenu"><nav class="ddbox" aria-label="Lists">${links}</nav></div></div>`;
 };
 
-const layout = (title: string, q: string, body: string, active = "") => {
+const layout = (title: string, q: string, body: string, active = "", bar?: string) => {
   const ctx = requestContext.getStore();
   const theme = ctx?.theme;
   const back = ctx?.back ?? "/";
@@ -471,12 +519,13 @@ const layout = (title: string, q: string, body: string, active = "") => {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
 <style>${CSS}</style></head><body>
 <header>
-${listsMenu(active)}
+<div class="navl">${listsMenu(active)}<a class="reviewbtn small" href="/review">Review</a></div>
 <form class="s" action="/" method="get" role="search">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
 <input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
-</form>${themeToggle(back)}</header>
+</form><div class="hr">${themeToggle(back)}<a class="theme-btn" href="/settings" aria-label="Settings" title="Settings">${gearIcon}<span>Settings</span></a></div></header>
+${bar ? `<div class="reviewbar">${bar}</div>` : ""}
 <main>${body}</main></body></html>`;
 };
 
@@ -769,7 +818,11 @@ ${detailsBlock}
 ${exampleWords(k.literal, self)}
 ${componentOf(k.literal, q)}`}
 </div>`;
-  return html(layout(`${k.literal} – Kanji`, q, body));
+  // reached through "Show answer": bad / neutral / good buttons (each saves the result using the score changes from the settings) instead of the plain review link
+  const reviewBar = url.searchParams.get("review") === "1"
+    ? `<form method="post" action="/review/${enc(k.literal)}/bad"><button class="reviewbtn bad" type="submit">Bad</button></form><form method="post" action="/review/${enc(k.literal)}/neutral"><button class="reviewbtn" type="submit">Neutral</button></form><form method="post" action="/review/${enc(k.literal)}/good"><button class="reviewbtn good" type="submit">Good</button></form>`
+    : undefined;
+  return html(layout(`${k.literal} – Kanji`, q, body, "", reviewBar));
 }
 
 // flip examples.added between 0 and 1, then go back to where the user was
@@ -794,9 +847,10 @@ async function toggleKanji(req: Request, literal: string) {
     db.run(
       `UPDATE kanjis
        SET added = CASE WHEN COALESCE(added, 0) = 1 THEN 0 ELSE 1 END,
-           unfinished = CASE WHEN COALESCE(added, 0) = 1 THEN 0 ELSE 1 END
+           unfinished = CASE WHEN COALESCE(added, 0) = 1 THEN 0 ELSE 1 END,
+           score = CASE WHEN COALESCE(added, 0) = 1 THEN score ELSE ? END
        WHERE literal = ?`,
-      [literal],
+      [setting("review_score_start"), literal],
     );
   } catch (e) {
     return html(layout("Error", "", `<div class="box empty">Could not update the kanji: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
@@ -908,6 +962,148 @@ async function toggleDetails(req: Request) {
   return new Response(null, { status: 303, headers });
 }
 
+// ---------- review ----------
+// picks the added kanji with the lowest score that is not among the last review_history_size reviewed ones;
+// only the newest rows of review_history count, so it works even if the table holds more than that.
+// Read-only: nothing is recorded until a result button is pressed.
+function pickReviewKanji(): string | null {
+  const size = Math.max(0, Math.trunc(setting("review_history_size")));
+  // normal case first; only if every added kanji was reviewed recently, fall back to avoiding just the latest one, then nothing
+  for (const n of [size, 1, 0]) {
+    const k = db.query(
+      `SELECT literal FROM kanjis
+       WHERE COALESCE(added, 0) = 1
+         AND literal NOT IN (SELECT kanji FROM review_history ORDER BY date DESC, id DESC LIMIT ${n})
+       ORDER BY COALESCE(score, 0) ASC, RANDOM() LIMIT 1`,
+    ).get() as { literal: string } | null;
+    if (k) return k.literal;
+  }
+  return null;
+}
+
+// /review: only chooses the next kanji and redirects to its own page; nothing is recorded until a result button is pressed there
+function reviewNext() {
+  try {
+    const literal = pickReviewKanji();
+    if (!literal) return html(layout("Review – Kanji", "", `<div class="box empty">No kanji in your list to review yet.</div>`));
+    return new Response(null, { status: 303, headers: { location: `/review/${enc(literal)}` } });
+  } catch (e) {
+    return html(layout("Error", "", `<div class="box empty">Could not choose a kanji to review: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+  }
+}
+
+// the question side: just the kanji and the added example words that contain it
+function reviewPage(literal: string) {
+  const k = db.query(`SELECT literal FROM kanjis WHERE literal = ?`).get(literal) as { literal: string } | null;
+  if (!k) return html(layout("Not found", "", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
+  const words = db.query(`SELECT * FROM examples WHERE COALESCE(added, 0) = 1 AND kanji LIKE ? ESCAPE '\\'`).all(`%${likeEsc(literal)}%`) as Word[];
+  words.sort((a, b) => nullsLast(a.freq_wiki || null, b.freq_wiki || null) || (b.jlpt ?? 0) - (a.jlpt ?? 0));
+  const list = words.map((w) => `<span class="rvw k">${esc(splitKanjiMarker(w.kanji ?? "").text)}</span>`).join("");
+  const body = `<div class="kanji-card rv"><div class="rvbig k">${esc(k.literal)}</div>${list ? `<div class="rvwords">${list}</div>` : ""}</div>`;
+  const bar = `<a class="reviewbtn" href="/kanji/${enc(k.literal)}?review=1">Show answer</a>`;
+  return html(layout("Review – Kanji", "", body, "", bar));
+}
+
+// bad / neutral (the Review button) / good: change the score by the amounts from the settings (default -2 / 0 / +1) within the floor and ceiling, record the review in review_history
+// (score before and after, and the type as text), then go on to the next kanji. Rows are never deleted: the table is a permanent log.
+const REVIEW_DELTA_KEYS = { bad: "review_delta_bad", neutral: "review_delta_neutral", good: "review_delta_good" } as const;
+type ReviewResult = keyof typeof REVIEW_DELTA_KEYS;
+
+async function reviewResult(req: Request, literal: string, result: ReviewResult) {
+  if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
+  try {
+    const found = db.transaction(() => {
+      const k = db.query(`SELECT score FROM kanjis WHERE literal = ?`).get(literal) as { score: number | null } | null;
+      if (!k) return false;
+      const before = Number(k.score ?? 0) || 0;
+      // the new score is kept between the floor and the ceiling from the settings
+      const lo = Math.min(setting("review_score_floor"), setting("review_score_ceiling"));
+      const hi = Math.max(setting("review_score_floor"), setting("review_score_ceiling"));
+      const after = Math.min(hi, Math.max(lo, Math.round(before + setting(REVIEW_DELTA_KEYS[result]))));
+      db.run(`UPDATE kanjis SET score = ? WHERE literal = ?`, [after, literal]);
+      db.run(`INSERT INTO review_history (kanji, date, "before", "after", type) VALUES (?, datetime('now', 'localtime'), ?, ?, ?)`, [literal, before, after, result]);
+      return true;
+    })();
+    if (!found) return html(layout("Not found", "", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
+  } catch (e) {
+    return html(layout("Error", "", `<div class="box empty">Could not save the review: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+  }
+  return new Response(null, { status: 303, headers: { location: "/review" } });
+}
+
+// ---------- settings page ----------
+type SettingField = { key: SettingKey; label: string; hint: string; min?: number };
+const SETTING_FIELDS: { title: string; fields: SettingField[] }[] = [
+  {
+    title: "Review",
+    fields: [
+      { key: "review_history_size", label: "Recent kanji to skip", hint: "How many of the latest reviewed kanji cannot be picked again.", min: 0 },
+      { key: "review_score_ceiling", label: "Score ceiling", hint: "A kanji's score never goes above this." },
+      { key: "review_score_floor", label: "Score floor", hint: "A kanji's score never goes below this." },
+      { key: "review_score_start", label: "Starting score", hint: "Score a kanji gets when you add it, and what “Reset scores” sets." },
+      { key: "review_delta_bad", label: "Bad", hint: "Score change when you press Bad." },
+      { key: "review_delta_neutral", label: "Neutral", hint: "Score change when you press Neutral." },
+      { key: "review_delta_good", label: "Good", hint: "Score change when you press Good." },
+    ],
+  },
+];
+
+function settingsPage(url: URL, errors: string[] = [], submitted?: Record<string, string>, status = 200) {
+  const resetCount = url.searchParams.get("reset");
+  const notice = errors.length
+    ? `<p class="notice err">${errors.map(esc).join("<br>")}</p>`
+    : url.searchParams.get("saved") === "1" ? `<p class="notice ok">Settings saved.</p>`
+      : resetCount !== null ? `<p class="notice ok">Scores of ${esc(resetCount)} added kanji were reset to ${esc(url.searchParams.get("to") ?? "")}.</p>` : "";
+  const groups = SETTING_FIELDS.map((g) => `<section><h2>${esc(g.title)}</h2><div class="setgrid">${g.fields.map((f) => `<label class="fl">${esc(f.label)}
+<input type="number" step="1"${f.min !== undefined ? ` min="${f.min}"` : ""} name="${f.key}" value="${esc(submitted?.[f.key] ?? String(setting(f.key)))}" required>
+<span class="hint">${esc(f.hint)}</span></label>`).join("")}</div></section>`).join("");
+  const resetRow = `<div class="resetrow"><button class="reviewbtn bad" type="submit" form="resetform">Reset scores</button><span class="hint">Sets the score of every added kanji to the starting score (currently ${setting("review_score_start")}). It uses the saved value, so save any change to it first.</span></div>`;
+  const body = `<h1>SETTINGS</h1>${notice}<div class="box setbox"><form class="editf" style="margin-top:0" method="post" action="/settings">${groups}${resetRow}<div class="formbtns"><button class="reviewbtn" type="submit">Save</button></div></form>
+<form id="resetform" method="post" action="/settings/reset-scores" data-msg="Reset the score of every added kanji to ${setting("review_score_start")}? This cannot be undone." onsubmit="return confirm(this.dataset.msg)"></form></div>`;
+  return html(layout("Settings – Kanji", "", body), status);
+}
+
+async function saveSettings(req: Request, url: URL) {
+  if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
+  const form = await req.formData();
+  const submitted: Record<string, string> = {};
+  const values = {} as Record<SettingKey, number>;
+  const errors: string[] = [];
+  for (const f of SETTING_FIELDS.flatMap((g) => g.fields)) {
+    const text = String(form.get(f.key) ?? "").trim();
+    submitted[f.key] = text;
+    const n = Number(text);
+    if (text === "" || !Number.isInteger(n)) errors.push(`${f.label} must be a whole number.`);
+    else if (f.min !== undefined && n < f.min) errors.push(`${f.label} must be at least ${f.min}.`);
+    else values[f.key] = n;
+  }
+  if (!errors.length && values.review_score_floor > values.review_score_ceiling) errors.push("The score floor cannot be higher than the score ceiling.");
+  if (!errors.length && (values.review_score_start < values.review_score_floor || values.review_score_start > values.review_score_ceiling)) errors.push("The starting score must be between the floor and the ceiling.");
+  if (errors.length) return settingsPage(url, errors, submitted, 400);
+  try {
+    db.transaction(() => {
+      for (const [key, value] of Object.entries(values)) {
+        db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, String(value)]);
+      }
+    })();
+  } catch (e) {
+    return settingsPage(url, [`Could not save the settings: ${(e as Error).message}. Is the database file writable?`], submitted, 500);
+  }
+  return new Response(null, { status: 303, headers: { location: "/settings?saved=1" } });
+}
+
+// sets the score of every added kanji to the starting score from the settings
+async function resetScores(req: Request) {
+  if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
+  const start = setting("review_score_start");
+  try {
+    const res = db.run(`UPDATE kanjis SET score = ? WHERE COALESCE(added, 0) = 1`, [start]);
+    return new Response(null, { status: 303, headers: { location: `/settings?reset=${res.changes}&to=${start}` } });
+  } catch (e) {
+    return settingsPage(new URL(req.url), [`Could not reset the scores: ${(e as Error).message}. Is the database file writable?`], undefined, 500);
+  }
+}
+
 // ---------- server ----------
 Bun.serve({
   port: PORT,
@@ -919,6 +1115,15 @@ Bun.serve({
 
       if (path === "/details/toggle") return req.method === "POST" ? toggleDetails(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/theme") return req.method === "POST" ? setTheme(req) : new Response("Method not allowed", { status: 405 });
+      if (path === "/settings/reset-scores") return req.method === "POST" ? resetScores(req) : new Response("Method not allowed", { status: 405 });
+      if (path === "/settings") return req.method === "POST" ? saveSettings(req, url) : settingsPage(url);
+      if (path === "/review") return reviewNext();
+      const reviewShow = path.match(/^\/review\/([^/]+)$/);
+      if (reviewShow) return reviewPage(reviewShow[1]);
+      const reviewDone = path.match(/^\/review\/([^/]+)\/(good|neutral|bad)$/);
+      if (reviewDone) {
+        return req.method === "POST" ? reviewResult(req, reviewDone[1], reviewDone[2] as ReviewResult) : new Response("Method not allowed", { status: 405 });
+      }
       const kanjiToggle = path.match(/^\/kanji\/([^/]+)\/toggle$/);
       if (kanjiToggle) {
         return req.method === "POST" ? toggleKanji(req, kanjiToggle[1]) : new Response("Method not allowed", { status: 405 });
