@@ -28,6 +28,48 @@ const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ESC[c]);
 const likeEsc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
 const toKata = (s: string) => s.replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
 const toHira = (s: string) => s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+
+// ---------- study priority (depends on how many kanji are added) ----------
+type Priority = "high" | "medium" | "low" | "zero";
+const totalKnown = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND is_component IS NULL AND COALESCE(unfinished, 0) = 0`).get() as { n: number }).n;
+
+// each level is "high" once it is within the accumulated range, the next level is "medium", the rest "low"
+// (the very last tier, where only the hardest levels remain, is "medium" for everything left)
+const jlptPriority = (jlpt: number, total: number): Priority => {
+  if (jlpt === 5) return "high";
+  const levels = [5, 4, 3, 2, 1];
+  const t = [80, 247, 617, 985];
+  for (let i = 0; i < t.length; i++) {
+    if (total < t[i]) {
+      const idx = levels.includes(jlpt) ? levels.indexOf(jlpt) : levels.length;
+      if (idx <= i) return "high";
+      if (idx === i + 1) return "medium";
+      return i === 3 ? "medium" : "low";
+    }
+  }
+  return "high";
+};
+
+const kankenPriority = (kanken: number, total: number): Priority => {
+  if (kanken === 10) return "high";
+  if (kanken === 1.5 || kanken === 1) return "zero";
+  const levels = [10, 9, 8, 7, 6, 5, 4, 3, 2.5, 2, 1.5, 1];
+  const t = [80, 240, 440, 642, 835, 1026, 1339, 1623, 1951];
+  for (let i = 0; i < t.length; i++) {
+    if (total < t[i]) {
+      const idx = levels.includes(kanken) ? levels.indexOf(kanken) : levels.length;
+      if (idx <= i) return "high";
+      if (idx === i + 1) return "medium";
+      return i === 8 ? "medium" : "low";
+    }
+  }
+  return "high";
+};
+
+const jlptBadge = (k: Pick<Kanji, "jlpt">, total: number) =>
+  k.jlpt ? `<span class="b priority-${jlptPriority(Number(k.jlpt), total)}">N${esc(k.jlpt)}</span>` : "";
+const kankenBadge = (k: Pick<Kanji, "kanken">, total: number, label = "Kanken ") =>
+  k.kanken ? `<span class="b priority-${kankenPriority(Number(k.kanken), total)}">${label}${esc(k.kanken)}</span>` : "";
 // the database separates meanings with ";": show them separated by commas
 const meaningsList = (s: unknown) => String(s ?? "").split(";").map((m) => m.trim()).filter(Boolean);
 // synonyms after a numbered definition stay on its line until the next (n) marker
@@ -278,6 +320,10 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .kana{font-size:19px;font-weight:700;color:var(--muted);margin-left:6px}
 .badges{display:flex;gap:6px;flex-wrap:wrap}
 .b{font-size:12px;font-weight:800;padding:4px 10px;border-radius:10px;background:var(--badge-bg);color:var(--badge-text)}
+.priority-high{background:light-dark(#BBF7D0,#14532D);color:light-dark(#14532D,#BBF7D0)}
+.priority-medium{background:light-dark(#FED7AA,#7C2D12);color:light-dark(#7C2D12,#FED7AA)}
+.priority-low{background:light-dark(#FECACA,#7F1D1D);color:light-dark(#7F1D1D,#FECACA)}
+.priority-zero{background:light-dark(#E5E7EB,#374151);color:light-dark(#374151,#E5E7EB)}
 .btn{width:92px;height:36px;border-radius:10px;background:var(--btn-bg);color:var(--text);font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}
 .btn:hover{background:var(--btn-hover)}
 .add{border:2px solid var(--add-border);color:var(--add-text)}.rem{border:2px solid var(--rem-border);color:var(--rem-text)}
@@ -410,13 +456,13 @@ const readingsRow = (k: Kanji, q: string) => {
   return `<span class="readings">${part("On", on)}${part("Kun", kun)}</span>`;
 };
 
-const kanjiRow = (k: Kanji, q: string) => {
+const kanjiRow = (k: Kanji, q: string, total: number) => {
   const unfinished = k.unfinished === 1;
   return `
 <div class="r${unfinished ? " unfinished" : k.added === 1 ? " in" : ""}">
 <a class="rklink" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}"><span class="rk k">${esc(k.literal)}</span></a>
 <span class="rm">${k.keyword ? `<span class="kw">${highlight(keywordText(k.keyword), q)}</span>` : ""}<span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${readingsRow(k, q)}</span>
-<span class="badges">${unfinished ? `<span class="sr">Unfinished</span>` : k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${k.jlpt ? `<span class="b">N${esc(k.jlpt)}</span>` : ""}${k.kanken ? `<span class="b">Kanken ${esc(k.kanken)}</span>` : ""}</span></div>`;
+<span class="badges">${unfinished ? `<span class="sr">Unfinished</span>` : k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${jlptBadge(k, total)}${kankenBadge(k, total)}</span></div>`;
 };
 
 const wordRow = (w: Word, back: string, q: string) => {
@@ -461,7 +507,7 @@ function home(url: URL) {
   let body = suggestions(q, type);
   body += `<div class="pills">${pill("all", `All ${kanji.length + words.length}`)}${pill("kanji", `Kanji ${kanji.length}`)}${pill("words", `Words ${words.length}`)}</div>`;
   if (type !== "words" && kanji.length)
-    body += `<section><h2>Kanji</h2><div class="box">${kanji.map((k) => kanjiRow(k, q)).join("")}</div></section>`;
+    body += `<section><h2>Kanji</h2><div class="box">${(() => { const total = totalKnown(); return kanji.map((k) => kanjiRow(k, q, total)).join(""); })()}</div></section>`;
   if (type !== "kanji" && words.length)
     body += `<section><h2>Words</h2><div class="box">${words.map((w) => wordRow(w, back, q)).join("")}</div></section>`;
   if (!kanji.length && !words.length) body += `<div class="box empty">Nothing found for “${esc(q)}”. Try another spelling or a shorter search.</div>`;
@@ -552,6 +598,7 @@ async function kanjiPage(literal: string, url: URL) {
   const img = await findImage(k.literal);
   const state = k.unfinished === 1 ? "unfinished" : k.added === 1 ? "added" : "";
   const status = state === "unfinished" ? `<span class="sr">Unfinished</span>` : state === "added" ? `<span class="sr">In your study list</span>` : "";
+  const known = totalKnown();
   const item = (label: string, v: string) => `<div><div class="lab">${label}</div><div class="val">${v}</div></div>`;
   const inList = k.added === 1;
   const self = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
@@ -574,7 +621,7 @@ ${field("related", "Related", k.related)}
 <div class="formbtns"><button class="btn add" type="submit">Save</button><a class="btn edit" href="${esc(self)}">Cancel</a></div>
 </form>`;
   const detailsBody = detailsOpen ? `<div class="ds">
-${item("Strokes", plain(k.strokes))}${item("JLPT", k.jlpt ? "N" + esc(k.jlpt) : "–")}${item("Kanken", plain(k.kanken))}${item("Grade", plain(k.grade))}
+${item("Strokes", plain(k.strokes))}${item("JLPT", jlptBadge(k, known) || "–")}${item("Kanken", kankenBadge(k, known, "") || "–")}${item("Grade", plain(k.grade))}
 ${item("On readings", readings(k.onReadings))}${item("Kun readings", readings(k.kunReadings))}${item("Frequency", plain(k.frequency))}${item("Heisig 6", plain(k.heisg6))}
 ${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.other_forms, q))}
 </div>` : "";
