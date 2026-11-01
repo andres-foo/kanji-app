@@ -268,11 +268,19 @@ mark{background:none;color:inherit;text-decoration:underline;text-decoration-thi
 a{color:inherit;text-decoration:none}
 a:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-header{display:grid;grid-template-columns:1fr minmax(0,620px) 1fr;align-items:center;gap:24px;min-height:72px;padding:12px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
-.menu{display:flex;gap:8px;padding:8px 32px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
-.menu a{display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:10px;font-weight:800;font-size:14px;color:var(--text);white-space:nowrap}
-.menu a:hover{background:var(--btn-hover);color:var(--accent-strong)}
-.menu a.on,.menu a.on:hover{background:var(--accent);color:var(--on-accent)}
+header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;min-height:72px;padding:12px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
+.dd{position:relative}
+.ddlabel{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--text);font:800 14px Nunito,system-ui,sans-serif;white-space:nowrap}
+.ddlabel::after{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg)}
+.ddlabel:hover,.dd:hover .ddlabel,.dd:focus-within .ddlabel{background:var(--surface-hover);border-color:var(--accent)}
+.ddlabel.on,.ddlabel.on:hover,.dd:hover .ddlabel.on,.dd:focus-within .ddlabel.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.ddlabel.on::after{border-color:var(--on-accent)}
+.ddmenu{display:none;position:absolute;top:100%;left:0;z-index:20;min-width:100%;padding-top:6px}
+.dd:hover .ddmenu,.dd:focus-within .ddmenu{display:block}
+.ddbox{display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.ddbox a{display:flex;align-items:center;height:36px;padding:0 12px;border-radius:8px;font-weight:800;font-size:14px;color:var(--text);white-space:nowrap}
+.ddbox a:hover{background:var(--btn-hover);color:var(--accent-strong)}
+.ddbox a.on,.ddbox a.on:hover{background:var(--accent);color:var(--on-accent)}
 .kgrid{display:flex;flex-wrap:wrap;gap:8px}
 .kt{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:inherit;border-radius:12px;background:var(--btn-bg);border:2px solid var(--field-border)}
 .kt:hover{background:var(--btn-hover);border-color:var(--accent)}
@@ -283,8 +291,6 @@ header{display:grid;grid-template-columns:1fr minmax(0,620px) 1fr;align-items:ce
 .summary .fin{color:var(--added-bar)}
 .summary .unfin{color:var(--unfinished-bar)}
 .cnt{font-weight:700;color:var(--muted);font-size:14px;margin-left:6px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:20px;justify-self:start}
-.logo{width:40px;height:40px;border-radius:12px;background:var(--logo-bg);color:var(--logo-fg);display:flex;align-items:center;justify-content:center;font-size:22px}
 form.s{display:flex;align-items:center;gap:10px;height:46px;padding:0 16px;border-radius:14px;background:var(--field-bg);border:2px solid var(--field-border)}
 form.s:focus-within{border-color:var(--accent);background:var(--field-focus-bg)}
 form.s>svg{flex:none;color:var(--muted)}
@@ -428,7 +434,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .val{font-size:19px;font-weight:800;overflow-wrap:anywhere}
 .kl{font-size:22px;margin-right:6px}a.kl{color:var(--accent-strong)}
 @media(max-width:900px){.kanji-card{padding:20px}.detail{grid-template-columns:minmax(0,1fr);gap:24px}.picwrap{margin:0 auto}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
-@media(max-width:560px){.menu{padding:8px 16px}header{grid-template-columns:auto 1fr auto;padding:12px 16px;gap:12px}.brand span:last-child{display:none}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
+@media(max-width:560px){header{padding:12px 16px;gap:12px}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
 const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
@@ -444,6 +450,16 @@ const themeButton = (theme: Theme, label: string, icon: string, back: string) =>
 const themeToggle = (back: string) =>
   `<div class="themes">${themeButton("light", "Light", sunIcon, back)}${themeButton("dark", "Dark", moonIcon, back)}</div>`;
 
+// hover dropdown with the three list pages; the label is a link to the current list page (MY LIST by default)
+// and gets the accent colour only while one of the list pages is open
+const listsMenu = (active: string) => {
+  const items = [["my-list", `MY LIST (${addedCount()})`], ["jlpt", "JLPT"], ["kanken", "KANKEN"]] as const;
+  const onList = items.some(([id]) => id === active);
+  const current = items.find(([id]) => id === active) ?? items[0];
+  const links = items.map(([id, label]) => `<a href="/${id}"${active === id ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("");
+  return `<div class="dd"><a class="ddlabel${onList ? " on" : ""}" href="/${current[0]}"${onList ? ' aria-current="page"' : ""}>${current[1]}</a><div class="ddmenu"><nav class="ddbox" aria-label="Lists">${links}</nav></div></div>`;
+};
+
 const layout = (title: string, q: string, body: string, active = "") => {
   const ctx = requestContext.getStore();
   const theme = ctx?.theme;
@@ -455,13 +471,12 @@ const layout = (title: string, q: string, body: string, active = "") => {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
 <style>${CSS}</style></head><body>
 <header>
-<a class="brand" href="/"><span class="logo k">漢</span><span>Kanji</span></a>
+${listsMenu(active)}
 <form class="s" action="/" method="get" role="search">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
 <input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 </form>${themeToggle(back)}</header>
-<nav class="menu" aria-label="Main">${([["my-list", `MY LIST (${addedCount()})`], ["jlpt", "JLPT"], ["kanken", "KANKEN"]] as const).map(([id, label]) => `<a href="/${id}"${active === id ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
 <main>${body}</main></body></html>`;
 };
 
