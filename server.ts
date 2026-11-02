@@ -863,7 +863,7 @@ ${field("components", "Components", k.components)}
 ${field("other_forms", "Other forms", k.other_forms)}
 ${field("related", "Related", k.related)}
 <label class="fl">Story<textarea name="story">${esc(k.story)}</textarea></label>
-<div class="checks">${check("unfinished", "Unfinished", k.unfinished === 1)}${check("is_component", "Is component", k.is_component === 1)}</div>
+<div class="checks">${check("added", "Added", k.added === 1)}${check("unfinished", "Unfinished", k.unfinished === 1)}${check("is_component", "Is component", k.is_component === 1)}</div>
 </form>`;
   const detailsBody = detailsOpen ? `<div class="ds">
 ${item("Strokes", plain(k.strokes))}${item("Grade", plain(k.grade))}
@@ -890,15 +890,14 @@ ${img ? `<form method="post" action="/kanji/${enc(k.literal)}/image/delete" data
 </form>
 ${detailsBody}
 </div>`;
-  // all actions live in this row at the bottom right; Save submits the edit form through its form attribute
+  // the actions live in this row at the bottom right; Save submits the edit form through its form attribute (adding or removing a kanji is the "Added" checkbox in that form)
   const actionsRow = `<div class="pagetop">
 ${status}
 <div class="actions">
 ${editing
       ? `<a class="btn edit" href="${esc(self)}">Cancel</a><button class="btn add" type="submit" form="editform">Save</button>`
       : `<a class="btn edit" href="${esc(editHref)}" aria-label="Edit ${esc(k.literal)}">Edit</a>`}
-<form method="post" action="/kanji/${enc(k.literal)}/toggle"><input type="hidden" name="back" value="${esc(self)}">
-<button class="btn ${inList ? "rem" : "add"}" type="submit" aria-label="${inList ? `Remove ${esc(k.literal)} from your study list` : `Add ${esc(k.literal)} to your study list`}">${inList ? "Remove" : "Add"}</button></form></div></div>`;
+</div></div>`;
   const body = `
 <div class="kanji-card${state ? ` ${state}` : ""}">
 <div class="detail">
@@ -961,19 +960,26 @@ async function toggleKanji(req: Request, literal: string) {
   return new Response(null, { status: 303, headers: { location: back } });
 }
 
-// save the edit form: text fields (empty -> NULL) and the two checkboxes (checked -> 1, unchecked -> 0)
+// save the edit form: text fields (empty -> NULL) and the checkboxes (checked -> 1, unchecked -> 0).
+// Ticking "Added" on a kanji that was not added starts it from scratch (starting score, due now); unticking it keeps its score.
 async function updateKanji(req: Request, literal: string) {
   if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
   const form = await req.formData();
   const back = safeBack(form.get("back"));
   const text = (name: string) => String(form.get(name) ?? "").replace(/\r\n?/g, "\n").trim() || null;
   const flag = (name: string) => (form.get(name) ? 1 : 0);
+  const added = flag("added");
   try {
+    // the CASE expressions see the old row, so they can tell that the kanji is being added right now
     const result = db.run(
       `UPDATE kanjis
-       SET keyword = ?, components = ?, other_forms = ?, related = ?, story = ?, unfinished = ?, is_component = ?
+       SET keyword = ?, components = ?, other_forms = ?, related = ?, story = ?, unfinished = ?, is_component = ?,
+           score = CASE WHEN COALESCE(added, 0) = 0 AND ? = 1 THEN ? ELSE score END,
+           due_date = CASE WHEN COALESCE(added, 0) = 0 AND ? = 1 THEN NULL ELSE due_date END,
+           last_reviewed = CASE WHEN COALESCE(added, 0) = 0 AND ? = 1 THEN NULL ELSE last_reviewed END,
+           added = ?
        WHERE literal = ?`,
-      [text("keyword"), text("components"), text("other_forms"), text("related"), text("story"), flag("unfinished"), flag("is_component"), literal],
+      [text("keyword"), text("components"), text("other_forms"), text("related"), text("story"), flag("unfinished"), flag("is_component"), added, startScore(), added, added, added, literal],
     );
     if (!result.changes) return html(layout("Not found", "", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
   } catch (e) {
