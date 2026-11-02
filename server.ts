@@ -17,8 +17,9 @@ const SETTING_DEFAULTS = {
   review_score_floor: 0, // ... or below this
   review_score_start: 0, // score given to a kanji the moment it is added, and the value "reset scores" sets
   review_delta_bad: -3,
-  review_delta_neutral: 1,
-  review_delta_good: 2,
+  review_delta_neutral: 0,
+  review_delta_good: 1,
+  review_delta_easy: 2,
 } as const;
 type SettingKey = keyof typeof SETTING_DEFAULTS;
 
@@ -37,6 +38,8 @@ function setting(key: SettingKey): number {
 // the score decides how many days pass until the kanji is due again. A missing row, an invalid row or a missing
 // table falls back to the built-in default for that score, so a review never fails because of it.
 const MAX_SCORE = 10;
+// the answer buttons shown on the answer page, in order (the id is the review type saved in review_history)
+const REVIEW_BUTTONS = [["bad", "Bad"], ["neutral", "Neutral"], ["good", "Good"], ["easy", "Easy"]] as const;
 type Mastery = { score: number; label: string; interval_days: number };
 const MASTERY_DEFAULTS: Mastery[] = [
   { score: 0, label: "New", interval_days: 1 },
@@ -348,12 +351,14 @@ a{color:inherit;text-decoration:none}
 a:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;min-height:72px;padding:12px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
-.reviewbar{display:flex;justify-content:center;gap:12px;padding:10px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
+.reviewbar{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;padding:10px 32px;background:var(--surface);border-bottom:1px solid var(--line)}
 .reviewbtn{display:inline-flex;align-items:center;justify-content:center;height:40px;min-width:160px;padding:0 28px;border-radius:12px;background:var(--accent);color:var(--on-accent);font:900 15px Nunito,system-ui,sans-serif}
 .reviewbtn:hover{filter:brightness(1.1)}
 button.reviewbtn{border:0;cursor:pointer}
 .reviewbar form{margin:0;display:flex}
-.reviewbtn.good{background:var(--added-bar);color:light-dark(#FFFFFF,#052E16)}
+.reviewbtn.neutral{background:light-dark(#C9CED6,#4B5563);color:light-dark(#1F2937,#F3F4F6)}
+.reviewbtn.good{background:#2a78d6;color:#FFFFFF}
+.reviewbtn.easy{background:var(--added-bar);color:light-dark(#FFFFFF,#052E16)}
 .reviewbtn.bad{background:var(--unfinished-bar);color:light-dark(#FFFFFF,#450A0A)}
 .rv{display:flex;flex-direction:column;align-items:center;gap:36px;padding:48px 28px}
 .rvbig{font-size:220px;font-weight:500;line-height:1}
@@ -909,9 +914,10 @@ ${detailsBlock}
 ${exampleWords(k.literal, self)}
 ${componentOf(k.literal, q)}`}
 </div>`;
-  // reached through "Show answer": bad / neutral / good buttons (each saves the result using the score changes from the settings) instead of the plain review link
+  // reached through "Show answer": bad / neutral / good / easy buttons (each saves the result using the score changes from the settings) instead of the plain review link
   const reviewBar = url.searchParams.get("review") === "1"
-    ? `<form method="post" action="/review/${enc(k.literal)}/bad"><button class="reviewbtn bad" type="submit">Bad</button></form><form method="post" action="/review/${enc(k.literal)}/neutral"><button class="reviewbtn" type="submit">Neutral</button></form><form method="post" action="/review/${enc(k.literal)}/good"><button class="reviewbtn good" type="submit">Good</button></form>`
+    ? REVIEW_BUTTONS
+      .map(([id, label]) => `<form method="post" action="/review/${enc(k.literal)}/${id}"><button class="reviewbtn ${id}" type="submit">${label}</button></form>`).join("")
     : undefined;
   return html(layout(`${k.literal} – Kanji`, q, body, "", reviewBar));
 }
@@ -1100,10 +1106,10 @@ function reviewPage(literal: string) {
   return html(layout("Review – Kanji", "", body, "", bar));
 }
 
-// bad / neutral / good: change the score by the amounts from the settings (default -3 / +1 / +2) within the bounds,
+// bad / neutral / good / easy: change the score by the amounts from the settings (default -3 / 0 / +1 / +2) within the bounds,
 // schedule the next review from the new score's interval in mastery_levels (a bad answer is due again today),
 // and record the review in review_history (score before and after, type as text). Rows are never deleted: it is a permanent log.
-const REVIEW_DELTA_KEYS = { bad: "review_delta_bad", neutral: "review_delta_neutral", good: "review_delta_good" } as const;
+const REVIEW_DELTA_KEYS = { bad: "review_delta_bad", neutral: "review_delta_neutral", good: "review_delta_good", easy: "review_delta_easy" } as const;
 type ReviewResult = keyof typeof REVIEW_DELTA_KEYS;
 
 async function reviewResult(req: Request, literal: string, result: ReviewResult) {
@@ -1135,6 +1141,7 @@ const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = [
   { key: "review_delta_bad", label: "Bad", hint: "Score change when you press Bad." },
   { key: "review_delta_neutral", label: "Neutral", hint: "Score change when you press Neutral." },
   { key: "review_delta_good", label: "Good", hint: "Score change when you press Good." },
+  { key: "review_delta_easy", label: "Easy", hint: "Score change when you press Easy." },
 ];
 // the score scale (0 to 10) and the starting score live in the settings table and are edited in the database; this page
 // edits the score changes for Bad / Neutral / Good and the mastery levels (label and days until the next review), and resets scores.
@@ -1289,7 +1296,7 @@ function barChart(labels: string[], values: number[], titles: string[], color: s
   return `<svg class="sv" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img" aria-label="${esc(description)}"><title>${esc(description)}</title>${yAxis(ymax, step)}${bars}${xlabels}</svg>`;
 }
 
-// too hard / about right / too easy, from the share of good + neutral answers at a level
+// too hard / about right / too easy, from the share of answers that were not bad at a level
 function verdict(total: number, okPct: number): { text: string; cls: string } {
   if (total < 30) return { text: "Not enough data", cls: "none" };
   if (okPct < 80) return { text: "Too hard", cls: "hard" };
@@ -1303,7 +1310,7 @@ function statsPage(url: URL) {
     const today = (db.query(`SELECT date('now', 'localtime') AS d`).get() as { d: string }).d;
     const days = Array.from({ length: range }, (_, i) => addDays(today, i - (range - 1)));
     const first = days[0];
-    const TYPES = `type IN ('bad', 'neutral', 'good')`;
+    const TYPES = `type IN ('bad', 'neutral', 'good', 'easy')`;
 
     // levels are grouped by label (the labels come from mastery_levels), ordered by score
     const levels = masteryLevels();
@@ -1340,27 +1347,28 @@ function statsPage(url: URL) {
     const legend = series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.label)} ${s.values[last]}</span>`).join("");
 
     // answers by the level the kanji was at when reviewed, inside the selected period
-    const answers = new Map<number, { bad: number; neutral: number; good: number }>();
+    const answers = new Map<number, { bad: number; neutral: number; good: number; easy: number }>();
     for (const r of db.query(`SELECT "before" AS s, type, COUNT(*) AS n FROM review_history WHERE ${TYPES} AND date(date) >= ? GROUP BY "before", type`).all(first) as { s: number; type: ReviewResult; n: number }[]) {
       const sc = Math.round(Number(r.s));
       if (sc < 0 || sc > MAX_SCORE) continue;
-      const a = answers.get(sc) ?? { bad: 0, neutral: 0, good: 0 };
+      const a = answers.get(sc) ?? { bad: 0, neutral: 0, good: 0, easy: 0 };
       a[r.type] += r.n;
       answers.set(sc, a);
     }
     let totalAll = 0;
     let okAll = 0;
-    for (const a of answers.values()) { totalAll += a.bad + a.neutral + a.good; okAll += a.neutral + a.good; }
+    for (const a of answers.values()) { totalAll += a.bad + a.neutral + a.good + a.easy; okAll += a.neutral + a.good + a.easy; }
     const tableRows = levels.map((m) => {
-      const a = answers.get(m.score) ?? { bad: 0, neutral: 0, good: 0 };
-      const t = a.bad + a.neutral + a.good;
-      const ok = t ? Math.round((100 * (a.neutral + a.good)) / t) : 0;
-      const pg = t ? Math.round((100 * a.good) / t) : 0;
+      const a = answers.get(m.score) ?? { bad: 0, neutral: 0, good: 0, easy: 0 };
+      const t = a.bad + a.neutral + a.good + a.easy;
+      const ok = t ? Math.round((100 * (a.neutral + a.good + a.easy)) / t) : 0; // everything except bad
+      const pb = t ? Math.round((100 * a.bad) / t) : 0;
       const pn = t ? Math.round((100 * a.neutral) / t) : 0;
-      const pb = t ? 100 - pg - pn : 0;
+      const pg = t ? Math.round((100 * a.good) / t) : 0;
+      const pe = t ? 100 - pb - pn - pg : 0;
       const v = verdict(t, ok);
       const mix = t
-        ? `<div class="mix"><span style="width:${pg}%;background:#1baf7a"></span><span style="width:${pn}%;background:#eda100"></span><span style="width:${pb}%;background:#e34948"></span></div><div class="mixn">${pg}% / ${pn}% / ${pb}%</div>`
+        ? `<div class="mix"><span style="width:${pb}%;background:#e34948"></span><span style="width:${pn}%;background:#9CA3AF"></span><span style="width:${pg}%;background:#2a78d6"></span><span style="width:${pe}%;background:#1baf7a"></span></div><div class="mixn">${pb}% / ${pn}% / ${pg}% / ${pe}%</div>`
         : `<span class="mixn">no reviews yet</span>`;
       return `<tr><td><b>${m.score}</b> · ${esc(m.label)}</td><td>${m.interval_days} ${m.interval_days === 1 ? "day" : "days"}</td><td class="num">${t.toLocaleString("en-US")}</td><td>${mix}</td><td class="num">${t ? ok + "%" : "–"}</td><td><span class="vd ${v.cls}">${v.text}</span></td></tr>`;
     }).join("");
@@ -1378,12 +1386,12 @@ function statsPage(url: URL) {
 <div class="sc"><b>${kanji.length}</b><span>Kanji in your list</span></div>
 <div class="sc"><b>${dueCount()}</b><span>Due now</span></div>
 <div class="sc"><b>${reviewedToday}</b><span>Reviewed today</span></div>
-<div class="sc"><b>${totalAll ? Math.round((100 * okAll) / totalAll) + "%" : "–"}</b><span>Good or neutral, ${range === 180 ? "6 months" : `${range} days`}</span></div>
+<div class="sc"><b>${totalAll ? Math.round((100 * okAll) / totalAll) + "%" : "–"}</b><span>Not bad, ${range === 180 ? "6 months" : `${range} days`}</span></div>
 </div>
 <section class="box stat"><h2>Kanji by level</h2><div class="lg">${legend}</div>${areaChart(days, series, `Kanji by level over the last ${range} days`)}</section>
 <section class="box stat"><h2>Coming up</h2><div class="lg"><span><b>${dueCount()}</b> due now (overdue plus today), then already scheduled:</span></div>${barChart(fDays.map((_, i) => `+${i + 1}`), fValues, fDays.map((d, i) => `${d}: ${fValues[i]} kanji`), BLUES[2], "Kanji already scheduled for each of the next 14 days")}</section>
-<section class="box stat"><h2>Answers by level</h2><div class="lg"><span><i style="background:#1baf7a"></i>Good</span><span><i style="background:#eda100"></i>Neutral</span><span><i style="background:#e34948"></i>Bad</span></div>
-<div class="tbw"><table class="at"><tr><th>Level</th><th>Interval</th><th class="num">Reviews</th><th>Answers</th><th class="num">Good or neutral</th><th>Verdict</th></tr>${tableRows}</table></div></section>`;
+<section class="box stat"><h2>Answers by level</h2><div class="lg"><span><i style="background:#e34948"></i>Bad</span><span><i style="background:#9CA3AF"></i>Neutral</span><span><i style="background:#2a78d6"></i>Good</span><span><i style="background:#1baf7a"></i>Easy</span></div>
+<div class="tbw"><table class="at"><tr><th>Level</th><th>Interval</th><th class="num">Reviews</th><th>Answers</th><th class="num">Not bad</th><th>Verdict</th></tr>${tableRows}</table></div></section>`;
     return html(layout("Stats – Kanji", "", body, "stats"));
   } catch (e) {
     return html(layout("Error", "", `<div class="box empty">Could not build the stats: ${esc((e as Error).message)}.</div>`), 500);
@@ -1421,7 +1429,7 @@ Bun.serve({
       if (path === "/review") return reviewNext();
       const reviewShow = path.match(/^\/review\/([^/]+)$/);
       if (reviewShow) return reviewPage(reviewShow[1]);
-      const reviewDone = path.match(/^\/review\/([^/]+)\/(good|neutral|bad)$/);
+      const reviewDone = path.match(/^\/review\/([^/]+)\/(good|neutral|bad|easy)$/);
       if (reviewDone) {
         return req.method === "POST" ? reviewResult(req, reviewDone[1], reviewDone[2] as ReviewResult) : new Response("Method not allowed", { status: 405 });
       }
