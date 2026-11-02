@@ -13,8 +13,8 @@ const db = new Database(DB_PATH, { readwrite: true });
 // ---------- settings (table `settings`: key / value) ----------
 // values are stored as text; a missing row, an unreadable table or a non-numeric value falls back to the default
 const SETTING_DEFAULTS = {
-  review_score_ceiling: 10, // a kanji's score never goes above this (the scale itself is 0 to 10)
-  review_score_floor: 0, // ... or below this
+  review_score_ceiling: 10, // a kanji's score never goes above this (the scale itself is -3 to 10)
+  review_score_floor: -3, // ... or below this
   review_score_start: 0, // score given to a kanji the moment it is added, and the value "reset scores" sets
   review_delta_bad: -3,
   review_delta_neutral: 0,
@@ -38,10 +38,14 @@ function setting(key: SettingKey): number {
 // the score decides how many days pass until the kanji is due again. A missing row, an invalid row or a missing
 // table falls back to the built-in default for that score, so a review never fails because of it.
 const MAX_SCORE = 10;
+const MIN_SCORE = -3; // the bottom "Weak" levels sit below New (0)
 // the answer buttons shown on the answer page, in order (the id is the review type saved in review_history)
 const REVIEW_BUTTONS = [["bad", "Bad"], ["neutral", "Neutral"], ["good", "Good"], ["easy", "Easy"]] as const;
 type Mastery = { score: number; label: string; interval_days: number };
 const MASTERY_DEFAULTS: Mastery[] = [
+  { score: -3, label: "Weak", interval_days: 1 },
+  { score: -2, label: "Weak", interval_days: 1 },
+  { score: -1, label: "Weak", interval_days: 1 },
   { score: 0, label: "New", interval_days: 1 },
   { score: 1, label: "Learning", interval_days: 1 },
   { score: 2, label: "Learning", interval_days: 2 },
@@ -61,7 +65,7 @@ function masteryLevels(): Mastery[] {
     for (const r of db.query(`SELECT score, label, interval_days FROM mastery_levels`).all() as Mastery[]) {
       const score = Number(r.score);
       const days = Math.floor(Number(r.interval_days));
-      if (Number.isInteger(score) && score >= 0 && score <= MAX_SCORE && String(r.label ?? "").trim() && days >= 1) {
+      if (Number.isInteger(score) && score >= MIN_SCORE && score <= MAX_SCORE && String(r.label ?? "").trim() && days >= 1) {
         levels.set(score, { score, label: String(r.label).trim(), interval_days: days });
       }
     }
@@ -72,11 +76,11 @@ function masteryLevels(): Mastery[] {
 }
 const masteryFor = (score: number): Mastery => masteryLevels().find((m) => m.score === score) ?? MASTERY_DEFAULTS[0];
 
-// lowest and highest score allowed: the settings, but never outside the 0 to 10 scale
+// lowest and highest score allowed: the settings, but never outside the -3 to 10 scale
 function scoreBounds(): [number, number] {
   const a = setting("review_score_floor");
   const b = setting("review_score_ceiling");
-  return [Math.max(0, Math.min(a, b)), Math.min(MAX_SCORE, Math.max(a, b))];
+  return [Math.max(MIN_SCORE, Math.min(a, b)), Math.min(MAX_SCORE, Math.max(a, b))];
 }
 const startScore = () => {
   const [lo, hi] = scoreBounds();
@@ -1143,7 +1147,7 @@ const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = [
   { key: "review_delta_good", label: "Good", hint: "Score change when you press Good." },
   { key: "review_delta_easy", label: "Easy", hint: "Score change when you press Easy." },
 ];
-// the score scale (0 to 10) and the starting score live in the settings table and are edited in the database; this page
+// the score scale (-3 to 10) and the starting score live in the settings table and are edited in the database; this page
 // edits the score changes for Bad / Neutral / Good and the mastery levels (label and days until the next review), and resets scores.
 function settingsPage(url: URL, errors: string[] = [], submitted?: Record<string, string>, status = 200) {
   const resetCount = url.searchParams.get("reset");
@@ -1182,7 +1186,7 @@ async function saveSettings(req: Request, url: URL) {
     if (text === "" || !Number.isInteger(n) || n < -10 || n > 10) errors.push(`${f.label} must be a whole number from -10 to 10.`);
     else deltas.push([f.key, n]);
   }
-  for (let score = 0; score <= MAX_SCORE; score++) {
+  for (let score = MIN_SCORE; score <= MAX_SCORE; score++) {
     const label = String(form.get(`label_${score}`) ?? "").trim();
     const daysText = String(form.get(`days_${score}`) ?? "").trim();
     submitted[`label_${score}`] = label;
@@ -1227,7 +1231,7 @@ async function resetScores(req: Request) {
 
 // ---------- stats page ----------
 const STAT_RANGES = [30, 90, 180] as const;
-const BLUES = ["#cfe0f7", "#7fb0ea", "#2a78d6", "#184d94", "#0d2c57"]; // one hue, light to dark: the levels are ordered
+const BLUES = ["#dbe7f8", "#b5cff2", "#8fb7ec", "#5f9ae0", "#2a78d6", "#1f5fb5", "#184d94", "#0d2c57"]; // one hue, light to dark: the levels are ordered
 const SVG_W = 720;
 const SVG_H = 300;
 const PAD = { l: 46, r: 14, t: 12, b: 30 };
@@ -1339,7 +1343,7 @@ function statsPage(url: URL) {
       days.forEach((day, i) => {
         while (p < list.length && list[p].d <= day) score = Math.round(Number(list[p++].a) || 0);
         if (addedOn && addedOn > day) return;
-        counts[groupOf.get(Math.min(MAX_SCORE, Math.max(0, score))) ?? 0][i]++;
+        counts[groupOf.get(Math.min(MAX_SCORE, Math.max(MIN_SCORE, score))) ?? 0][i]++;
       });
     }
     const last = days.length - 1;
@@ -1350,7 +1354,7 @@ function statsPage(url: URL) {
     const answers = new Map<number, { bad: number; neutral: number; good: number; easy: number }>();
     for (const r of db.query(`SELECT "before" AS s, type, COUNT(*) AS n FROM review_history WHERE ${TYPES} AND date(date) >= ? GROUP BY "before", type`).all(first) as { s: number; type: ReviewResult; n: number }[]) {
       const sc = Math.round(Number(r.s));
-      if (sc < 0 || sc > MAX_SCORE) continue;
+      if (sc < MIN_SCORE || sc > MAX_SCORE) continue;
       const a = answers.get(sc) ?? { bad: 0, neutral: 0, good: 0, easy: 0 };
       a[r.type] += r.n;
       answers.set(sc, a);
@@ -1389,7 +1393,7 @@ function statsPage(url: URL) {
 <div class="sc"><b>${totalAll ? Math.round((100 * okAll) / totalAll) + "%" : "–"}</b><span>Not bad, ${range === 180 ? "6 months" : `${range} days`}</span></div>
 </div>
 <section class="box stat"><h2>Kanji by level</h2><div class="lg">${legend}</div>${areaChart(days, series, `Kanji by level over the last ${range} days`)}</section>
-<section class="box stat"><h2>Coming up</h2><div class="lg"><span><b>${dueCount()}</b> due now (overdue plus today), then already scheduled:</span></div>${barChart(fDays.map((_, i) => `+${i + 1}`), fValues, fDays.map((d, i) => `${d}: ${fValues[i]} kanji`), BLUES[2], "Kanji already scheduled for each of the next 14 days")}</section>
+<section class="box stat"><h2>Coming up</h2><div class="lg"><span><b>${dueCount()}</b> due now (overdue plus today), then already scheduled:</span></div>${barChart(fDays.map((_, i) => `+${i + 1}`), fValues, fDays.map((d, i) => `${d}: ${fValues[i]} kanji`), BLUES[4], "Kanji already scheduled for each of the next 14 days")}</section>
 <section class="box stat"><h2>Answers by level</h2><div class="lg"><span><i style="background:#e34948"></i>Bad</span><span><i style="background:#9CA3AF"></i>Neutral</span><span><i style="background:#2a78d6"></i>Good</span><span><i style="background:#1baf7a"></i>Easy</span></div>
 <div class="tbw"><table class="at"><tr><th>Level</th><th>Interval</th><th class="num">Reviews</th><th>Answers</th><th class="num">Not bad</th><th>Verdict</th></tr>${tableRows}</table></div></section>`;
     return html(layout("Stats – Kanji", "", body, "stats"));
