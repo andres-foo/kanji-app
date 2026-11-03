@@ -41,6 +41,8 @@ const MAX_SCORE = 10;
 const MIN_SCORE = -3; // the bottom "Weak" levels sit below New (0)
 // the answer buttons shown on the answer page, in order (the id is the review type saved in review_history)
 const REVIEW_BUTTONS = [["bad", "Bad"], ["neutral", "Neutral"], ["good", "Good"], ["easy", "Easy"]] as const;
+// the keyboard shortcut for each of those answers, in the same order (Space shows the answer)
+const REVIEW_KEYS = ["A", "S", "D", "F"] as const;
 type Mastery = { score: number; label: string; interval_days: number };
 const MASTERY_DEFAULTS: Mastery[] = [
   { score: -3, label: "Weak", interval_days: 1 },
@@ -603,6 +605,9 @@ button.reviewbtn{border:0;cursor:pointer}
 .reviewbtn.good{background:#2a78d6;color:#FFFFFF}
 .reviewbtn.easy{background:var(--added-bar);color:light-dark(#FFFFFF,#052E16)}
 .reviewbtn.bad{background:var(--unfinished-bar);color:light-dark(#FFFFFF,#450A0A)}
+.reviewbtn.pressed{outline:3px solid currentColor;outline-offset:3px;filter:brightness(1.18)}
+.kbd{display:none;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;margin-right:8px;border-radius:6px;border:1px solid color-mix(in srgb,currentColor 40%,transparent);background:color-mix(in srgb,currentColor 18%,transparent);color:inherit;font:800 11px Nunito,system-ui,sans-serif;line-height:1}
+body.keys .kbd{display:inline-flex}
 .rv{display:flex;flex-direction:column;align-items:center;gap:36px;padding:48px 28px}
 .rvbig{font-size:220px;font-weight:500;line-height:1}
 .rvwords{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
@@ -878,6 +883,55 @@ const listsMenu = (active: string) => {
   return `<div class="dd"><button type="button" class="ddlabel${onList ? " on" : ""}" aria-haspopup="menu" aria-expanded="false">${onList ? current[1] : "Lists"}</button><div class="ddmenu"><nav class="ddbox" aria-label="Lists">${links}</nav></div></div>`;
 };
 
+// ---------- review keyboard shortcuts ----------
+// 0 shows the answer; 1-4 answer Bad / Neutral / Good / Easy. Desktop only: a fine pointer enables the
+// keys and reveals the hints, while phones and tablets keep the plain buttons with no hints.
+const REVIEW_KEYS_SCRIPT = `<script>
+(function () {
+  if (!window.matchMedia || !window.matchMedia("(pointer: fine)").matches || window.matchMedia("(hover: none)").matches) return;
+  var bar = document.querySelector(".reviewbar");
+  if (!bar) return;
+  document.body.classList.add("keys");
+
+  var reveal = bar.querySelector('a.reviewbtn[href*="review=1"]');
+  var NAMES = ["bad", "neutral", "good", "easy"];
+  var KEYS = { a: "bad", s: "neutral", d: "good", f: "easy" };
+  var forms = {};
+  Array.prototype.forEach.call(bar.querySelectorAll("form"), function (f) {
+    var action = f.getAttribute("action") || "";
+    var name = action.slice(action.lastIndexOf("/") + 1);
+    if (NAMES.indexOf(name) >= 0) forms[name] = f;
+  });
+  var busy = false;
+
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || busy) return;
+    var t = e.target;
+    if (t && t.closest && t.closest("input, textarea, select, [contenteditable]")) return;
+    if (document.querySelector(".lightbox")) return; // a kanji image is enlarged: leave the keys to it
+    if (e.code === "Space" || e.key === " ") {
+      if (!reveal) return;
+      e.preventDefault();
+      busy = true;
+      reveal.click();
+      return;
+    }
+    var form = forms[KEYS[(e.key || "").toLowerCase()]];
+    if (!form) return;
+    e.preventDefault();
+    busy = true;
+    // light up the chosen answer for a moment before the page changes, so the key press can be checked
+    var button = form.querySelector("button");
+    if (button) button.classList.add("pressed");
+    Array.prototype.forEach.call(bar.querySelectorAll("button"), function (b) { b.disabled = true; });
+    setTimeout(function () {
+      if (form.requestSubmit) form.requestSubmit();
+      else form.submit();
+    }, 180);
+  });
+})();
+</script>`;
+
 const layout = (title: string, q: string, body: string, active = "", bar?: string) => {
   const ctx = requestContext.getStore();
   const theme = ctx?.theme;
@@ -892,11 +946,12 @@ const layout = (title: string, q: string, body: string, active = "", bar?: strin
 <div class="navl">${listsMenu(active)}${reviewNavButton()}<a class="reviewbtn small${active === "stats" ? " on" : ""}" href="/stats">Stats</a></div>
 <form class="s" action="/" method="get" role="search">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-<input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
+<input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) && !bar ? "autofocus" : ""}>
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 </form><div class="hr">${themeToggle(back)}<a class="theme-btn" href="/settings" aria-label="Settings" title="Settings">${gearIcon}<span>Settings</span></a></div></header>
 ${bar ? `<div class="reviewbar">${bar}</div>` : ""}
 <main>${body}</main>
+${bar ? REVIEW_KEYS_SCRIPT : ""}
 <script>
 // kanji image: click or tap to see it larger, up to the width of the kanji card or the image's own size, whichever is smaller
 (function () {
@@ -1286,7 +1341,7 @@ ${componentOf(k.literal, q)}`}
   // reached through "Show answer": bad / neutral / good / easy buttons (each saves the result using the score changes from the settings) instead of the plain review link
   const reviewBar = url.searchParams.get("review") === "1"
     ? REVIEW_BUTTONS
-      .map(([id, label]) => `<form method="post" action="/review/${enc(k.literal)}/${id}"><button class="reviewbtn ${id}" type="submit">${label}</button></form>`).join("")
+      .map(([id, label], i) => `<form method="post" action="/review/${enc(k.literal)}/${id}"><button class="reviewbtn ${id}" type="submit" aria-keyshortcuts="${REVIEW_KEYS[i]}"><kbd class="kbd">${REVIEW_KEYS[i]}</kbd>${label}</button></form>`).join("")
     : undefined;
   return html(layout(`${k.literal} – Kanji`, q, body, "", reviewBar));
 }
@@ -1478,7 +1533,7 @@ function reviewPage(literal: string) {
   words.sort((a, b) => nullsLast(a.freq_wiki || null, b.freq_wiki || null) || (b.jlpt ?? 0) - (a.jlpt ?? 0));
   const list = words.map((w) => `<span class="rvw k">${esc(splitKanjiMarker(w.kanji ?? "").text)}</span>`).join("");
   const body = `<div class="kanji-card rv"><div class="rvbig k">${esc(k.literal)}</div>${list ? `<div class="rvwords">${list}</div>` : ""}</div>`;
-  const bar = `<a class="reviewbtn" href="/kanji/${enc(k.literal)}?review=1">Show answer</a>`;
+  const bar = `<a class="reviewbtn" href="/kanji/${enc(k.literal)}?review=1" aria-keyshortcuts="Space"><kbd class="kbd">Space</kbd>Show answer</a>`;
   return html(layout("Review – Kanji", "", body, "", bar));
 }
 

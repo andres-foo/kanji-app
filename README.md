@@ -142,6 +142,7 @@ Important:
 - The pick is made fresh each time. Among kanji that tie completely (see below), the choice is random, so reloading `/review` can show a different kanji.
 - When nothing is due, `/review` shows "Nothing to review right now" and tells you how many kanji are due on the next date.
 - An answer applies to whichever kanji page you pressed it on.
+- **Keyboard, desktop only.** **Space** shows the answer, then **A** Bad, **S** Neutral, **D** Good, **F** Easy. The keys are printed on the buttons, and the chosen answer lights up for a moment before the page continues. With a touch screen (no mouse or trackpad) the hints are hidden and the shortcuts are off, so the buttons behave as before.
 
 ---
 
