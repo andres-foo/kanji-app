@@ -37,7 +37,7 @@ answer  →  new score  →  interval for that score  →  due date = today + in
 | Term | Meaning |
 |---|---|
 | **Score** | A whole number from **-3 to 10** stored in `kanjis.score`. A new kanji starts at **0**. |
-| **Mastery level** | A named band of scores (Weak, New, Learning, Familiar, Strong, Mastered). Shown as a badge on the kanji page. |
+| **Mastery level** | A named band of scores (Weak, New, Learning, Familiar, Strong, Mastered). Shown at the top of the kanji page together with the score and the time until the next review (green = not scheduled yet, blue = due today, red = overdue). |
 | **Interval** | How many days until the kanji is due again. It depends only on the score the kanji has *after* the answer. |
 | **Due date** | `kanjis.due_date`, a `YYYY-MM-DD` date. Empty (`NULL`) means "never scheduled", which counts as due now. |
 | **Queue** | All added kanji with an empty due date or a due date of today or earlier. The Stats page splits it into **new** (no due date), **due today** and **overdue**. |
