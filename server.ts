@@ -524,7 +524,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .pic img{width:100%;height:100%;object-fit:cover;display:block}
 .ph{border:2px dashed var(--dash);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:13px;font-weight:700;text-align:center;padding:16px}
 .right{min-width:0;display:flex;flex-direction:column;gap:28px}
-.kwbig{font-size:44px;font-weight:900;line-height:1.05;overflow-wrap:anywhere;color:var(--accent-strong);text-transform:uppercase}
+.kwbig{font-size:28px;font-weight:900;line-height:1.05;overflow-wrap:anywhere;color:var(--accent-strong);text-transform:uppercase}
 .meanbig{font-size:22px;font-weight:700;margin-top:10px;color:var(--text)}
 .meanbig.no-kw{margin:0;font-size:40px}
 .lab{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:2px}
@@ -579,7 +579,7 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 @font-face { font-family: 'Jigmo-Full'; src: url('/fonts/Jigmo2.ttf') format('truetype'); unicode-range: U+20000-2EFFF; font-display: swap; }
 @font-face { font-family: 'Jigmo-Full'; src: url('/fonts/Jigmo3.ttf') format('truetype'); unicode-range: U+30000-323AF; font-display: swap; }
 @media(max-width:900px){.kanji-card{padding:20px}.detail{grid-template-columns:minmax(0,1fr);gap:24px}.picwrap{margin:0 auto}.ds{grid-template-columns:1fr 1fr}.wtop{grid-template-columns:1fr auto;gap:4px 16px}.wtop .wk{grid-column:1;grid-row:1}.wtop form{grid-column:2;grid-row:1;justify-self:end}.wtop .badges{grid-column:2;grid-row:2;justify-self:end}}
-@media(max-width:560px){.reviewbar{padding:10px 16px}header{padding:12px 16px;gap:12px}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.rvbig{font-size:150px}.rvw{font-size:22px}.kwbig{font-size:32px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
+@media(max-width:560px){.reviewbar{padding:10px 16px}header{padding:12px 16px;gap:12px}.theme-btn{width:40px;padding:0;justify-content:center}.theme-btn span{display:none}main{padding:20px 16px 40px}.kanji-card{padding:16px;border-radius:18px}.rvbig{font-size:150px}.rvw{font-size:22px}.kwbig{font-size:25px}.big{font-size:110px}.top{column-gap:20px}.r{grid-template-columns:76px 1fr;padding:12px 16px}.rk{font-size:48px}.r .badges{grid-column:2}.readings{font-size:12px;gap:2px 10px}}
 `;
 
 const gearIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
