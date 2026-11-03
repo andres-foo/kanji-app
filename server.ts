@@ -547,7 +547,10 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .tipbox{padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--ink-border);box-shadow:var(--ink-shadow);color:var(--text)}
 .tiptop{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px}
 .tiptop form{margin:0;flex:none}
-.exw:hover .tip,.exw:focus-within .tip{display:block}
+@media (hover:hover){.exw:hover .tip,.exw:focus-within .tip{display:block}}
+.exw.open .tip{display:block}
+.wlink{color:inherit;text-decoration:none}
+.wlink:hover{text-decoration:underline;text-decoration-thickness:2px}
 .tip .wk{font-size:24px;min-width:0}
 .tip .wm{font-size:15px}
 .exmore{margin-top:12px}.exmore .exs{margin-top:12px}
@@ -621,7 +624,23 @@ const layout = (title: string, q: string, body: string, active = "", bar?: strin
 ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 </form><div class="hr">${themeToggle(back)}<a class="theme-btn" href="/settings" aria-label="Settings" title="Settings">${gearIcon}<span>Settings</span></a></div></header>
 ${bar ? `<div class="reviewbar">${bar}</div>` : ""}
-<main>${body}</main></body></html>`;
+<main>${body}</main>
+<script>
+// touch screens (no hover): tapping an example word only opens its popover; the word inside the popover is the search link
+document.addEventListener("click", function (e) {
+  if (!matchMedia("(hover: none)").matches) return;
+  var open = document.querySelector(".exw.open");
+  var link = e.target.closest(".exw > a.ex");
+  if (link) {
+    e.preventDefault();
+    var word = link.parentNode;
+    if (open && open !== word) open.classList.remove("open");
+    word.classList.toggle("open");
+  } else if (open && !e.target.closest(".exw.open .tip")) {
+    open.classList.remove("open");
+  }
+});
+</script></body></html>`;
 };
 
 const html = (s: string, status = 200) =>
@@ -784,7 +803,7 @@ function exampleWords(literal: string, back: string) {
     const label = w.kanji || w.kana || "";
     const face = `<span class="k">${esc(label)}</span>${w.jlpt ? `<span class="b">N${esc(w.jlpt)}</span>` : ""}${w.freq_wiki ? `<span class="b">#${esc(w.freq_wiki)}</span>` : ""}`;
     const toggle = `<form method="post" action="/words/${w.id}/toggle"><input type="hidden" name="back" value="${esc(back)}"><button class="btn ${added ? "rem" : "add"}" type="submit">${added ? "Remove" : "Add"}</button></form>`;
-    const tip = `<div class="tip"><div class="tipbox"><div class="tiptop"><span class="k wk">${esc(label)}${w.kanji && w.kana ? `<span class="kana">「${esc(w.kana)}」</span>` : ""}${w.kanji_alternative ? `<span class="alt">also ${esc(w.kanji_alternative)}</span>` : ""}</span>${toggle}</div><span class="wm">${meaningGroups(w.meanings).map((m) => `<span class="sense">${esc(m)}</span>`).join("")}</span></div></div>`;
+    const tip = `<div class="tip"><div class="tipbox"><div class="tiptop"><span class="k wk"><a class="wlink" href="/?q=${enc(target)}" aria-label="Search for ${esc(target)}">${esc(label)}</a>${w.kanji && w.kana ? `<span class="kana">「${esc(w.kana)}」</span>` : ""}${w.kanji_alternative ? `<span class="alt">also ${esc(w.kanji_alternative)}</span>` : ""}</span>${toggle}</div><span class="wm">${meaningGroups(w.meanings).map((m) => `<span class="sense">${esc(m)}</span>`).join("")}</span></div></div>`;
     return `<div class="exw" id="w${w.id}"><a class="ex${added ? " added" : ""}" href="/?q=${enc(target)}" aria-label="Search for ${esc(target)}${added ? " (in your study list)" : ""}">${face}</a>${tip}</div>`;
   };
 
