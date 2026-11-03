@@ -524,7 +524,9 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .picbtn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--text);font:800 12px Nunito,system-ui,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18)}
 .picbtn:hover{background:var(--btn-hover);border-color:var(--accent)}
 .picbtn:focus-within{outline:3px solid var(--focus-ring);outline-offset:2px}
-.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.pic img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.lightbox{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.78);cursor:zoom-out}
+.lightbox img{max-width:100%;max-height:100%;height:auto;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.5);background:var(--surface)}
 .ph{border:2px dashed var(--dash);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:13px;font-weight:700;text-align:center;padding:16px}
 .right{min-width:0;display:flex;flex-direction:column;gap:28px}
 .kwbig{font-size:28px;font-weight:900;line-height:1.05;overflow-wrap:anywhere;color:var(--accent-strong);text-transform:uppercase}
@@ -630,6 +632,31 @@ ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 ${bar ? `<div class="reviewbar">${bar}</div>` : ""}
 <main>${body}</main>
 <script>
+// kanji image: click or tap to see it larger, up to the width of the kanji card or the image's own size, whichever is smaller
+(function () {
+  var overlay = null;
+  function close() { if (overlay) { overlay.remove(); overlay = null; } }
+  document.addEventListener("click", function (e) {
+    if (overlay) { close(); return; }
+    var img = e.target.closest(".pic img");
+    if (!img) return;
+    var card = img.closest(".kanji-card");
+    var width = Math.min(card ? card.getBoundingClientRect().width : Infinity, img.naturalWidth || Infinity, window.innerWidth - 32);
+    var big = document.createElement("img");
+    big.src = img.currentSrc || img.src;
+    big.alt = img.alt;
+    if (isFinite(width)) big.style.width = Math.floor(width) + "px";
+    overlay = document.createElement("div");
+    overlay.className = "lightbox";
+    overlay.appendChild(big);
+    document.body.appendChild(overlay);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") close();
+    var el = document.activeElement;
+    if ((e.key === "Enter" || e.key === " ") && !overlay && el && el.matches && el.matches(".pic img")) { e.preventDefault(); el.click(); }
+  });
+})();
 // lists dropdown: click or tap the label to open it, click anywhere else (or press Escape) to close it
 (function () {
   var dd = document.querySelector(".dd");
@@ -915,7 +942,7 @@ ${item("Related", linkKanji(k.related, q))}${item("Other forms", linkKanji(k.oth
   const imgForm = `<input type="hidden" name="back" value="${esc(editHref)}">`;
   const picBlock = `<div class="picwrap">
 ${img
-      ? `<div class="pic"><img src="/img/${enc(k.literal)}" alt="Image for ${lit}"></div>`
+      ? `<div class="pic"><img src="/img/${enc(k.literal)}" alt="Image for ${lit}" tabindex="0" title="Click to enlarge"></div>`
       : `<div class="pic ph"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>No image yet</div>`}
 ${editing ? `<div class="picbtns">
 <form method="post" action="/kanji/${enc(k.literal)}/image" enctype="multipart/form-data">${imgForm}
