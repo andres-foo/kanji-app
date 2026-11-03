@@ -43,6 +43,8 @@ const MIN_SCORE = -3; // the bottom "Weak" levels sit below New (0)
 const REVIEW_BUTTONS = [["bad", "Bad"], ["neutral", "Neutral"], ["good", "Good"], ["easy", "Easy"]] as const;
 // the keyboard shortcut for each of those answers, in the same order (Space shows the answer)
 const REVIEW_KEYS = ["A", "S", "D", "F"] as const;
+// the gamepad shoulder/trigger hint for each answer, in the same order (A shows the answer)
+const REVIEW_PAD = ["LT", "LB", "RB", "RT"] as const;
 type Mastery = { score: number; label: string; interval_days: number };
 const MASTERY_DEFAULTS: Mastery[] = [
   { score: -3, label: "Weak", interval_days: 1 },
@@ -606,8 +608,10 @@ button.reviewbtn{border:0;cursor:pointer}
 .reviewbtn.easy{background:var(--added-bar);color:light-dark(#FFFFFF,#052E16)}
 .reviewbtn.bad{background:var(--unfinished-bar);color:light-dark(#FFFFFF,#450A0A)}
 .reviewbtn.pressed{outline:3px solid currentColor;outline-offset:3px;filter:brightness(1.18)}
-.kbd{display:none;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;margin-right:8px;border-radius:6px;border:1px solid color-mix(in srgb,currentColor 40%,transparent);background:color-mix(in srgb,currentColor 18%,transparent);color:inherit;font:800 11px Nunito,system-ui,sans-serif;line-height:1}
+.kbd,.pad{display:none;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;margin-right:8px;border-radius:6px;border:1px solid color-mix(in srgb,currentColor 40%,transparent);background:color-mix(in srgb,currentColor 18%,transparent);color:inherit;font:800 11px Nunito,system-ui,sans-serif;line-height:1}
 body.keys .kbd{display:inline-flex}
+html[data-input="pad"] .kbd{display:none}
+html[data-input="pad"] body.keys .pad{display:inline-flex}
 .rv{display:flex;flex-direction:column;align-items:center;gap:36px;padding:48px 28px}
 .rvbig{font-size:220px;font-weight:500;line-height:1}
 .rvwords{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
@@ -883,9 +887,10 @@ const listsMenu = (active: string) => {
   return `<div class="dd"><button type="button" class="ddlabel${onList ? " on" : ""}" aria-haspopup="menu" aria-expanded="false">${onList ? current[1] : "Lists"}</button><div class="ddmenu"><nav class="ddbox" aria-label="Lists">${links}</nav></div></div>`;
 };
 
-// ---------- review keyboard shortcuts ----------
-// 0 shows the answer; 1-4 answer Bad / Neutral / Good / Easy. Desktop only: a fine pointer enables the
-// keys and reveals the hints, while phones and tablets keep the plain buttons with no hints.
+// ---------- review shortcuts (keyboard + gamepad) ----------
+// Keyboard: Space shows the answer, A/S/D/F answer. Gamepad: A shows the answer, LT/LB/RB/RT answer.
+// Desktop only: a fine pointer enables the shortcuts and the hints; phones and tablets keep the plain buttons.
+// The hints follow the device used last, remembered in localStorage across the reload after every answer.
 const REVIEW_KEYS_SCRIPT = `<script>
 (function () {
   if (!window.matchMedia || !window.matchMedia("(pointer: fine)").matches || window.matchMedia("(hover: none)").matches) return;
@@ -896,6 +901,8 @@ const REVIEW_KEYS_SCRIPT = `<script>
   var reveal = bar.querySelector('a.reviewbtn[href*="review=1"]');
   var NAMES = ["bad", "neutral", "good", "easy"];
   var KEYS = { a: "bad", s: "neutral", d: "good", f: "easy" };
+  var PAD = { 6: "bad", 4: "neutral", 5: "good", 7: "easy" }; // LT, LB, RB, RT
+  var REVEAL_BUTTON = 1; // A
   var forms = {};
   Array.prototype.forEach.call(bar.querySelectorAll("form"), function (f) {
     var action = f.getAttribute("action") || "";
@@ -904,23 +911,22 @@ const REVIEW_KEYS_SCRIPT = `<script>
   });
   var busy = false;
 
-  document.addEventListener("keydown", function (e) {
-    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || busy) return;
-    var t = e.target;
-    if (t && t.closest && t.closest("input, textarea, select, [contenteditable]")) return;
-    if (document.querySelector(".lightbox")) return; // a kanji image is enlarged: leave the keys to it
-    if (e.code === "Space" || e.key === " ") {
-      if (!reveal) return;
-      e.preventDefault();
-      busy = true;
-      reveal.click();
-      return;
-    }
-    var form = forms[KEYS[(e.key || "").toLowerCase()]];
-    if (!form) return;
-    e.preventDefault();
+  function setInput(kind) {
+    document.documentElement.dataset.input = kind;
+    try { localStorage.setItem("kanji_input", kind); } catch (e) {}
+  }
+
+  function showAnswer() {
+    if (!reveal || busy) return;
     busy = true;
-    // light up the chosen answer for a moment before the page changes, so the key press can be checked
+    reveal.click();
+  }
+
+  function answer(result) {
+    var form = forms[result];
+    if (!form || busy) return;
+    busy = true;
+    // light up the chosen answer for a moment before the page changes, so the press can be checked
     var button = form.querySelector("button");
     if (button) button.classList.add("pressed");
     Array.prototype.forEach.call(bar.querySelectorAll("button"), function (b) { b.disabled = true; });
@@ -928,7 +934,66 @@ const REVIEW_KEYS_SCRIPT = `<script>
       if (form.requestSubmit) form.requestSubmit();
       else form.submit();
     }, 180);
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.repeat) return;
+    if (e.key !== "Shift" && e.key !== "Control" && e.key !== "Alt" && e.key !== "Meta") setInput("keyboard");
+    if (e.ctrlKey || e.metaKey || e.altKey || busy) return;
+    var t = e.target;
+    if (t && t.closest && t.closest("input, textarea, select, [contenteditable]")) return;
+    if (document.querySelector(".lightbox")) return; // a kanji image is enlarged: leave the keys to it
+    if (e.code === "Space" || e.key === " ") {
+      if (!reveal) return;
+      e.preventDefault();
+      showAnswer();
+      return;
+    }
+    var result = KEYS[(e.key || "").toLowerCase()];
+    if (!result || !forms[result]) return;
+    e.preventDefault();
+    answer(result);
   });
+
+  // gamepad: poll every frame, act only on a new press (a button held through navigation is ignored)
+  var prev = null;
+  function held(pad, i) {
+    var b = pad.buttons && pad.buttons[i];
+    if (!b) return false;
+    return i === 6 || i === 7 ? b.value > 0.5 || b.pressed : !!b.pressed;
+  }
+  function poll() {
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var pad = null;
+    for (var p = 0; p < pads.length; p++) if (pads[p] && pads[p].connected) { pad = pads[p]; break; }
+    if (pad) {
+      if (!prev) {
+        prev = {};
+        for (var s = 0; s < pad.buttons.length; s++) prev[s] = held(pad, s);
+        // On the question page A can only reveal the answer, and on some browsers the pad only becomes
+        // visible on that first press: let it count instead of swallowing it as "already held".
+        if (reveal && held(pad, REVEAL_BUTTON)) {
+          setInput("pad");
+          showAnswer();
+        }
+      } else {
+        for (var b = 0; b < pad.buttons.length; b++) {
+          var down = held(pad, b);
+          if (down && !prev[b]) {
+            setInput("pad");
+            if (b === REVEAL_BUTTON) showAnswer();
+            else if (PAD[b]) answer(PAD[b]);
+          }
+          prev[b] = down;
+        }
+      }
+    }
+  }
+  if (navigator.getGamepads) {
+    poll(); // run once straight away: the first press can arrive before the first animation frame
+    var loop = function () { poll(); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
 })();
 </script>`;
 
@@ -940,6 +1005,7 @@ const layout = (title: string, q: string, body: string, active = "", bar?: strin
 <html lang="en"${theme ? ` data-theme="${theme}"` : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>${esc(title)}</title>
+<script>try{if(localStorage.getItem("kanji_input")==="pad")document.documentElement.dataset.input="pad";}catch(e){}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
 <style>${CSS}</style></head><body>
 <header>
@@ -1341,7 +1407,7 @@ ${componentOf(k.literal, q)}`}
   // reached through "Show answer": bad / neutral / good / easy buttons (each saves the result using the score changes from the settings) instead of the plain review link
   const reviewBar = url.searchParams.get("review") === "1"
     ? REVIEW_BUTTONS
-      .map(([id, label], i) => `<form method="post" action="/review/${enc(k.literal)}/${id}"><button class="reviewbtn ${id}" type="submit" aria-keyshortcuts="${REVIEW_KEYS[i]}"><kbd class="kbd">${REVIEW_KEYS[i]}</kbd>${label}</button></form>`).join("")
+      .map(([id, label], i) => `<form method="post" action="/review/${enc(k.literal)}/${id}"><button class="reviewbtn ${id}" type="submit" aria-keyshortcuts="${REVIEW_KEYS[i]}"><kbd class="kbd">${REVIEW_KEYS[i]}</kbd><span class="pad">${REVIEW_PAD[i]}</span>${label}</button></form>`).join("")
     : undefined;
   return html(layout(`${k.literal} – Kanji`, q, body, "", reviewBar));
 }
@@ -1533,7 +1599,7 @@ function reviewPage(literal: string) {
   words.sort((a, b) => nullsLast(a.freq_wiki || null, b.freq_wiki || null) || (b.jlpt ?? 0) - (a.jlpt ?? 0));
   const list = words.map((w) => `<span class="rvw k">${esc(splitKanjiMarker(w.kanji ?? "").text)}</span>`).join("");
   const body = `<div class="kanji-card rv"><div class="rvbig k">${esc(k.literal)}</div>${list ? `<div class="rvwords">${list}</div>` : ""}</div>`;
-  const bar = `<a class="reviewbtn" href="/kanji/${enc(k.literal)}?review=1" aria-keyshortcuts="Space"><kbd class="kbd">Space</kbd>Show answer</a>`;
+  const bar = `<a class="reviewbtn" href="/kanji/${enc(k.literal)}?review=1" aria-keyshortcuts="Space"><kbd class="kbd">Space</kbd><span class="pad">A</span>Show answer</a>`;
   return html(layout("Review – Kanji", "", body, "", bar));
 }
 
