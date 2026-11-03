@@ -772,6 +772,11 @@ h2{font-size:18px;font-weight:900;margin:0 0 12px}
 .kanji-card{margin-top:12px;padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--surface)}
 .kanji-card.added{border-left:5px solid var(--added-bar)}
 .kanji-card.unfinished{border-left:5px solid var(--unfinished-bar)}
+.kmeta{display:flex;flex-wrap:wrap;align-items:center;margin:0 0 12px;font:900 12px Nunito,system-ui,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.kmeta .ksep{margin:0 9px;color:var(--dash);font-weight:700}
+.kmeta .kdue-fresh{color:var(--due-fresh)}
+.kmeta .kdue-today{color:var(--due-today)}
+.kmeta .kdue-overdue{color:var(--due-overdue)}
 .detail{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px 56px;align-items:start}
 .top{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:36px;align-items:center}
 .big{grid-row:1/3;grid-column:1;font-size:170px;font-weight:500;line-height:1;text-align:center}
@@ -1159,6 +1164,20 @@ function componentButtons(s: string | null, q = "") {
   return `<div class="comps">${buttons.join("")}</div>`;
 }
 
+// the due part of the kanji page header: relative wording plus the same colour classes as the Stats page
+// and the navbar counter (green = no due date, blue = due today, red = overdue; future dates stay neutral)
+function dueLabel(due: string | null): { text: string; cls: string } {
+  if (!due) return { text: "Due now", cls: "kdue-fresh" };
+  const [y, m, d] = due.split("-").map(Number);
+  if (!y || !m || !d) return { text: `Due ${due}`, cls: "" };
+  const now = new Date();
+  const days = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+  if (days === 0) return { text: "Due today", cls: "kdue-today" };
+  if (days > 0) return { text: `Due in ${days} ${days === 1 ? "day" : "days"}`, cls: "" };
+  const ago = -days;
+  return { text: `Due ${ago} ${ago === 1 ? "day" : "days"} ago`, cls: "kdue-overdue" };
+}
+
 async function kanjiPage(literal: string, url: URL) {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const k = db.query(`SELECT * FROM kanjis WHERE literal = ?`).get(literal) as Kanji | null;
@@ -1169,10 +1188,11 @@ async function kanjiPage(literal: string, url: URL) {
   const state = k.added === 1 ? (k.unfinished === 1 ? "unfinished" : "added") : "";
   const status = state === "unfinished" ? `<span class="sr">Unfinished</span>` : state === "added" ? `<span class="sr">In your study list</span>` : "";
   const known = totalKnown();
-  // the mastery label (from the score) is only shown for kanji in the study list
+  // the score and the next review, shown as a small line at the top left of the card instead of a badge
   const masteryScore = Math.round(Number(k.score ?? 0) || 0);
-  const masteryBadge = k.added === 1
-    ? `<span class="b" title="Score ${masteryScore} · ${k.due_date ? `next review ${esc(k.due_date)}` : "due now"}">${esc(masteryFor(masteryScore).label)}</span>`
+  const due = dueLabel(k.due_date ?? null);
+  const masteryLine = k.added === 1
+    ? `<div class="kmeta"><span>${esc(masteryFor(masteryScore).label)}</span><span class="ksep">/</span><span>Score ${masteryScore}</span><span class="ksep">/</span><span class="${due.cls}">${esc(due.text)}</span></div>`
     : "";
   const item = (label: string, v: string) => `<div><div class="lab">${label}</div><div class="val">${v}</div></div>`;
   const inList = k.added === 1;
@@ -1244,11 +1264,12 @@ ${editing
 </div></div>`;
   const body = `
 <div class="kanji-card${state ? ` ${state}` : ""}">
+${masteryLine}
 <div class="detail">
 <div class="right">
 <div class="top">
 <div class="big k">${esc(k.literal)}</div>
-${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}${k.jlpt || k.kanken || masteryBadge ? `<div class="levels">${jlptBadge(k, known)}${kankenBadge(k, known)}${masteryBadge}</div>` : ""}</div>
+${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}${k.jlpt || k.kanken ? `<div class="levels">${jlptBadge(k, known)}${kankenBadge(k, known)}</div>` : ""}</div>
 </div>
 ${componentButtons(k.components, q)}
 </div>
