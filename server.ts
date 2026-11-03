@@ -111,13 +111,37 @@ const toHira = (s: string) => s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCh
 type Priority = "high" | "medium" | "low" | "zero";
 // every kanji with added = 1 (unlike totalKnown, which only counts finished non-component ones)
 const addedCount = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1`).get() as { n: number }).n;
-// kanji in the study list that can be reviewed now: due today or earlier, or never scheduled
-const dueCount = () => {
+// the review queue split by due state: never scheduled at all (no due date), due today, or overdue.
+// due_date is a YYYY-MM-DD text date, so comparing it to date('now', 'localtime') is a plain string comparison.
+// An empty string is treated like NULL: the app never writes one, but a manual edit could.
+type DueCounts = { fresh: number; today: number; overdue: number };
+const EMPTY_DUE_COUNTS: DueCounts = { fresh: 0, today: 0, overdue: 0 }; // e.g. the due_date column does not exist yet
+const dueCounts = (): DueCounts => {
   try {
-    return (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND (due_date IS NULL OR due_date <= date('now', 'localtime'))`).get() as { n: number }).n;
+    const row = db.query(
+      `SELECT
+         SUM(CASE WHEN due_date IS NULL OR TRIM(due_date) = '' THEN 1 ELSE 0 END) AS fresh,
+         SUM(CASE WHEN due_date = date('now', 'localtime') THEN 1 ELSE 0 END) AS today,
+         SUM(CASE WHEN due_date < date('now', 'localtime') THEN 1 ELSE 0 END) AS overdue
+       FROM kanjis WHERE COALESCE(added, 0) = 1`,
+    ).get() as Partial<DueCounts> | null;
+    return { fresh: row?.fresh ?? 0, today: row?.today ?? 0, overdue: row?.overdue ?? 0 };
   } catch {
-    return 0; // e.g. the due_date column does not exist yet; never break every page because of a counter
+    return EMPTY_DUE_COUNTS; // never break every page because of a counter
   }
+};
+// kanji in the study list that can be reviewed now: never scheduled, due today, or overdue
+const dueCount = () => {
+  const d = dueCounts();
+  return d.fresh + d.today + d.overdue;
+};
+// the navbar counter: the queue size split into its three due states, each number in its own colour
+const dueNumber = (value: number, cls: string, label: string) =>
+  `<span class="rn ${cls}" title="${value} ${label}">${value}</span>`;
+const reviewNavButton = () => {
+  const d = dueCounts();
+  const total = d.fresh + d.today + d.overdue;
+  return `<a class="reviewbtn small" href="/review" aria-label="Review: ${total} due (${d.fresh} new, ${d.today} due today, ${d.overdue} overdue)">Review (${dueNumber(d.fresh, "rn-fresh", "with no due date")}<span class="rnsep" aria-hidden="true">·</span>${dueNumber(d.today, "rn-today", "due today")}<span class="rnsep" aria-hidden="true">·</span>${dueNumber(d.overdue, "rn-overdue", "overdue")})</a>`;
 };
 const totalKnown = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND is_component IS NULL AND COALESCE(unfinished, 0) = 0`).get() as { n: number }).n;
 
@@ -343,6 +367,7 @@ const CSS = `
 --added-bg:light-dark(#E6F7EC,#101F16);--added-line:light-dark(#BFE3CC,#2A4F36);--added-row-line:light-dark(#D8EEDF,#23432E);--added-dash:light-dark(#A9D9BA,#3B6E4A);
 --unfinished-bg:light-dark(#FEE2E2,#2A1216);--unfinished-line:light-dark(#FCA5A5,#7F1D1D);--unfinished-row-line:light-dark(#FAD1D1,#3A1B1E);--unfinished-dash:light-dark(#F87171,#B91C1C);
 --added-bar:light-dark(#16A34A,#4ADE80);--unfinished-bar:light-dark(#DC2626,#F87171);
+--due-fresh:light-dark(#15803D,#4ADE80);--due-today:light-dark(#1D4ED8,#60A5FA);--due-overdue:light-dark(#B91C1C,#F87171);
 --focus-ring:light-dark(#7C3AED,#C4B5FD);--mark-line:light-dark(#7C3AED,#C4B5FD);--logo-bg:#7C3AED;--logo-fg:#FFFFFF;
 --sug-border:light-dark(#D9D2F2,#3A3352);--clear-bg:light-dark(#E4DEF6,#332D47);--clear-text:light-dark(#4B3F8F,#D6CCF7);
 --ink-1:light-dark(var(--bg),#0C0A14);--ink-2:light-dark(var(--bg),#070610);--ink-border:light-dark(var(--line),#443B67);--ink-text:light-dark(var(--text),#F6F0E2);--ink-shadow:light-dark(0 6px 18px rgba(30,27,58,.08),0 0 0 1px rgba(167,139,250,.14),0 14px 30px rgba(0,0,0,.55))}
@@ -372,11 +397,22 @@ button.reviewbtn{border:0;cursor:pointer}
 .reviewbtn.small{min-width:0;padding:0 14px;font-size:14px;font-weight:800;background:var(--surface);border:1px solid var(--line);color:var(--text)}
 .reviewbtn.small.on,.reviewbtn.small.on:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .reviewbtn.small:hover{background:var(--surface-hover);border-color:var(--accent);filter:none}
+.rn{font-weight:900}
+.rn-fresh{color:var(--due-fresh)}
+.rn-today{color:var(--due-today)}
+.rn-overdue{color:var(--due-overdue)}
+.rnsep{color:var(--muted);font-weight:700;margin:0 3px}
 .stat{padding:22px;display:flex;flex-direction:column;gap:12px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .sc{padding:16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
 .sc b{font-size:28px;font-weight:900;line-height:1.1}
 .sc span{font-size:13px;font-weight:700;color:var(--muted)}
+.sc.due-fresh{background:light-dark(#F0FDF4,#10281A);border-color:light-dark(#BBF7D0,#2A4F36)}
+.sc.due-fresh b{color:var(--due-fresh)}
+.sc.due-today{background:light-dark(#EFF6FF,#0F1E33);border-color:light-dark(#BFDBFE,#1F3A8A)}
+.sc.due-today b{color:var(--due-today)}
+.sc.due-overdue{background:light-dark(#FEF2F2,#2A1216);border-color:light-dark(#FECACA,#7F1D1D)}
+.sc.due-overdue b{color:var(--due-overdue)}
 .lg{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;font-weight:700;color:var(--muted)}
 .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
 .sv{width:100%;height:auto;display:block}
@@ -623,7 +659,7 @@ const layout = (title: string, q: string, body: string, active = "", bar?: strin
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
 <style>${CSS}</style></head><body>
 <header>
-<div class="navl">${listsMenu(active)}<a class="reviewbtn small" href="/review">Review (${dueCount()})</a><a class="reviewbtn small${active === "stats" ? " on" : ""}" href="/stats">Stats</a></div>
+<div class="navl">${listsMenu(active)}${reviewNavButton()}<a class="reviewbtn small${active === "stats" ? " on" : ""}" href="/stats">Stats</a></div>
 <form class="s" action="/" method="get" role="search">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
 <input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) ? "autofocus" : ""}>
@@ -1306,6 +1342,8 @@ async function resetScores(req: Request) {
 // ---------- stats page ----------
 const STAT_RANGES = [30, 90, 180] as const;
 const BLUES = ["#dbe7f8", "#b5cff2", "#8fb7ec", "#5f9ae0", "#2a78d6", "#1f5fb5", "#184d94", "#0d2c57"]; // one hue, light to dark: the levels are ordered
+// the three due states: green = no due date yet (new), blue = due today, red = overdue
+const DUE_COLORS = { fresh: "#16A34A", today: "#2a78d6", overdue: "#DC2626" } as const;
 const SVG_W = 720;
 const SVG_H = 300;
 const PAD = { l: 46, r: 14, t: 12, b: 30 };
@@ -1357,21 +1395,34 @@ function areaChart(days: string[], series: { label: string; color: string; value
   return `<svg class="sv" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img" aria-label="${esc(description)}"><title>${esc(description)}</title>${yAxis(ymax, step)}${areas.join("")}${xlabels}${hover}</svg>`;
 }
 
-function barChart(labels: string[], values: number[], titles: string[], color: string, description: string): string {
+// stacked vertical bars: every bar is a list of segments drawn from the bottom up, so one column can show
+// parts of a whole (the due queue) next to single-colour columns (the days to come)
+function barChart(labels: string[], bars: { value: number; color: string }[][], titles: string[], description: string): string {
   const n = labels.length;
   const plotW = SVG_W - PAD.l - PAD.r;
   const plotH = SVG_H - PAD.t - PAD.b;
-  const step = axisStep(Math.max(...values, 1));
+  const totals = bars.map((bar) => bar.reduce((a, s) => a + s.value, 0));
+  const step = axisStep(Math.max(...totals, 1));
   const ymax = step * 4;
   const slot = plotW / n;
   const bw = Math.min(24, slot * 0.7);
-  const bars = values.map((v, i) => {
-    const h = r1((plotH * v) / ymax);
+  const drawn = bars.map((bar, i) => {
     const bx = r1(PAD.l + i * slot + (slot - bw) / 2);
-    return `<g><title>${esc(titles[i])}</title><rect x="${bx}" y="${r1(PAD.t + plotH - h)}" width="${r1(bw)}" height="${h}" rx="3" fill="${color}"/></g>`;
+    const top = bar.map((s) => s.value > 0).lastIndexOf(true); // the segment that gets the rounded top
+    let base = 0;
+    const segments = bar.map((s, j) => {
+      const y0 = r1(PAD.t + plotH * (1 - base / ymax));
+      base += s.value;
+      const y1 = r1(PAD.t + plotH * (1 - base / ymax));
+      return s.value > 0
+        ? `<rect x="${bx}" y="${y1}" width="${r1(bw)}" height="${r1(y0 - y1)}"${j === top ? ' rx="3"' : ""} fill="${s.color}"/>`
+        : "";
+    }).join("");
+    // a transparent full-height rect keeps the whole column hoverable, even when the bar is short or empty
+    return `<g><title>${esc(titles[i])}</title><rect x="${r1(PAD.l + i * slot)}" y="${PAD.t}" width="${r1(slot)}" height="${plotH}" fill="transparent"/>${segments}</g>`;
   }).join("");
   const xlabels = labels.map((l, i) => `<text x="${r1(PAD.l + i * slot + slot / 2)}" y="${SVG_H - 8}" text-anchor="middle">${esc(l)}</text>`).join("");
-  return `<svg class="sv" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img" aria-label="${esc(description)}"><title>${esc(description)}</title>${yAxis(ymax, step)}${bars}${xlabels}</svg>`;
+  return `<svg class="sv" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img" aria-label="${esc(description)}"><title>${esc(description)}</title>${yAxis(ymax, step)}${drawn}${xlabels}</svg>`;
 }
 
 // too hard / about right / too easy, from the share of answers that were not bad at a level
@@ -1386,6 +1437,7 @@ function statsPage(url: URL) {
   try {
     const range = STAT_RANGES.find((r) => String(r) === url.searchParams.get("days")) ?? 30;
     const today = (db.query(`SELECT date('now', 'localtime') AS d`).get() as { d: string }).d;
+    const due = dueCounts();
     const days = Array.from({ length: range }, (_, i) => addDays(today, i - (range - 1)));
     const first = days[0];
     const TYPES = `type IN ('bad', 'neutral', 'good', 'easy')`;
@@ -1455,6 +1507,14 @@ function statsPage(url: URL) {
     const sched = new Map((db.query(`SELECT due_date AS d, COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND due_date > ? AND due_date <= ? GROUP BY due_date`).all(today, addDays(today, 14)) as { d: string; n: number }[]).map((r) => [r.d, r.n]));
     const fDays = Array.from({ length: 14 }, (_, i) => addDays(today, i + 1));
     const fValues = fDays.map((d) => sched.get(d) ?? 0);
+    // the "Now" column is the queue split into its three due states; the next 14 columns are already-scheduled counts
+    const nowBar = [
+      { value: due.fresh, color: DUE_COLORS.fresh },
+      { value: due.today, color: DUE_COLORS.today },
+      { value: due.overdue, color: DUE_COLORS.overdue },
+    ];
+    const comingBars = fValues.map((v) => [{ value: v, color: BLUES[4] }]);
+    const comingTitles = fDays.map((d, i) => `${d}: ${fValues[i]} kanji already scheduled`);
 
     const reviewedToday = (db.query(`SELECT COUNT(*) AS n FROM review_history WHERE ${TYPES} AND date(date) = ?`).get(today) as { n: number }).n;
     const pill = (r: number) => `<a class="pill${r === range ? " on" : ""}" href="/stats?days=${r}">${r === 180 ? "6 months" : `${r} days`}</a>`;
@@ -1462,12 +1522,14 @@ function statsPage(url: URL) {
 <div class="pills">${STAT_RANGES.map(pill).join("")}</div>
 <div class="cards">
 <div class="sc"><b>${kanji.length}</b><span>Kanji in your list</span></div>
-<div class="sc"><b>${dueCount()}</b><span>Due now</span></div>
+<div class="sc due-fresh"><b>${due.fresh}</b><span>New · no due date</span></div>
+<div class="sc due-today"><b>${due.today}</b><span>Due today</span></div>
+<div class="sc due-overdue"><b>${due.overdue}</b><span>Overdue</span></div>
 <div class="sc"><b>${reviewedToday}</b><span>Reviewed today</span></div>
 <div class="sc"><b>${totalAll ? Math.round((100 * okAll) / totalAll) + "%" : "–"}</b><span>Not bad, ${range === 180 ? "6 months" : `${range} days`}</span></div>
 </div>
 <section class="box stat"><h2>Kanji by level</h2><div class="lg">${legend}</div>${areaChart(days, series, `Kanji by level over the last ${range} days`)}</section>
-<section class="box stat"><h2>Coming up</h2><div class="lg"><span><b>${dueCount()}</b> due now (overdue plus today), then already scheduled:</span></div>${barChart(fDays.map((_, i) => `+${i + 1}`), fValues, fDays.map((d, i) => `${d}: ${fValues[i]} kanji`), BLUES[4], "Kanji already scheduled for each of the next 14 days")}</section>
+<section class="box stat"><h2>Coming up</h2><div class="lg"><span><b>${dueCount()}</b> due now:</span><span><i style="background:${DUE_COLORS.fresh}"></i>New, no due date ${due.fresh}</span><span><i style="background:${DUE_COLORS.today}"></i>Due today ${due.today}</span><span><i style="background:${DUE_COLORS.overdue}"></i>Overdue ${due.overdue}</span><span>then kanji already scheduled:</span></div>${barChart(["Now", ...fDays.map((_, i) => `+${i + 1}`)], [nowBar, ...comingBars], [`Now: ${due.fresh} with no due date, ${due.today} due today, ${due.overdue} overdue`, ...comingTitles], "Due kanji now (no due date, due today, overdue) and kanji already scheduled for each of the next 14 days")}</section>
 <section class="box stat"><h2>Answers by level</h2><div class="lg"><span><i style="background:#e34948"></i>Bad</span><span><i style="background:#9CA3AF"></i>Neutral</span><span><i style="background:#2a78d6"></i>Good</span><span><i style="background:#1baf7a"></i>Easy</span></div>
 <div class="tbw"><table class="at"><tr><th>Level</th><th>Interval</th><th class="num">Reviews</th><th>Answers</th><th class="num">Not bad</th><th>Verdict</th></tr>${tableRows}</table></div></section>`;
     return html(layout("Stats – Kanji", "", body, "stats"));

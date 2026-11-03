@@ -40,8 +40,8 @@ answer  →  new score  →  interval for that score  →  due date = today + in
 | **Mastery level** | A named band of scores (Weak, New, Learning, Familiar, Strong, Mastered). Shown as a badge on the kanji page. |
 | **Interval** | How many days until the kanji is due again. It depends only on the score the kanji has *after* the answer. |
 | **Due date** | `kanjis.due_date`, a `YYYY-MM-DD` date. Empty (`NULL`) means "never scheduled", which counts as due now. |
-| **Queue** | All added kanji with an empty due date or a due date of today or earlier. |
-| **Review counter** | The number in the navbar, `Review (N)`. It is the size of the queue right now. |
+| **Queue** | All added kanji with an empty due date or a due date of today or earlier. The Stats page splits it into **new** (no due date), **due today** and **overdue**. |
+| **Review counter** | The numbers in the navbar, `Review (new · today · overdue)`, coloured green, blue and red. Together they are the size of the queue right now. |
 
 ---
 
@@ -230,13 +230,14 @@ The **Stats** page (`/stats`) is built from the review history and the current s
 
 | Section | What it shows |
 |---|---|
-| **Cards** | Kanji in your list, **Due now** (the queue size), reviewed today, and the **Not bad** percentage for the chosen period |
+| **Cards** | Kanji in your list, the queue split into **New · no due date** (green), **Due today** (blue) and **Overdue** (red), reviewed today, and the **Not bad** percentage for the chosen period |
 | **Kanji by level** | A stacked chart of how many kanji sit at each mastery level on each day, rebuilt from the `after` scores in the history |
-| **Coming up** | How many kanji are already scheduled for each of the next 14 days (overdue kanji are counted in "due now") |
+| **Coming up** | A stacked **Now** column (green new / blue due today / red overdue), then how many kanji are already scheduled for each of the next 14 days |
 | **Answers by level** | For each score: number of reviews, split of Bad / Neutral / Good / Easy, the **Not bad** percentage and a verdict |
 
 Definitions:
 
+- **Due states**: **new** = `due_date` is empty (never scheduled, so it is due immediately), **due today** = `due_date` is the server's local date, **overdue** = `due_date` is earlier. The three together are the queue.
 - **Not bad** = every answer except Bad (Neutral + Good + Easy) divided by all answers.
 - **Level** in the answers table is the score the kanji had *before* the answer, since that is the interval that was just tested.
 - **Verdict** for each level, to help you tune the intervals:
