@@ -853,8 +853,9 @@ function componentOf(literal: string, q: string) {
 </div>`;
 }
 
-// one button per component character, linking to a search for it; shows its keyword when it is a kanji in the database
-function componentButtons(s: string | null) {
+// one button per component character: a link to its own kanji page when it is a kanji in the database,
+// otherwise (e.g. a radical that is not in the database) a search for it; shows its keyword when it has one
+function componentButtons(s: string | null, q = "") {
   const chars = [...new Set([...(s ?? "")].filter((c) => !/[\s,、;；，]/.test(c)))];
   if (!chars.length) return "";
   const keywords = new Map(
@@ -863,7 +864,9 @@ function componentButtons(s: string | null) {
   );
   const buttons = chars.map((c) => {
     const kw = keywords.get(c);
-    return `<a class="comp" href="/?q=${enc(c)}" aria-label="Search for ${esc(c)}${kw ? ` (${esc(kw)})` : ""}"><span class="k">${esc(c)}</span>${kw ? `<span class="ckw">${esc(kw)}</span>` : ""}</a>`;
+    const inDb = keywords.has(c);
+    const href = inDb ? `/kanji/${enc(c)}${q ? `?q=${enc(q)}` : ""}` : `/?q=${enc(c)}`;
+    return `<a class="comp" href="${href}" aria-label="${inDb ? "Open" : "Search for"} ${esc(c)}${kw ? ` (${esc(kw)})` : ""}"><span class="k">${esc(c)}</span>${kw ? `<span class="ckw">${esc(kw)}</span>` : ""}</a>`;
   });
   return `<div class="comps">${buttons.join("")}</div>`;
 }
@@ -944,7 +947,7 @@ ${editing
 <div class="big k">${esc(k.literal)}</div>
 ${k.keyword ? `<div class="kwbig">${esc(keywordText(k.keyword))}</div>` : ""}<div class="meanbig${k.keyword ? "" : " no-kw"}">${meanings(k.meanings)}${k.jlpt || k.kanken || masteryBadge ? `<div class="levels">${jlptBadge(k, known)}${kankenBadge(k, known)}${masteryBadge}</div>` : ""}</div>
 </div>
-${componentButtons(k.components)}
+${componentButtons(k.components, q)}
 </div>
 ${picBlock}
 </div>
