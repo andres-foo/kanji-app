@@ -408,13 +408,16 @@ button.reviewbtn{border:0;cursor:pointer}
 .notice.ok{background:light-dark(#DCFCE7,#14532D);color:light-dark(#14532D,#BBF7D0)}
 .notice.err{background:light-dark(#FEE2E2,#7F1D1D);color:light-dark(#7F1D1D,#FECACA)}
 .dd{position:relative}
-.ddlabel{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--text);font:800 14px Nunito,system-ui,sans-serif;white-space:nowrap}
+.ddlabel{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--text);font:800 14px Nunito,system-ui,sans-serif;white-space:nowrap;cursor:pointer;appearance:none}
 .ddlabel::after{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg)}
-.ddlabel:hover,.dd:hover .ddlabel,.dd:focus-within .ddlabel{background:var(--surface-hover);border-color:var(--accent)}
-.ddlabel.on,.ddlabel.on:hover,.dd:hover .ddlabel.on,.dd:focus-within .ddlabel.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.ddlabel:hover,.dd.open .ddlabel{background:var(--surface-hover);border-color:var(--accent)}
+@media (hover:hover){.dd:hover .ddlabel{background:var(--surface-hover);border-color:var(--accent)}}
+.ddlabel.on,.ddlabel.on:hover,.dd.open .ddlabel.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+@media (hover:hover){.dd:hover .ddlabel.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}}
 .ddlabel.on::after{border-color:var(--on-accent)}
 .ddmenu{display:none;position:absolute;top:100%;left:0;z-index:20;min-width:100%;padding-top:6px}
-.dd:hover .ddmenu,.dd:focus-within .ddmenu{display:block}
+.dd.open .ddmenu{display:block}
+@media (hover:hover){.dd:hover .ddmenu{display:block}}
 .ddbox{display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.18)}
 .ddbox a{display:flex;align-items:center;height:36px;padding:0 12px;border-radius:8px;font-weight:800;font-size:14px;color:var(--text);white-space:nowrap}
 .ddbox a:hover{background:var(--btn-hover);color:var(--accent-strong)}
@@ -596,14 +599,15 @@ const themeButton = (theme: Theme, label: string, icon: string, back: string) =>
 const themeToggle = (back: string) =>
   `<div class="themes">${themeButton("light", "Light", sunIcon, back)}${themeButton("dark", "Dark", moonIcon, back)}</div>`;
 
-// hover dropdown with the three list pages; the label is a link to the current list page (MY LIST by default)
-// and gets the accent colour only while one of the list pages is open
+// dropdown with the three list pages: click or tap the label to open it (it also opens on hover where hovering exists).
+// The label says "Lists" and only shows a list name, in the accent colour, while one of the list pages is open.
 const listsMenu = (active: string) => {
   const items = [["my-list", `MY LIST (${addedCount()})`], ["jlpt", "JLPT"], ["kanken", "KANKEN"]] as const;
   const onList = items.some(([id]) => id === active);
   const current = items.find(([id]) => id === active) ?? items[0];
   const links = items.map(([id, label]) => `<a href="/${id}"${active === id ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("");
-  return `<div class="dd"><a class="ddlabel${onList ? " on" : ""}" href="/${current[0]}"${onList ? ' aria-current="page"' : ""}>${current[1]}</a><div class="ddmenu"><nav class="ddbox" aria-label="Lists">${links}</nav></div></div>`;
+  // the label says "Lists" until you are on one of the list pages, then it shows that page's name in the accent colour
+  return `<div class="dd"><button type="button" class="ddlabel${onList ? " on" : ""}" aria-haspopup="menu" aria-expanded="false">${onList ? current[1] : "Lists"}</button><div class="ddmenu"><nav class="ddbox" aria-label="Lists">${links}</nav></div></div>`;
 };
 
 const layout = (title: string, q: string, body: string, active = "", bar?: string) => {
@@ -626,6 +630,21 @@ ${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
 ${bar ? `<div class="reviewbar">${bar}</div>` : ""}
 <main>${body}</main>
 <script>
+// lists dropdown: click or tap the label to open it, click anywhere else (or press Escape) to close it
+(function () {
+  var dd = document.querySelector(".dd");
+  if (!dd) return;
+  var label = dd.querySelector(".ddlabel");
+  function setOpen(open) {
+    dd.classList.toggle("open", open);
+    label.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+  document.addEventListener("click", function (e) {
+    if (e.target.closest(".ddlabel")) setOpen(!dd.classList.contains("open"));
+    else if (!e.target.closest(".ddmenu")) setOpen(false);
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") setOpen(false); });
+})();
 // touch screens (no hover): tapping an example word only opens its popover; the word inside the popover is the search link
 document.addEventListener("click", function (e) {
   if (!matchMedia("(hover: none)").matches) return;
