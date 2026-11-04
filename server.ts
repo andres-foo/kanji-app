@@ -1,13 +1,12 @@
-import { join } from "node:path";
-import { unlink } from "node:fs/promises";
-import { PORT, IMAGES_DIR } from "./src/config";
+import { PORT } from "./src/config";
 import { db } from "./src/db";
 import { esc, html, likeEsc, toKata, highlight, nullsLast, enc } from "./src/html";
 import { search, shortQuery } from "./src/search";
 import { requestContext, themeFrom, detailsOpenFrom, sameOrigin, safeBack } from "./src/prefs";
-import { dueCount, dueCounts, REVIEW_BUTTONS, REVIEW_KEYS, REVIEW_PAD } from "./src/review";
+import { dueCount, dueCounts, pickReviewKanji, REVIEW_BUTTONS, REVIEW_KEYS, REVIEW_PAD, saveReview, type ReviewResult } from "./src/review";
 import { layout } from "./src/views/layout";
-import { setting, scoreBounds, startScore, type SettingKey } from "./src/settings";
+import { findImage, imagePath, kanjiExists, MAX_IMAGE_BYTES, removeImages, sniffImage } from "./src/images";
+import { setting, startScore, type SettingKey } from "./src/settings";
 import { MAX_SCORE, MIN_SCORE, masteryLevels, masteryFor } from "./src/mastery";
 import { storyHtml } from "./src/story";
 import type { Kanji, Word } from "./src/types";
@@ -114,16 +113,6 @@ function romajiToHiragana(input: string): string | null {
   }
   return out;
 }
-
-async function findImage(literal: string) {
-  if ([...literal].length !== 1) return null;
-  for (const ext of ["jpg", "png"]) {
-    const f = Bun.file(join(IMAGES_DIR, `${literal}.${ext}`));
-    if (await f.exists()) return f;
-  }
-  return null;
-}
-
 
 const readingsRow = (k: Kanji, q: string) => {
   const on = readingList(k.onReadings);
@@ -521,32 +510,8 @@ async function updateKanji(req: Request, literal: string) {
   return new Response(null, { status: 303, headers: { location: back } });
 }
 
-// ---------- images ----------
-const IMAGE_EXTS = ["jpg", "png"] as const;
-const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
-const imagePath = (literal: string, ext: string) => join(IMAGES_DIR, `${literal}.${ext}`);
-const imageExtsOnDisk = async (literal: string) => {
-  const found: string[] = [];
-  for (const ext of IMAGE_EXTS) if (await Bun.file(imagePath(literal, ext)).exists()) found.push(ext);
-  return found;
-};
-// delete every image of the kanji except the format being kept, then verify nothing else is left; returns an error message or null
-async function removeImages(literal: string, keep?: string): Promise<string | null> {
-  for (const ext of IMAGE_EXTS) {
-    if (ext === keep) continue;
-    try { await unlink(imagePath(literal, ext)); }
-    catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") return `Could not delete ${literal}.${ext}: ${(e as Error).message}`; }
-  }
-  const left = (await imageExtsOnDisk(literal)).filter((ext) => ext !== keep);
-  return left.length ? `Old image files are still present for ${literal}: ${left.map((e) => `${literal}.${e}`).join(", ")}.` : null;
-}
-const sniffImage = (b: Uint8Array): "png" | "jpg" | null =>
-  b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 && b[4] === 0x0d && b[5] === 0x0a && b[6] === 0x1a && b[7] === 0x0a ? "png"
-    : b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? "jpg" : null;
 const imageError = (msg: string, status: number) =>
   html(layout("Error", "", `<div class="box empty">${esc(msg)}</div>`), status);
-const kanjiExists = (literal: string) =>
-  [...literal].length === 1 && !!db.query(`SELECT 1 FROM kanjis WHERE literal = ?`).get(literal);
 
 // replace the kanji's image with an uploaded jpg/png and make sure no file of the other format remains
 async function uploadImage(req: Request, literal: string) {
@@ -605,19 +570,6 @@ async function toggleDetails(req: Request) {
 }
 
 // ---------- review ----------
-// the next kanji to review: added kanji that are due (due today or earlier, or never scheduled), the most overdue first,
-// then the one reviewed longest ago (never reviewed first), then the lowest score, then random.
-// Read-only: nothing is recorded until a result button is pressed.
-function pickReviewKanji(): string | null {
-  const k = db.query(
-    `SELECT literal FROM kanjis
-     WHERE COALESCE(added, 0) = 1 AND (due_date IS NULL OR due_date <= date('now', 'localtime'))
-     ORDER BY due_date ASC, last_reviewed ASC, COALESCE(score, 0) ASC, RANDOM() LIMIT 1`,
-  ).get() as { literal: string } | null;
-  return k?.literal ?? null;
-}
-
-// /review: only chooses the next kanji and redirects to its own page; nothing is recorded until a result button is pressed there
 function reviewNext() {
   try {
     const literal = pickReviewKanji();
@@ -649,29 +601,10 @@ function reviewPage(literal: string) {
   return html(layout("Review – Kanji", "", body, "", bar));
 }
 
-// bad / neutral / good / easy: change the score by the amounts from the settings (default -3 / 0 / +1 / +2) within the bounds,
-// schedule the next review from the new score's interval in mastery_levels (a bad answer is due again today),
-// and record the review in review_history (score before and after, type as text). Rows are never deleted: it is a permanent log.
-const REVIEW_DELTA_KEYS = { bad: "review_delta_bad", neutral: "review_delta_neutral", good: "review_delta_good", easy: "review_delta_easy" } as const;
-type ReviewResult = keyof typeof REVIEW_DELTA_KEYS;
-
 async function reviewResult(req: Request, literal: string, result: ReviewResult) {
   if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
   try {
-    const found = db.transaction(() => {
-      const k = db.query(`SELECT score FROM kanjis WHERE literal = ?`).get(literal) as { score: number | null } | null;
-      if (!k) return false;
-      const before = Math.round(Number(k.score ?? 0) || 0);
-      const [lo, hi] = scoreBounds();
-      const after = Math.min(hi, Math.max(lo, Math.round(before + setting(REVIEW_DELTA_KEYS[result]))));
-      const days = result === "bad" ? 0 : masteryFor(after).interval_days;
-      db.run(
-        `UPDATE kanjis SET score = ?, last_reviewed = date('now', 'localtime'), due_date = date('now', 'localtime', ?) WHERE literal = ?`,
-        [after, `+${days} days`, literal],
-      );
-      db.run(`INSERT INTO review_history (kanji, date, "before", "after", type) VALUES (?, datetime('now', 'localtime'), ?, ?, ?)`, [literal, before, after, result]);
-      return true;
-    })();
+    const found = saveReview(literal, result);
     if (!found) return html(layout("Not found", "", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
   } catch (e) {
     return html(layout("Error", "", `<div class="box empty">Could not save the review: ${esc((e as Error).message)}. Is the database file writable, and do the last_reviewed and due_date columns exist?</div>`), 500);

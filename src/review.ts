@@ -1,4 +1,6 @@
 import { db } from "./db";
+import { masteryFor } from "./mastery";
+import { scoreBounds, setting } from "./settings";
 
 // the answer buttons shown on the answer page, in order (the id is the review type saved in review_history)
 export const REVIEW_BUTTONS = [["bad", "Bad"], ["neutral", "Neutral"], ["good", "Good"], ["easy", "Easy"]] as const;
@@ -33,3 +35,39 @@ export const dueCount = () => {
   const d = dueCounts();
   return d.fresh + d.today + d.overdue;
 };
+
+// the next kanji to review: added kanji that are due (due today or earlier, or never scheduled), the most overdue
+// first, then the one reviewed longest ago (never reviewed first), then the lowest score, then random.
+// Read-only: nothing is recorded until a result button is pressed.
+export function pickReviewKanji(): string | null {
+  const k = db.query(
+    `SELECT literal FROM kanjis
+     WHERE COALESCE(added, 0) = 1 AND (due_date IS NULL OR due_date <= date('now', 'localtime'))
+     ORDER BY due_date ASC, last_reviewed ASC, COALESCE(score, 0) ASC, RANDOM() LIMIT 1`,
+  ).get() as { literal: string } | null;
+  return k?.literal ?? null;
+}
+
+// bad / neutral / good / easy: change the score by the amounts from the settings (default -3 / 0 / +1 / +2) within
+// the bounds, schedule the next review from the new score's interval in mastery_levels (a bad answer is due again
+// today), and record the review in review_history (score before and after, type as text). Rows are never deleted.
+export const REVIEW_DELTA_KEYS = { bad: "review_delta_bad", neutral: "review_delta_neutral", good: "review_delta_good", easy: "review_delta_easy" } as const;
+export type ReviewResult = keyof typeof REVIEW_DELTA_KEYS;
+
+// apply one answer and return false when the kanji does not exist
+export function saveReview(literal: string, result: ReviewResult): boolean {
+  return db.transaction(() => {
+    const k = db.query(`SELECT score FROM kanjis WHERE literal = ?`).get(literal) as { score: number | null } | null;
+    if (!k) return false;
+    const before = Math.round(Number(k.score ?? 0) || 0);
+    const [lo, hi] = scoreBounds();
+    const after = Math.min(hi, Math.max(lo, Math.round(before + setting(REVIEW_DELTA_KEYS[result]))));
+    const days = result === "bad" ? 0 : masteryFor(after).interval_days;
+    db.run(
+      `UPDATE kanjis SET score = ?, last_reviewed = date('now', 'localtime'), due_date = date('now', 'localtime', ?) WHERE literal = ?`,
+      [after, `+${days} days`, literal],
+    );
+    db.run(`INSERT INTO review_history (kanji, date, "before", "after", type) VALUES (?, datetime('now', 'localtime'), ?, ?, ?)`, [literal, before, after, result]);
+    return true;
+  })();
+}
