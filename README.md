@@ -23,15 +23,18 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 - `IMAGES_DIR` (default `./data/images`): one image per kanji, named after the character (`水.jpg` or `水.png`). Square images look best; they are picked up on the next page load.
 - No dependencies: `bun:sqlite` is built in.
 
-The folders look like this:
+## Project layout
 
-    data/kanji.db        the database
-    data/images/         one picture per kanji
-    public/              stylesheet, client scripts and the Jigmo fonts
-    src/                 config, helpers, review logic and the page views
-    server.ts            the Bun server and routes
+| Path | Contents |
+|---|---|
+| `server.ts` | the Bun server: static and font routes, the URL dispatch table, startup |
+| `src/` | the app logic — config, database, HTML helpers, search, settings, mastery, review, stats, images, story |
+| `src/views/` | the HTML for each page: layout, home, lists, kanji, review, settings, stats and charts |
+| `src/routes/` | the POST handlers: kanji edit/toggle, images, theme/details, review answers, settings |
+| `public/` | the stylesheet, browser scripts and the Jigmo fonts |
+| `data/` | `kanji.db` and the kanji pictures |
 
-Assumptions you can change at the top of `server.ts`:
+Assumptions the app makes:
 - `frequency` and `freq_wiki` are ranks (1 = most common), so lower sorts first.
 - `jlpt` is 1 to 5 (shown as N1 to N5) and `kanken` is shown as-is.
 
