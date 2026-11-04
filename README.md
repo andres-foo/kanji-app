@@ -1,23 +1,35 @@
-# Kanji app
+# KanjiApp
 
-Server-rendered Bun app (no frontend JavaScript) over your SQLite database.
+A personal project for studying kanji and managing mnemonics.
 
-Light and dark themes are available from the header toggle. The choice is stored in a
-`kanji_theme` cookie; with no cookie the page follows the operating system's
-`prefers-color-scheme` setting. The kanji Details section likewise remembers whether
-it was left open or closed in a `kanji_details` cookie.
+It is a small, self-hosted, server-rendered web app that runs on top of your own SQLite kanji database. Bun serves it from a single `server.ts` file — no build step, no framework, no account, no cloud. The database holds your list, scores, history and mnemonics; the pictures live in a folder beside it.
 
-    bun run start            # http://localhost:3000
+## What you can do with it
+
+**Search and browse.** Look up kanji by character, keyword, meaning, reading or romaji, with readings, components, JLPT/Kanken levels, frequency and example words; words are searchable too. Text searches need two characters, but a single kanji or kana is enough for a direct lookup. **My List** groups what you are studying by date or score, and the JLPT and Kanken pages show every level as a grid.
+
+**Write and edit.** Adding a kanji takes a click. Every entry has a story field for your mnemonic with simple formatting (`=keyword=`, `_component_`, `?note?`, `#link#`), rendered while you type with a code toggle for the raw markers, and the keyword, components, related forms, flags and image are edited on the same page.
+
+**Review and measure.** A simple spaced-repetition system moves each kanji's score and uses it to pick the next interval; the queue is split into new, due today and overdue. Answer with the buttons, the keyboard (`Space` to reveal, `A S D F` to answer) or a controller (`A` to reveal, `LT LB RB RT` to answer), and watch the **Stats** page for the list size, the due queue, the level trend and the answer mix.
+
+**Make it yours.** Light and dark themes, editable review deltas and mastery-level names, and a reset that returns every added kanji to the starting score.
+
+## Quick start
+
+    bun run start                                  # http://localhost:3000
     DB_PATH=/path/to/kanji.db IMAGES_DIR=/path/to/images PORT=3000 bun run start
 
-- `DB_PATH` (default `./kanji.db`): opened read-only. Needs the `kanjis` and `examples` tables.
-- `IMAGES_DIR` (default `./images`): put `水.jpg` or `水.png` here (file name = the literal). Square images look best. They are picked up on the next page load.
-- Search covers kanji, keywords, meanings, readings and romaji. It requires at least two characters for text, but single kanji/kana lookups are allowed; empty queries are rejected.
+- `DB_PATH` (default `./kanji.db`): the SQLite database. It needs the `kanjis` and `examples` tables; the review pages also use the `score`, `last_reviewed` and `due_date` columns plus the `review_history`, `settings` and `mastery_levels` tables described below. The app writes to the database (adding kanji, saving edits, recording reviews), so point it at a copy if you only want to look around.
+- `IMAGES_DIR` (default `./images`): one image per kanji, named after the character (`水.jpg` or `水.png`). Square images look best; they are picked up on the next page load.
 - No dependencies: `bun:sqlite` is built in.
 
 Assumptions you can change at the top of `server.ts`:
 - `frequency` and `freq_wiki` are ranks (1 = most common), so lower sorts first.
 - `jlpt` is 1 to 5 (shown as N1 to N5) and `kanken` is shown as-is.
+
+## Overview
+
+Search for a kanji, add it to your list, write a short mnemonic, and let the review queue bring it back when it is due. Each answer moves the score, the score picks the next interval, and the stats show how the list is doing. That is the app in one loop: find, add, write, review, repeat.
 
 
 ## Scoring and review system
