@@ -7,6 +7,7 @@ import { layout } from "./src/views/layout";
 import { home } from "./src/views/home";
 import { levelPage, myListPage } from "./src/views/lists";
 import { kanjiPage } from "./src/views/kanji";
+import { designKanjiPage } from "./src/views/design";
 import { reviewNext, reviewPage } from "./src/views/review";
 import { settingsPage } from "./src/views/settings";
 import { statsPage } from "./src/views/stats";
@@ -19,6 +20,7 @@ import { saveSettings, resetScores } from "./src/routes/settings";
 // ---------- server ----------
 const STATIC_FILES: Record<string, [string, string]> = {
   "/styles.css": ["public/styles.css", "text/css; charset=utf-8"],
+  "/redesign.css": ["public/redesign.css", "text/css; charset=utf-8"],
   "/js/layout.js": ["public/js/layout.js", "text/javascript; charset=utf-8"],
   "/js/story-editor.js": ["public/js/story-editor.js", "text/javascript; charset=utf-8"],
   "/js/review-keys.js": ["public/js/review-keys.js", "text/javascript; charset=utf-8"],
@@ -85,6 +87,8 @@ Bun.serve({
       if (path === "/my-list") return myListPage(url);
       if (path === "/jlpt") return levelPage("jlpt", "JLPT", "jlpt");
       if (path === "/kanken") return levelPage("kanken", "KANKEN", "kanken");
+      const designKanji = path.match(/^\/design\/kanji\/([^/]+)$/);
+      if (designKanji) return designKanjiPage(designKanji[1]);
       if (path.startsWith("/kanji/")) return kanjiPage(path.slice(7), url);
       if (path.startsWith("/img/")) {
         const f = await findImage(path.slice(5));
