@@ -1,5 +1,12 @@
 import { db } from "./db";
 
+// the answer buttons shown on the answer page, in order (the id is the review type saved in review_history)
+export const REVIEW_BUTTONS = [["bad", "Bad"], ["neutral", "Neutral"], ["good", "Good"], ["easy", "Easy"]] as const;
+// the keyboard shortcut for each of those answers, in the same order (Space shows the answer)
+export const REVIEW_KEYS = ["A", "S", "D", "F"] as const;
+// the gamepad shoulder/trigger hint for each answer, in the same order (A shows the answer)
+export const REVIEW_PAD = ["LT", "LB", "RB", "RT"] as const;
+
 // The review queue split by due state: never scheduled at all (no due date), due today, or overdue.
 // due_date is a YYYY-MM-DD text date, so comparing it to date('now', 'localtime') is a plain string comparison.
 // An empty string is treated like NULL: the app never writes one, but a manual edit could.

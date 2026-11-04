@@ -2,106 +2,15 @@ import { join } from "node:path";
 import { unlink } from "node:fs/promises";
 import { PORT, IMAGES_DIR } from "./src/config";
 import { db } from "./src/db";
-import { esc, html, likeEsc, toHira, toKata, highlight, nullsLast, enc } from "./src/html";
-import { shortQuery } from "./src/search";
+import { esc, html, likeEsc, toKata, highlight, nullsLast, enc } from "./src/html";
+import { search, shortQuery } from "./src/search";
 import { requestContext, themeFrom, detailsOpenFrom, sameOrigin, safeBack } from "./src/prefs";
-import { dueCount, dueCounts } from "./src/review";
+import { dueCount, dueCounts, REVIEW_BUTTONS, REVIEW_KEYS, REVIEW_PAD } from "./src/review";
 import { layout } from "./src/views/layout";
-
-// ---------- settings (table `settings`: key / value) ----------
-// values are stored as text; a missing row, an unreadable table or a non-numeric value falls back to the default
-const SETTING_DEFAULTS = {
-  review_score_ceiling: 10, // a kanji's score never goes above this (the scale itself is -3 to 10)
-  review_score_floor: -3, // ... or below this
-  review_score_start: 0, // score given to a kanji the moment it is added, and the value "reset scores" sets
-  review_delta_bad: -3,
-  review_delta_neutral: 0,
-  review_delta_good: 1,
-  review_delta_easy: 2,
-} as const;
-type SettingKey = keyof typeof SETTING_DEFAULTS;
-
-function setting(key: SettingKey): number {
-  try {
-    const row = db.query(`SELECT value FROM settings WHERE key = ?`).get(key) as { value: string | null } | null;
-    const text = String(row?.value ?? "").trim();
-    const n = Number(text);
-    return text !== "" && Number.isFinite(n) ? n : SETTING_DEFAULTS[key];
-  } catch {
-    return SETTING_DEFAULTS[key];
-  }
-}
-
-// ---------- mastery levels (table `mastery_levels`: score / label / interval_days) ----------
-// the score decides how many days pass until the kanji is due again. A missing row, an invalid row or a missing
-// table falls back to the built-in default for that score, so a review never fails because of it.
-const MAX_SCORE = 10;
-const MIN_SCORE = -3; // the bottom "Weak" levels sit below New (0)
-// the answer buttons shown on the answer page, in order (the id is the review type saved in review_history)
-const REVIEW_BUTTONS = [["bad", "Bad"], ["neutral", "Neutral"], ["good", "Good"], ["easy", "Easy"]] as const;
-// the keyboard shortcut for each of those answers, in the same order (Space shows the answer)
-const REVIEW_KEYS = ["A", "S", "D", "F"] as const;
-// the gamepad shoulder/trigger hint for each answer, in the same order (A shows the answer)
-const REVIEW_PAD = ["LT", "LB", "RB", "RT"] as const;
-type Mastery = { score: number; label: string; interval_days: number };
-const MASTERY_DEFAULTS: Mastery[] = [
-  { score: -3, label: "Weak", interval_days: 1 },
-  { score: -2, label: "Weak", interval_days: 1 },
-  { score: -1, label: "Weak", interval_days: 1 },
-  { score: 0, label: "New", interval_days: 1 },
-  { score: 1, label: "Learning", interval_days: 1 },
-  { score: 2, label: "Learning", interval_days: 2 },
-  { score: 3, label: "Learning", interval_days: 3 },
-  { score: 4, label: "Familiar", interval_days: 4 },
-  { score: 5, label: "Familiar", interval_days: 6 },
-  { score: 6, label: "Familiar", interval_days: 8 },
-  { score: 7, label: "Strong", interval_days: 12 },
-  { score: 8, label: "Strong", interval_days: 16 },
-  { score: 9, label: "Strong", interval_days: 20 },
-  { score: 10, label: "Mastered", interval_days: 25 },
-];
-
-function masteryLevels(): Mastery[] {
-  const levels = new Map(MASTERY_DEFAULTS.map((m) => [m.score, m]));
-  try {
-    for (const r of db.query(`SELECT score, label, interval_days FROM mastery_levels`).all() as Mastery[]) {
-      const score = Number(r.score);
-      const days = Math.floor(Number(r.interval_days));
-      if (Number.isInteger(score) && score >= MIN_SCORE && score <= MAX_SCORE && String(r.label ?? "").trim() && days >= 1) {
-        levels.set(score, { score, label: String(r.label).trim(), interval_days: days });
-      }
-    }
-  } catch {
-    // table missing: the defaults above are used
-  }
-  return [...levels.values()].sort((a, b) => a.score - b.score);
-}
-const masteryFor = (score: number): Mastery => masteryLevels().find((m) => m.score === score) ?? MASTERY_DEFAULTS[0];
-
-// lowest and highest score allowed: the settings, but never outside the -3 to 10 scale
-function scoreBounds(): [number, number] {
-  const a = setting("review_score_floor");
-  const b = setting("review_score_ceiling");
-  return [Math.max(MIN_SCORE, Math.min(a, b)), Math.min(MAX_SCORE, Math.max(a, b))];
-}
-const startScore = () => {
-  const [lo, hi] = scoreBounds();
-  return Math.min(hi, Math.max(lo, Math.round(setting("review_score_start"))));
-};
-
-type Kanji = {
-  literal: string; meanings: string; onReadings: string | null; kunReadings: string | null;
-  strokes: number | null; jlpt: number | null; frequency: number | null; grade: number | null;
-  heisg6: number | null; components: string | null; other_forms: string | null;
-  kanken: number | null; story: string | null; related: string | null; keyword: string | null;
-  added: number | null; unfinished: number | null; is_component: number | null;
-  score?: number | null; last_reviewed?: string | null; due_date?: string | null;
-};
-type Word = {
-  id: number; kanji: string | null; kana: string | null; meanings: string | null;
-  freq_wiki: number | null; added: number | null; jlpt: number | null; kanji_alternative: string | null;
-};
-
+import { setting, scoreBounds, startScore, type SettingKey } from "./src/settings";
+import { MAX_SCORE, MIN_SCORE, masteryLevels, masteryFor } from "./src/mastery";
+import { storyHtml } from "./src/story";
+import type { Kanji, Word } from "./src/types";
 
 // ---------- study priority (depends on how many kanji are added) ----------
 type Priority = "high" | "medium" | "low" | "zero";
@@ -166,24 +75,6 @@ const splitKanjiMarker = (kanji: string) => {
   return match ? { text: match[1].trim(), marker: match[2] } : { text: kanji, marker: "" };
 };
 
-// Story markup: =keyword=  _component_  ?note?  #link#  (markers may nest, except inside a link).
-// Works on the raw text and escapes every piece, so the "#" in HTML entities can never be mistaken for a marker.
-const STORY_MARKUP = /=([^=\n]+)=|_([^_\n]+)_|\?([^?\n]+)\?|#([^#\n]+)#/g;
-function storyHtml(s: string): string {
-  let out = "";
-  let last = 0;
-  for (const m of s.matchAll(STORY_MARKUP)) {
-    out += esc(s.slice(last, m.index));
-    last = (m.index ?? 0) + m[0].length;
-    if (m[1] !== undefined) out += `<span class="story_keyword">${storyHtml(m[1])}</span>`;
-    else if (m[2] !== undefined) out += `<span class="story_component">${storyHtml(m[2])}</span>`;
-    else if (m[3] !== undefined) out += `<span class="story_note">${storyHtml(m[3])}</span>`;
-    else out += `<a class="story_link" href="/?q=${enc(m[4].trim())}">${esc(m[4])}</a>`;
-  }
-  return out + esc(s.slice(last));
-}
-
-
 // ---------- romaji -> kana ----------
 const KANA: Record<string, string> = {};
 `a あ i い u う e え o お ka か ki き ku く ke け ko こ sa さ shi し si し su す se せ so そ
@@ -222,40 +113,6 @@ function romajiToHiragana(input: string): string | null {
     return null;
   }
   return out;
-}
-
-// ---------- data ----------
-function search(q: string) {
-  const kana = [...new Set([toHira(q), toKata(q)])];
-  const hasKana = /[\u3041-\u30ff]/.test(q);
-  const lits = [...new Set(q.match(/\p{Script=Han}/gu) ?? [])].slice(0, 12);
-  const pat = (s: string) => `%${likeEsc(s)}%`;
-
-  // kanji: literal, keyword, meanings, on/kun readings (ignoring "." and "-" okurigana marks)
-  const kc: string[] = [`CAST(meanings AS TEXT) LIKE ? ESCAPE '\\'`, `CAST(keyword AS TEXT) LIKE ? ESCAPE '\\'`];
-  const kp: string[] = [pat(q), pat(q)];
-  if (lits.length) { kc.push(`literal IN (${lits.map(() => "?").join(",")})`); kp.push(...lits); }
-  if (hasKana) {
-    for (const v of kana) {
-      kc.push(`REPLACE(REPLACE(COALESCE(onReadings,'') || ' ' || COALESCE(kunReadings,''), '.', ''), '-', '') LIKE ? ESCAPE '\\'`);
-      kp.push(pat(v));
-    }
-  }
-  const kanji = (db.query(`SELECT * FROM kanjis WHERE ${kc.join(" OR ")}`).all(...kp) as Kanji[])
-    .sort((a, b) =>
-      Number(lits.includes(b.literal)) - Number(lits.includes(a.literal)) ||
-      (b.jlpt ?? 0) - (a.jlpt ?? 0) ||
-      nullsLast(a.frequency, b.frequency));
-
-  // words: kanji, kana, meanings (+ alternative spellings)
-  const wc = [`kanji LIKE ? ESCAPE '\\'`, `CAST(meanings AS TEXT) LIKE ? ESCAPE '\\'`, `kanji_alternative LIKE ? ESCAPE '\\'`];
-  const wp = [pat(q), pat(q), pat(q)];
-  for (const v of kana) { wc.push(`kana LIKE ? ESCAPE '\\'`); wp.push(pat(v)); }
-  const exact = (w: Word) => w.kanji === q || (w.kana !== null && kana.includes(w.kana));
-  const words = (db.query(`SELECT * FROM examples WHERE ${wc.join(" OR ")}`).all(...wp) as Word[])
-    .sort((a, b) => Number(exact(b)) - Number(exact(a)) || nullsLast(a.freq_wiki, b.freq_wiki));
-
-  return { kanji, words };
 }
 
 async function findImage(literal: string) {
