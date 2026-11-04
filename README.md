@@ -2,7 +2,7 @@
 
 A personal project for studying kanji and managing mnemonics.
 
-It is a small, self-hosted, server-rendered web app that runs on top of your own SQLite kanji database. Bun serves it from a single `server.ts` file — no build step, no framework, no account, no cloud. The database holds your list, scores, history and mnemonics; the pictures live in a folder beside it.
+It is a small, self-hosted, server-rendered web app that runs on top of your own SQLite kanji database. The app is a single `server.ts` file served by Bun, with the stylesheet, scripts and fonts in `public/` — no build step, no framework, no account, no cloud. Your list, scores, history and mnemonics live in `data/kanji.db`; the kanji pictures in `data/images/`.
 
 ## What you can do with it
 
@@ -19,9 +19,16 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
     bun run start                                  # http://localhost:3000
     DB_PATH=/path/to/kanji.db IMAGES_DIR=/path/to/images PORT=3000 bun run start
 
-- `DB_PATH` (default `./kanji.db`): the SQLite database. It needs the `kanjis` and `examples` tables; the review pages also use the `score`, `last_reviewed` and `due_date` columns plus the `review_history`, `settings` and `mastery_levels` tables described below. The app writes to the database (adding kanji, saving edits, recording reviews), so point it at a copy if you only want to look around.
-- `IMAGES_DIR` (default `./images`): one image per kanji, named after the character (`水.jpg` or `水.png`). Square images look best; they are picked up on the next page load.
+- `DB_PATH` (default `./data/kanji.db`): the SQLite database. It needs the `kanjis` and `examples` tables; the review pages also use the `score`, `last_reviewed` and `due_date` columns plus the `review_history`, `settings` and `mastery_levels` tables described below. The app writes to the database (adding kanji, saving edits, recording reviews), so point it at a copy if you only want to look around.
+- `IMAGES_DIR` (default `./data/images`): one image per kanji, named after the character (`水.jpg` or `水.png`). Square images look best; they are picked up on the next page load.
 - No dependencies: `bun:sqlite` is built in.
+
+The folders look like this:
+
+    data/kanji.db        the database
+    data/images/         one picture per kanji
+    public/              stylesheet, client scripts and the Jigmo fonts
+    server.ts            the app
 
 Assumptions you can change at the top of `server.ts`:
 - `frequency` and `freq_wiki` are ranks (1 = most common), so lower sorts first.

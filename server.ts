@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { unlink } from "node:fs/promises";
 
 const PORT = Number(process.env.PORT ?? 3000);
-const DB_PATH = process.env.DB_PATH ?? "./kanji.db";
-const IMAGES_DIR = process.env.IMAGES_DIR ?? "./images";
+const DB_PATH = process.env.DB_PATH ?? "./data/kanji.db";
+const IMAGES_DIR = process.env.IMAGES_DIR ?? "./data/images";
 
 // Opened read-write: writes are the add/remove toggles, the kanji edit form and image upload/removal (IMAGES_DIR must be writable too).
 const db = new Database(DB_PATH, { readwrite: true });
@@ -1266,13 +1266,17 @@ Bun.serve({
     if (asset) return new Response(Bun.file(asset[0]), { headers: { "content-type": asset[1], "cache-control": "no-cache" } });
 
     if (url.pathname.startsWith("/fonts/")) {
-      const filePath = `.${url.pathname}`; // Maps to ./fonts/Jigmo.ttf
-      const file = Bun.file(filePath);
+      // the Jigmo files live in public/fonts; only those exact names are served
+      const name = url.pathname.slice("/fonts/".length);
+      if (!/^Jigmo\d*\.ttf$/.test(name)) return new Response("Not found", { status: 404 });
+      const file = Bun.file(`public/fonts/${name}`);
+      if (!(await file.exists())) return new Response("Not found", { status: 404 });
 
       return new Response(file, {
         headers: {
           "Content-Type": "font/ttf",
-          "Access-Control-Allow-Origin": "*", // 👈 This allows the tablet to download it
+          "Access-Control-Allow-Origin": "*", // allows the tablet to download it
+          "Cache-Control": "public, max-age=31536000, immutable",
         },
       });
     }
