@@ -1,14 +1,12 @@
-import { Database } from "bun:sqlite";
-import { AsyncLocalStorage } from "node:async_hooks";
 import { join } from "node:path";
 import { unlink } from "node:fs/promises";
-
-const PORT = Number(process.env.PORT ?? 3000);
-const DB_PATH = process.env.DB_PATH ?? "./data/kanji.db";
-const IMAGES_DIR = process.env.IMAGES_DIR ?? "./data/images";
-
-// Opened read-write: writes are the add/remove toggles, the kanji edit form and image upload/removal (IMAGES_DIR must be writable too).
-const db = new Database(DB_PATH, { readwrite: true });
+import { PORT, IMAGES_DIR } from "./src/config";
+import { db } from "./src/db";
+import { esc, html, likeEsc, toHira, toKata, highlight, nullsLast, enc } from "./src/html";
+import { shortQuery } from "./src/search";
+import { requestContext, themeFrom, detailsOpenFrom, sameOrigin, safeBack } from "./src/prefs";
+import { dueCount, dueCounts } from "./src/review";
+import { layout } from "./src/views/layout";
 
 // ---------- settings (table `settings`: key / value) ----------
 // values are stored as text; a missing row, an unreadable table or a non-numeric value falls back to the default
@@ -104,49 +102,9 @@ type Word = {
   freq_wiki: number | null; added: number | null; jlpt: number | null; kanji_alternative: string | null;
 };
 
-// ---------- helpers ----------
-const ESC: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ESC[c]);
-const likeEsc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
-const toKata = (s: string) => s.replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
-const toHira = (s: string) => s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
 
 // ---------- study priority (depends on how many kanji are added) ----------
 type Priority = "high" | "medium" | "low" | "zero";
-// every kanji with added = 1 (unlike totalKnown, which only counts finished non-component ones)
-const addedCount = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1`).get() as { n: number }).n;
-// the review queue split by due state: never scheduled at all (no due date), due today, or overdue.
-// due_date is a YYYY-MM-DD text date, so comparing it to date('now', 'localtime') is a plain string comparison.
-// An empty string is treated like NULL: the app never writes one, but a manual edit could.
-type DueCounts = { fresh: number; today: number; overdue: number };
-const EMPTY_DUE_COUNTS: DueCounts = { fresh: 0, today: 0, overdue: 0 }; // e.g. the due_date column does not exist yet
-const dueCounts = (): DueCounts => {
-  try {
-    const row = db.query(
-      `SELECT
-         SUM(CASE WHEN due_date IS NULL OR TRIM(due_date) = '' THEN 1 ELSE 0 END) AS fresh,
-         SUM(CASE WHEN due_date = date('now', 'localtime') THEN 1 ELSE 0 END) AS today,
-         SUM(CASE WHEN due_date < date('now', 'localtime') THEN 1 ELSE 0 END) AS overdue
-       FROM kanjis WHERE COALESCE(added, 0) = 1`,
-    ).get() as Partial<DueCounts> | null;
-    return { fresh: row?.fresh ?? 0, today: row?.today ?? 0, overdue: row?.overdue ?? 0 };
-  } catch {
-    return EMPTY_DUE_COUNTS; // never break every page because of a counter
-  }
-};
-// kanji in the study list that can be reviewed now: never scheduled, due today, or overdue
-const dueCount = () => {
-  const d = dueCounts();
-  return d.fresh + d.today + d.overdue;
-};
-// the navbar counter: the queue size split into its three due states, each number in its own colour
-const dueNumber = (value: number, cls: string, label: string) =>
-  `<span class="rn ${cls}" title="${value} ${label}">${value}</span>`;
-const reviewNavButton = () => {
-  const d = dueCounts();
-  const total = d.fresh + d.today + d.overdue;
-  return `<a class="reviewbtn small" href="/review" aria-label="Review: ${total} due (${d.fresh} new, ${d.today} due today, ${d.overdue} overdue)">Review (${dueNumber(d.fresh, "rn-fresh", "with no due date")}<span class="rnsep" aria-hidden="true">·</span>${dueNumber(d.today, "rn-today", "due today")}<span class="rnsep" aria-hidden="true">·</span>${dueNumber(d.overdue, "rn-overdue", "overdue")})</a>`;
-};
 const totalKnown = () => (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND is_component IS NULL AND COALESCE(unfinished, 0) = 0`).get() as { n: number }).n;
 
 // each level is "high" once it is within the accumulated range, the next level is "medium", the rest "low"
@@ -207,28 +165,6 @@ const splitKanjiMarker = (kanji: string) => {
   const match = /^(.*?)\s*(\([^)]*\))$/.exec(kanji);
   return match ? { text: match[1].trim(), marker: match[2] } : { text: kanji, marker: "" };
 };
-const nullsLast = (a: number | null, b: number | null) => (a ?? Infinity) - (b ?? Infinity);
-const enc = encodeURIComponent;
-
-const SEARCH_MIN = 2;
-const singleCjk = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]$/u;
-const shortQuery = (q: string) => [...q].length < SEARCH_MIN && !singleCjk.test(q);
-const regexEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const highlight = (text: string | null | undefined, q: string) => {
-  const value = String(text ?? "");
-  const needles = [...new Set([q, toHira(q), toKata(q)].filter(Boolean))].sort((a, b) => b.length - a.length);
-  if (!value || !needles.length) return esc(value);
-  let re: RegExp;
-  try { re = new RegExp(needles.map(regexEsc).join("|"), "giu"); } catch { return esc(value); }
-  let out = "";
-  let last = 0;
-  for (const match of value.matchAll(re)) {
-    const i = match.index ?? 0;
-    out += esc(value.slice(last, i)) + `<mark>${esc(match[0])}</mark>`;
-    last = i + match[0].length;
-  }
-  return out + esc(value.slice(last));
-};
 
 // Story markup: =keyword=  _component_  ?note?  #link#  (markers may nest, except inside a link).
 // Works on the raw text and escapes every piece, so the "#" in HTML entities can never be mistaken for a marker.
@@ -247,29 +183,6 @@ function storyHtml(s: string): string {
   return out + esc(s.slice(last));
 }
 
-// ---------- preferences ----------
-type Theme = "light" | "dark";
-type RequestContext = { theme: Theme | null; detailsOpen: boolean; back: string };
-// Request-scoped so concurrent requests don't share the visitor's preferences.
-const requestContext = new AsyncLocalStorage<RequestContext>();
-const cookieValue = (req: Request, name: string) =>
-  new RegExp(`(?:^|;\\s*)${name}=([^;]*)`).exec(req.headers.get("cookie") ?? "")?.[1] ?? null;
-const themeFrom = (req: Request): Theme | null => {
-  const value = cookieValue(req, "kanji_theme");
-  return value === "light" || value === "dark" ? value : null;
-};
-const detailsOpenFrom = (req: Request) => cookieValue(req, "kanji_details") !== "closed";
-const sameOrigin = (req: Request) => {
-  const origin = req.headers.get("origin");
-  if (!origin) return true;
-  try { return new URL(origin).host === req.headers.get("host"); } catch { return false; }
-};
-const safeBack = (value: unknown) => {
-  try {
-    const url = new URL(String(value ?? "/"), "http://localhost");
-    return url.origin === "http://localhost" ? url.pathname + url.search + url.hash : "/";
-  } catch { return "/"; }
-};
 
 // ---------- romaji -> kana ----------
 const KANA: Record<string, string> = {};
@@ -354,58 +267,6 @@ async function findImage(literal: string) {
   return null;
 }
 
-// ---------- html ----------
-const gearIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
-const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
-const moonIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`;
-
-const themeButton = (theme: Theme, label: string, icon: string, back: string) => `
-<form class="theme-f" method="post" action="/theme">
-<input type="hidden" name="theme" value="${theme}">
-<input type="hidden" name="back" value="${esc(back)}">
-<button class="theme-btn to-${theme}" type="submit" aria-label="Switch to ${theme} theme" title="Switch to ${theme} theme">${icon}<span>${label}</span></button>
-</form>`;
-
-const themeToggle = (back: string) =>
-  `<div class="themes">${themeButton("light", "Light", sunIcon, back)}${themeButton("dark", "Dark", moonIcon, back)}</div>`;
-
-// dropdown with the three list pages: click or tap the label to open it (it also opens on hover where hovering exists).
-// The label says "Lists" and only shows a list name, in the accent colour, while one of the list pages is open.
-const listsMenu = (active: string) => {
-  const items = [["my-list", `MY LIST (${addedCount()})`], ["jlpt", "JLPT"], ["kanken", "KANKEN"]] as const;
-  const onList = items.some(([id]) => id === active);
-  const current = items.find(([id]) => id === active) ?? items[0];
-  const links = items.map(([id, label]) => `<a href="/${id}"${active === id ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("");
-  // the label says "Lists" until you are on one of the list pages, then it shows that page's name in the accent colour
-  return `<div class="dd"><button type="button" class="ddlabel${onList ? " on" : ""}" aria-haspopup="menu" aria-expanded="false">${onList ? current[1] : "Lists"}</button><div class="ddmenu"><nav class="ddbox" aria-label="Lists">${links}</nav></div></div>`;
-};
-
-const layout = (title: string, q: string, body: string, active = "", bar?: string) => {
-  const ctx = requestContext.getStore();
-  const theme = ctx?.theme;
-  const back = ctx?.back ?? "/";
-  return `<!doctype html>
-<html lang="en"${theme ? ` data-theme="${theme}"` : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<title>${esc(title)}</title>
-<script>try{if(localStorage.getItem("kanji_input")==="pad")document.documentElement.dataset.input="pad";}catch(e){}</script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700&family=Nunito:wght@500;700;800;900&display=swap">
-<link rel="stylesheet" href="/styles.css"></head><body>
-<header>
-<div class="navl">${listsMenu(active)}${reviewNavButton()}<a class="reviewbtn small${active === "stats" ? " on" : ""}" href="/stats">Stats</a></div>
-<form class="s" action="/" method="get" role="search">
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-<input name="q" value="${esc(q)}" placeholder="Kanji, keyword, meaning or reading" aria-label="Search" autocomplete="off" required ${shortQuery(q) && !bar ? "autofocus" : ""}>
-${q ? `<a class="clear" href="/" aria-label="Clear search">×</a>` : ""}
-</form><div class="hr">${themeToggle(back)}<a class="theme-btn" href="/settings" aria-label="Settings" title="Settings">${gearIcon}<span>Settings</span></a></div></header>
-${bar ? `<div class="reviewbar">${bar}</div>` : ""}
-<main>${body}</main>
-${bar ? '<script src="/js/review-keys.js" defer></script>' : ""}
-<script src="/js/layout.js" defer></script></body></html>`;
-};
-
-const html = (s: string, status = 200) =>
-  new Response(s, { status, headers: { "content-type": "text/html; charset=utf-8" } });
 
 const readingsRow = (k: Kanji, q: string) => {
   const on = readingList(k.onReadings);

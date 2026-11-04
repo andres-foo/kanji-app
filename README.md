@@ -2,7 +2,7 @@
 
 A personal project for studying kanji and managing mnemonics.
 
-It is a small, self-hosted, server-rendered web app that runs on top of your own SQLite kanji database. The app is a single `server.ts` file served by Bun, with the stylesheet, scripts and fonts in `public/` — no build step, no framework, no account, no cloud. Your list, scores, history and mnemonics live in `data/kanji.db`; the kanji pictures in `data/images/`.
+It is a small, self-hosted, server-rendered web app that runs on top of your own SQLite kanji database. A small Bun server in `server.ts` serves the pages, with the logic and views in `src/` and the stylesheet, scripts and fonts in `public/` — no build step, no framework, no account, no cloud. Your list, scores, history and mnemonics live in `data/kanji.db`; the kanji pictures in `data/images/`.
 
 ## What you can do with it
 
@@ -28,7 +28,8 @@ The folders look like this:
     data/kanji.db        the database
     data/images/         one picture per kanji
     public/              stylesheet, client scripts and the Jigmo fonts
-    server.ts            the app
+    src/                 config, helpers, review logic and the page views
+    server.ts            the Bun server and routes
 
 Assumptions you can change at the top of `server.ts`:
 - `frequency` and `freq_wiki` are ranks (1 = most common), so lower sorts first.
