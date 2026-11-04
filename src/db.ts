@@ -8,3 +8,7 @@ export const db = new Database(DB_PATH, { readwrite: true });
 // every kanji in the study list (added = 1)
 export const addedCount = () =>
   (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1`).get() as { n: number }).n;
+
+// every finished, non-component kanji in the study list
+export const totalKnown = () =>
+  (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND is_component IS NULL AND COALESCE(unfinished, 0) = 0`).get() as { n: number }).n;
