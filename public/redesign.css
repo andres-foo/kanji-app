@@ -159,6 +159,11 @@ h1 .lite{color:var(--muted);font-weight:400}
 .comp{display:flex;align-items:center;gap:7px;background:#f6f7f9;border-radius:11px;padding:7px 10px}
 .comp b{font-family:"Noto Serif JP",serif;font-size:17px;line-height:1}
 .comp span{font-size:10px;color:var(--muted)}
+.comp{position:relative}
+.comp.in,.comp.unf{padding-right:17px}
+.comp .cdot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;box-shadow:0 0 0 2px var(--card)}
+.comp .cdot.in{background:#16A34A}
+.comp .cdot.unf{background:#DC2626}
 .details{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
 .detail{background:#f6f7f9;border-radius:13px;padding:9px 11px}
 .detail span{display:block;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800}

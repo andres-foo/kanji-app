@@ -58,10 +58,19 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   ].join("");
 
   const compChips = comps.length
-    ? comps.map((c) => `<a class="comp" href="${base}/${enc(c)}${q ? `?q=${enc(q)}` : ""}"><b>${esc(c)}</b><span>${esc(compKw.get(c) ?? "")}</span></a>`).join("")
+    ? comps.map((c) => {
+        const kw = compKw.get(c) ?? "";
+        return `<a class="comp" href="${base}/${enc(c)}${q ? `?q=${enc(q)}` : ""}"><b>${esc(c)}</b>${kw ? `<span>${esc(kw)}</span>` : ""}</a>`;
+      }).join("")
     : `<span class="sub">No components recorded.</span>`;
   const componentFor = compFor.length
-    ? compFor.map((r) => `<a class="comp" href="${base}/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}"><b>${esc(r.literal)}</b><span>${esc(keywordText(r.keyword)) || "–"}</span></a>`).join("")
+    ? compFor.map((r) => {
+        const state = r.added === 1 ? (r.unfinished === 1 ? " unf" : " in") : "";
+        const status = r.added === 1 ? (r.unfinished === 1 ? "Unfinished" : "In your study list") : "";
+        const dot = state ? `<i class="cdot${state}" role="img" aria-label="${status}" title="${status}"></i>` : "";
+        const kw = keywordText(r.keyword);
+        return `<a class="comp${state}" href="${base}/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}"><b>${esc(r.literal)}</b>${kw ? `<span>${esc(kw)}</span>` : ""}${dot}</a>`;
+      }).join("")
     : `<span class="sub">Nothing else uses it yet.</span>`;
 
   const details = [
