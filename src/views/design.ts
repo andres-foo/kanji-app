@@ -7,7 +7,7 @@ import { storyHtml } from "../story";
 import type { Kanji, Word } from "../types";
 import { jlptPriority, kankenPriority, keywordText, meaningsText, readingList, splitKanjiMarker, type Priority } from "./shared";
 import { messagePage } from "./message";
-import { redesignLayout } from "./redesign-layout";
+import { layout } from "./layout";
 
 const dueLabel = (due: string | null) => {
   if (!due) return "Due now";
@@ -174,5 +174,5 @@ export async function designKanjiPage(literal: string) {
   const back = `/design/kanji/${enc(literal)}`;
   const view = await kanjiRedesignView(literal, "/design/kanji");
   if (!view) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
-  return html(redesignLayout(view.title, view.body, { theme, back, lab: true }));
+  return html(layout(view.title, view.body, { theme, back, lab: true }));
 }

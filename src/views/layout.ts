@@ -3,8 +3,8 @@ import { dueCounts } from "../review";
 
 type Options = { theme: string; back: string; lab?: boolean; bar?: string; barClass?: string; searchValue?: string; active?: string };
 
-// the shared shell for pages that have been moved to the redesign
-export const redesignLayout = (title: string, body: string, { theme, back, lab = false, bar = "", barClass = "", searchValue = "", active = "" }: Options) => {
+// the shared shell for every page
+export const layout = (title: string, body: string, { theme, back, lab = false, bar = "", barClass = "", searchValue = "", active = "" }: Options) => {
   const d = dueCounts();
   const total = d.fresh + d.today + d.overdue;
   return `<!doctype html>
@@ -13,7 +13,7 @@ export const redesignLayout = (title: string, body: string, { theme, back, lab =
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <script>try{if(localStorage.getItem("kanji_input")==="pad")document.documentElement.dataset.input="pad";}catch(e){}</script>
-<link rel="stylesheet" href="/redesign.css">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <div class="panel">

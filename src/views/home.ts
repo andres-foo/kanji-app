@@ -5,7 +5,7 @@ import { romajiToHiragana } from "../romaji";
 import { search, shortQuery } from "../search";
 import type { Kanji, Word } from "../types";
 import { levelBadge } from "./design";
-import { redesignLayout } from "./redesign-layout";
+import { layout } from "./layout";
 import { jlptPriority, kankenPriority, keywordText, meaningGroups, meaningsText, readingList, splitKanjiMarker } from "./shared";
 
 const statusDot = (k: Kanji) => {
@@ -71,7 +71,7 @@ export function home(url: URL) {
   const type = t === "kanji" || t === "words" ? t : "all";
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = `${url.pathname}${url.search}`;
-  const page = (title: string, body: string) => html(redesignLayout(title, body, { theme, back, searchValue: q }));
+  const page = (title: string, body: string) => html(layout(title, body, { theme, back, searchValue: q }));
 
   if (!q) return page("Search – Kanji", hero(raw === null ? "" : "Enter at least two characters to search."));
   if (shortQuery(q)) return page("Search – Kanji", hero("Enter at least two characters to search."));

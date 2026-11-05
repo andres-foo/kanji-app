@@ -4,7 +4,7 @@ import { requestContext } from "../prefs";
 import { pickReviewKanji } from "../review";
 import type { Word } from "../types";
 import { messagePage } from "./message";
-import { redesignLayout } from "./redesign-layout";
+import { layout } from "./layout";
 import { splitKanjiMarker } from "./shared";
 
 // /review: only chooses the next kanji and redirects to its own page; nothing is recorded until a result button is pressed there
@@ -38,5 +38,5 @@ export function reviewPage(literal: string) {
   const chips = words.map((w) => `<span class="qword">${esc(splitKanjiMarker(w.kanji ?? "").text)}</span>`).join("");
   const body = `<div class="qpage"><div class="qcard"><div class="qkanji">${esc(k.literal)}</div>${chips ? `<div class="qwords">${chips}</div>` : ""}</div></div>`;
   const bar = `<a class="reviewbtn reveal" href="/kanji/${enc(k.literal)}?review=1" aria-keyshortcuts="Space"><kbd class="kbd">Space</kbd><span class="pad">A</span>Show answer</a>`;
-  return html(redesignLayout(`Review – ${k.literal}`, body, { theme, back, bar, barClass: "qbar" }));
+  return html(layout(`Review – ${k.literal}`, body, { theme, back, bar, barClass: "qbar" }));
 }

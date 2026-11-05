@@ -7,7 +7,7 @@ import { startScore } from "../settings";
 import { addDays, STAT_RANGES, verdict } from "../stats";
 import { areaChart, barChart, BLUES } from "./charts";
 import { messagePage } from "./message";
-import { redesignLayout } from "./redesign-layout";
+import { layout } from "./layout";
 
 // the three due states: green = no due date yet (new), blue = due today, red = overdue
 const DUE_COLORS = { fresh: "#16A34A", today: "#2a78d6", overdue: "#DC2626" } as const;
@@ -110,7 +110,7 @@ export function statsPage(url: URL) {
     const body = `${head}${kpis}<div class="grid statsgrid">${levelChart}${comingChart}${answersChart}</div>`;
     const theme = requestContext.getStore()?.theme ?? "light";
     const back = requestContext.getStore()?.back ?? "/stats";
-    return html(redesignLayout("Stats – Kanji", body, { theme, back, active: "stats" }));
+    return html(layout("Stats – Kanji", body, { theme, back, active: "stats" }));
   } catch (e) {
     return messagePage("Stats error", `Could not build the stats: ${(e as Error).message}.`, 500);
   }

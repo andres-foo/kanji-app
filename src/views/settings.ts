@@ -2,7 +2,7 @@ import { esc, html } from "../html";
 import { masteryLevels } from "../mastery";
 import { requestContext } from "../prefs";
 import { setting, startScore, type SettingKey } from "../settings";
-import { redesignLayout } from "./redesign-layout";
+import { layout } from "./layout";
 
 export const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = [
   { key: "review_delta_bad", label: "Bad", hint: "Score change when you press Bad." },
@@ -47,5 +47,5 @@ ${notice}
 </form>`;
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = requestContext.getStore()?.back ?? "/settings";
-  return html(redesignLayout("Settings – Kanji", body, { theme, back }), status);
+  return html(layout("Settings – Kanji", body, { theme, back }), status);
 }

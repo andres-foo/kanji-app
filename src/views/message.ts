@@ -1,6 +1,6 @@
 import { esc, html } from "../html";
 import { requestContext } from "../prefs";
-import { redesignLayout } from "./redesign-layout";
+import { layout } from "./layout";
 
 export function messagePage(title: string, message: string, status = 200) {
   const theme = requestContext.getStore()?.theme ?? "light";
@@ -11,5 +11,5 @@ export function messagePage(title: string, message: string, status = 200) {
     <p class="sub">${esc(message)}</p>
     <a class="pill dark" href="/">Back to search</a>
   </div></div>`;
-  return html(redesignLayout(title, body, { theme, back }), status);
+  return html(layout(title, body, { theme, back }), status);
 }

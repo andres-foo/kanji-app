@@ -4,7 +4,7 @@ import { REVIEW_BUTTONS, REVIEW_KEYS, REVIEW_PAD } from "../review";
 import { kanjiRedesignView } from "./design";
 import { kanjiRedesignEditView } from "./kanji-edit";
 import { messagePage } from "./message";
-import { redesignLayout } from "./redesign-layout";
+import { layout } from "./layout";
 
 const reviewBar = (literal: string) =>
   REVIEW_BUTTONS.map(([id, label], i) =>
@@ -20,5 +20,5 @@ export async function kanjiPage(literal: string, url: URL) {
   const view = editing ? await kanjiRedesignEditView(literal, q) : await kanjiRedesignView(literal, "/kanji", q);
   if (!view) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
   const bar = reviewing && !editing ? reviewBar(literal) : "";
-  return html(redesignLayout(view.title, view.body, { theme, back, lab: false, bar, searchValue: q }));
+  return html(layout(view.title, view.body, { theme, back, lab: false, bar, searchValue: q }));
 }

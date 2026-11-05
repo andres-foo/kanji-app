@@ -2,7 +2,7 @@ import { db } from "../db";
 import { enc, esc, html, nullsLast } from "../html";
 import { requestContext } from "../prefs";
 import type { Kanji } from "../types";
-import { redesignLayout } from "./redesign-layout";
+import { layout } from "./layout";
 
 type TileRow = Pick<Kanji, "literal" | "added" | "unfinished">;
 type ListRow = TileRow & { frequency: number | null; score: number | null; added_at: string | null };
@@ -25,7 +25,7 @@ const emptyCard = (title: string, message: string) =>
 const page = (title: string, body: string, active: string) => {
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = requestContext.getStore()?.back ?? "/";
-  return html(redesignLayout(title, body, { theme, back, active }));
+  return html(layout(title, body, { theme, back, active }));
 };
 
 // every kanji with a level in the given column, grouped by level (easiest first)

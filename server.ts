@@ -18,7 +18,7 @@ import { saveSettings, resetScores } from "./src/routes/settings";
 
 // ---------- server ----------
 const STATIC_FILES: Record<string, [string, string]> = {
-  "/redesign.css": ["public/redesign.css", "text/css; charset=utf-8"],
+  "/styles.css": ["public/styles.css", "text/css; charset=utf-8"],
   "/js/layout.js": ["public/js/layout.js", "text/javascript; charset=utf-8"],
   "/js/story-editor.js": ["public/js/story-editor.js", "text/javascript; charset=utf-8"],
   "/js/review-keys.js": ["public/js/review-keys.js", "text/javascript; charset=utf-8"],
