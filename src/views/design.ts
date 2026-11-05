@@ -127,12 +127,12 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   </div>
 
   <div class="card" style="grid-column:span 6">
-    <div class="cardhead"><h3 class="h3">Details</h3><span class="more"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg></span></div>
+    <div class="cardhead"><h3 class="h3">Details</h3></div>
     <div class="details">${details}</div>
   </div>
 
   <div class="card statcard" style="grid-column:span 6;display:flex;flex-direction:column">
-    <div class="cardhead"><h3 class="h3">Review history</h3><span class="more"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg></span></div>
+    <div class="cardhead"><h3 class="h3">Review history</h3></div>
     <div style="display:flex;align-items:flex-end;gap:8px;margin-top:10px">
       <span class="scorebig">${score}</span><span style="color:var(--muted);font-size:11px;padding-bottom:7px">/ ${MAX_SCORE}</span>
     </div>
