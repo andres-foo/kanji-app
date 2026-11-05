@@ -371,3 +371,34 @@ a.comp:hover{background:#e9ecf1}
 [data-theme="dark"] .eimg,[data-theme="dark"] .efield input,[data-theme="dark"] .echeck,[data-theme="dark"] .tool,[data-theme="dark"] .storyed,[data-theme="dark"] #storycode{background:#26282c}
 [data-theme="dark"] .storyed .story_component{background:#2f3237}
 [data-theme="dark"] .storyed .story_note{color:#a9adb5;border-color:#4a4e55}
+
+/* larger type across the redesign; the nav, the big kanji and the story text stay as they are */
+.sub{font-size:14px}
+.crumb{font-size:11px}
+.h3{font-size:13.5px}
+.badge{font-size:11px;padding:6px 10px}
+.kw{font-size:26px}
+.kmean{font-size:15px}
+.comp b{font-size:20px}
+.comp span{font-size:12px}
+.detail span{font-size:9.5px}
+.detail b{font-size:15px}
+.exword{font-size:18px}
+.exkana{font-size:11.5px}
+.exmean{font-size:11.5px}
+.exmore summary{font-size:12px}
+.hrow{font-size:11px}
+.hrow .hdate{font-size:10px}
+.hrow .htype{font-size:11px}
+.hrow b{font-size:11.5px}
+.hmore summary{font-size:11px}
+.story-label{font-size:10.5px}
+.pill{font-size:13px}
+.pill.sm{font-size:12px}
+.nav .pill{font-size:12px}
+.efield span{font-size:10px}
+.efield input{font-size:14px;padding:12px 13px}
+.echeck{font-size:12.5px}
+.echeck input{width:16px;height:16px}
+.tool{font-size:11.5px}
+.flab{font-size:10px}
