@@ -6,6 +6,7 @@ import { requestContext } from "../prefs";
 import { storyHtml } from "../story";
 import type { Kanji, Word } from "../types";
 import { jlptPriority, kankenPriority, keywordText, meaningsText, readingList, splitKanjiMarker, type Priority } from "./shared";
+import { messagePage } from "./message";
 import { redesignLayout } from "./redesign-layout";
 
 const dueLabel = (due: string | null) => {
@@ -172,6 +173,6 @@ export async function designKanjiPage(literal: string) {
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = `/design/kanji/${enc(literal)}`;
   const view = await kanjiRedesignView(literal, "/design/kanji");
-  if (!view) return html(redesignLayout("Not found", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`, { theme, back, lab: true }), 404);
+  if (!view) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
   return html(redesignLayout(view.title, view.body, { theme, back, lab: true }));
 }

@@ -1,8 +1,9 @@
-import { enc, esc, html } from "../html";
+import { enc, html } from "../html";
 import { requestContext } from "../prefs";
 import { REVIEW_BUTTONS, REVIEW_KEYS, REVIEW_PAD } from "../review";
 import { kanjiRedesignView } from "./design";
 import { kanjiRedesignEditView } from "./kanji-edit";
+import { messagePage } from "./message";
 import { redesignLayout } from "./redesign-layout";
 
 const reviewBar = (literal: string) =>
@@ -17,9 +18,7 @@ export async function kanjiPage(literal: string, url: URL) {
   const editing = url.searchParams.get("edit") === "1";
   const reviewing = url.searchParams.get("review") === "1";
   const view = editing ? await kanjiRedesignEditView(literal, q) : await kanjiRedesignView(literal, "/kanji", q);
-  if (!view) {
-    return html(redesignLayout("Not found", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`, { theme, back, lab: false }), 404);
-  }
+  if (!view) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
   const bar = reviewing && !editing ? reviewBar(literal) : "";
   return html(redesignLayout(view.title, view.body, { theme, back, lab: false, bar, searchValue: q }));
 }

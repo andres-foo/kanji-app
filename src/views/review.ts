@@ -3,7 +3,7 @@ import { enc, esc, html, likeEsc, nullsLast } from "../html";
 import { requestContext } from "../prefs";
 import { pickReviewKanji } from "../review";
 import type { Word } from "../types";
-import { layout } from "./layout";
+import { messagePage } from "./message";
 import { redesignLayout } from "./redesign-layout";
 import { splitKanjiMarker } from "./shared";
 
@@ -13,17 +13,17 @@ export function reviewNext() {
     const literal = pickReviewKanji();
     if (!literal) {
       const added = (db.query(`SELECT COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1`).get() as { n: number }).n;
-      if (!added) return html(layout("Review – Kanji", "", `<div class="box empty">No kanji in your list to review yet.</div>`));
+      if (!added) return messagePage("Nothing to review", "No kanji in your list to review yet.");
       const next = db.query(
         `SELECT due_date, COUNT(*) AS n FROM kanjis WHERE COALESCE(added, 0) = 1 AND due_date > date('now', 'localtime')
          GROUP BY due_date ORDER BY due_date LIMIT 1`,
       ).get() as { due_date: string; n: number } | null;
-      const when = next ? `<br>Next up: ${next.n} kanji due on ${esc(next.due_date)}.` : "";
-      return html(layout("Review – Kanji", "", `<div class="box empty">Nothing to review right now.${when}</div>`));
+      const when = next ? ` Next up: ${next.n} kanji due on ${next.due_date}.` : "";
+      return messagePage("Nothing to review", `Nothing to review right now.${when}`);
     }
     return new Response(null, { status: 303, headers: { location: `/review/${enc(literal)}` } });
   } catch (e) {
-    return html(layout("Error", "", `<div class="box empty">Could not choose a kanji to review: ${esc((e as Error).message)}. Did you add the last_reviewed and due_date columns?</div>`), 500);
+    return messagePage("Review error", `Could not choose a kanji to review: ${(e as Error).message}. Did you add the last_reviewed and due_date columns?`, 500);
   }
 }
 
@@ -32,7 +32,7 @@ export function reviewPage(literal: string) {
   const k = db.query(`SELECT literal FROM kanjis WHERE literal = ?`).get(literal) as { literal: string } | null;
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = `/review/${enc(literal)}`;
-  if (!k) return html(redesignLayout("Not found", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`, { theme, back }), 404);
+  if (!k) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
   const words = db.query(`SELECT * FROM examples WHERE COALESCE(added, 0) = 1 AND kanji LIKE ? ESCAPE '\\'`).all(`%${likeEsc(literal)}%`) as Word[];
   words.sort((a, b) => nullsLast(a.freq_wiki || null, b.freq_wiki || null) || (b.jlpt ?? 0) - (a.jlpt ?? 0));
   const chips = words.map((w) => `<span class="qword">${esc(splitKanjiMarker(w.kanji ?? "").text)}</span>`).join("");

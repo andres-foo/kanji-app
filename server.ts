@@ -1,13 +1,12 @@
 import { PORT } from "./src/config";
-import { html } from "./src/html";
 import { requestContext, themeFrom, detailsOpenFrom } from "./src/prefs";
 import { findImage } from "./src/images";
 import type { ReviewResult } from "./src/review";
-import { layout } from "./src/views/layout";
 import { home } from "./src/views/home";
 import { levelPage, myListPage } from "./src/views/lists";
 import { kanjiPage } from "./src/views/kanji";
 import { designKanjiPage } from "./src/views/design";
+import { messagePage } from "./src/views/message";
 import { reviewNext, reviewPage } from "./src/views/review";
 import { settingsPage } from "./src/views/settings";
 import { statsPage } from "./src/views/stats";
@@ -52,7 +51,7 @@ Bun.serve({
 
     return requestContext.run({ theme: themeFrom(req), detailsOpen: detailsOpenFrom(req), back: url.pathname + url.search }, async () => {
       let path: string;
-      try { path = decodeURIComponent(url.pathname); } catch { return html(layout("Bad request", "", `<div class="box empty">Bad request.</div>`), 400); }
+      try { path = decodeURIComponent(url.pathname); } catch { return messagePage("Bad request", "The address could not be read.", 400); }
 
       if (path === "/details/toggle") return req.method === "POST" ? toggleDetails(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/theme") return req.method === "POST" ? setTheme(req) : new Response("Method not allowed", { status: 405 });
@@ -94,7 +93,7 @@ Bun.serve({
         const f = await findImage(path.slice(5));
         return f ? new Response(f, { headers: { "cache-control": "no-cache" } }) : new Response("Not found", { status: 404 });
       }
-      return html(layout("Not found", "", `<div class="box empty">Page not found.</div>`), 404);
+      return messagePage("Page not found", "That page doesn’t exist. Try a search instead.", 404);
     });
   },
 });
