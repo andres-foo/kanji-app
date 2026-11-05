@@ -222,3 +222,106 @@ h1 .lite{color:var(--muted);font-weight:400}
 .lightbox{position:fixed;inset:0;background:rgba(12,14,18,.72);display:grid;place-items:center;z-index:100;padding:24px;backdrop-filter:blur(4px)}
 .lightbox img{max-width:100%;max-height:100%;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
 .noimg{height:100%;display:grid;place-items:center;background:#eef0f4;color:#8b909a;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+
+/* nav search + theme switch */
+.navsearch{display:flex;align-items:center;gap:8px;background:#fff;border-radius:999px;padding:7px 12px;width:200px}
+.navsearch input{border:0;outline:0;background:transparent;font-family:inherit;font-size:11px;font-weight:700;width:100%;color:var(--ink)}
+.navsearch input::placeholder{color:#a2a7b0}
+.themeswitch{display:flex;align-items:center}
+.switch{width:44px;height:24px;border-radius:999px;background:#151619;border:0;padding:3px;cursor:pointer;display:flex;align-items:center;transition:background .2s}
+.switch .knob{width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s,background .2s}
+[data-theme="dark"] .switch{background:var(--cyan)}
+[data-theme="dark"] .switch .knob{transform:translateX(20px);background:#08181b}
+
+/* hero: story and components live with the kanji */
+.heroimg{height:auto;min-height:318px;align-self:stretch}
+.heroimg .pic{height:100%}
+.herobody{justify-content:flex-start;gap:14px}
+.heroheader{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+.heroheader .badges{margin-top:0}
+.herotop{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start}
+.herotop .heroid{max-width:none}
+.heroinfo{min-width:0;padding-top:4px}
+.heroinfo .kw{margin-top:0}
+.heromain{display:flex;gap:18px;align-items:flex-start}
+.heroid{flex:none;max-width:250px}
+.heromain .herostory{flex:1;min-width:0;margin-top:0}
+.herostory{margin-top:2px}
+.herostory .story{font-size:15px;line-height:1.7;padding:20px 22px;margin-top:0}
+.story-label{display:block;font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.herocomps{margin-top:0}
+.herocomps .comps{margin-top:5px}
+.herocomps .comps .plus{font-size:12px;color:#b6bac2;align-self:center}
+.hero .kbig{font-size:132px;line-height:.84}
+.card.hero.hero-added{border-top:5px solid #16A34A}
+.card.hero.hero-unfinished{border-top:5px solid #DC2626}
+.heroinfo .comps{margin-top:10px}
+.herofoot{display:flex;justify-content:flex-end;margin-top:auto;padding-top:4px}
+a.comp{text-decoration:none;color:inherit;cursor:pointer}
+a.comp:hover{background:#e9ecf1}
+[data-theme="dark"] a.comp:hover{background:#2f3237}
+
+/* review history in the dark card */
+.hrow{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid #f0f1f4;font-size:9.5px;color:#636871}
+.hrow:last-child{border-bottom:0}
+.hrow .hdate{color:#9aa0a9;font-size:8.5px;min-width:58px}
+.hrow .htype{font-weight:800;color:#151619}
+.hrow b{margin-left:auto;font-size:10px;color:#151619}
+.hmore{margin-top:4px}
+.hmore summary{cursor:pointer;font-size:9px;font-weight:800;color:#9aa0a9;list-style:none;padding:4px 0}
+.hmore summary::-webkit-details-marker{display:none}
+.hmore summary::before{content:"+ ";color:var(--cyan)}
+.hmore[open] summary::before{content:"− "}
+
+/* examples: added always visible, the rest behind a summary */
+.exmore{margin-top:8px;border-top:1px solid #f0f1f4;padding-top:2px}
+.exmore summary{cursor:pointer;font-size:10.5px;font-weight:800;color:#636871;list-style:none;padding:6px 0;display:flex;align-items:center;gap:6px}
+.exmore summary::-webkit-details-marker{display:none}
+.exmore summary::before{content:"+";display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#eef0f4;font-size:11px}
+.exmore[open] summary::before{content:"−"}
+
+/* dark theme */
+[data-theme="dark"]{--ink:#f1f2f4;--muted:#9aa0a9;--card:#1e1f22;--line:#2f3237;--soft:#232428}
+[data-theme="dark"] body{background:radial-gradient(900px 620px at 88% 6%, #12363d 0%, rgba(18,54,61,0) 62%),radial-gradient(820px 620px at 6% 94%, #1c1a26 0%, rgba(28,26,38,0) 62%),linear-gradient(135deg,#0f1114 0%,#0c0e11 52%,#0b1518 100%)}
+[data-theme="dark"] .panel{background:#151618;box-shadow:0 32px 80px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.04) inset}
+[data-theme="dark"] .panel:before{background:linear-gradient(135deg,rgba(95,216,231,0),rgba(95,216,231,.18));filter:blur(34px)}
+[data-theme="dark"] .brand{border-color:#f1f2f4}
+[data-theme="dark"] .navlinks{background:#1e1f22}
+[data-theme="dark"] .navlinks a{color:#b9bec7}
+[data-theme="dark"] .navlinks a.on{background:var(--cyan);color:#08181b}
+[data-theme="dark"] .iconbtn,[data-theme="dark"] .labtag{background:#232428;color:#e7e8eb}
+[data-theme="dark"] .avatar{background:#f1f2f4;color:#111}
+[data-theme="dark"] .navsearch{background:#232428}
+[data-theme="dark"] .navsearch input{color:#f1f2f4}
+[data-theme="dark"] .navsearch input::placeholder{color:#7f848d}
+[data-theme="dark"] .pill.ghost{background:#232428;color:#f1f2f4;border-color:#2f3237}
+[data-theme="dark"] .pill.dark{background:#f1f2f4;color:#111}
+[data-theme="dark"] .more{background:#2a2c31;color:#fff}
+[data-theme="dark"] .badge{background:#2a2c31;color:#c9ccd2}
+[data-theme="dark"] .badge.cyan{background:var(--cyan);color:#08181b}
+[data-theme="dark"] .details .detail,[data-theme="dark"] .eqbox,[data-theme="dark"] .comp,[data-theme="dark"] .mini-note,[data-theme="dark"] .tile,[data-theme="dark"] .sugchip{background:#26282c}
+[data-theme="dark"] .story{background:linear-gradient(180deg,#202226,#1b1d20);color:#e7e8eb}
+[data-theme="dark"] .story .story_component{background:#2f3237}
+[data-theme="dark"] .story .story_note{color:#a9adb5;border-color:#4a4e55}
+[data-theme="dark"] .story .story_link{text-decoration-color:#5b6068}
+[data-theme="dark"] .exrow{border-color:#2a2c31}
+[data-theme="dark"] .exmore{border-color:#2a2c31}
+[data-theme="dark"] .exmore summary{color:#9aa0a9}
+[data-theme="dark"] .exmore summary::before{background:#2a2c31}
+[data-theme="dark"] .seg{background:#2a2c31}
+[data-theme="dark"] .card.dark{background:#0f1012;border:1px solid #2a2c31}
+[data-theme="dark"] .hrow{border-color:#2a2c31;color:#c9ccd2}
+[data-theme="dark"] .hrow .htype,[data-theme="dark"] .hrow b{color:#f1f2f4}
+[data-theme="dark"] .scorepill{background:#f1f2f4;color:#111}
+[data-theme="dark"] .lightbox{background:rgba(0,0,0,.82)}
+[data-theme="dark"] .heroimg .cap{color:#fff}
+
+/* level priority badges (same thresholds and colours as the old cards) */
+.badge.pri-high{background:#BBF7D0;color:#14532D}
+.badge.pri-medium{background:#FED7AA;color:#7C2D12}
+.badge.pri-low{background:#FECACA;color:#7F1D1D}
+.badge.pri-zero{background:#E5E7EB;color:#374151}
+[data-theme="dark"] .badge.pri-high{background:#14532D;color:#BBF7D0}
+[data-theme="dark"] .badge.pri-medium{background:#7C2D12;color:#FED7AA}
+[data-theme="dark"] .badge.pri-low{background:#7F1D1D;color:#FECACA}
+[data-theme="dark"] .badge.pri-zero{background:#374151;color:#E5E7EB}
