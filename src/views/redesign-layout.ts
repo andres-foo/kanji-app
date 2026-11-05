@@ -1,10 +1,10 @@
 import { esc } from "../html";
 import { dueCounts } from "../review";
 
-type Options = { theme: string; back: string; lab?: boolean };
+type Options = { theme: string; back: string; lab?: boolean; bar?: string };
 
 // the shared shell for pages that have been moved to the redesign
-export const redesignLayout = (title: string, body: string, { theme, back, lab = false }: Options) => {
+export const redesignLayout = (title: string, body: string, { theme, back, lab = false, bar = "" }: Options) => {
   const d = dueCounts();
   const total = d.fresh + d.today + d.overdue;
   return `<!doctype html>
@@ -12,6 +12,7 @@ export const redesignLayout = (title: string, body: string, { theme, back, lab =
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
+<script>try{if(localStorage.getItem("kanji_input")==="pad")document.documentElement.dataset.input="pad";}catch(e){}</script>
 <link rel="stylesheet" href="/redesign.css">
 </head>
 <body>
@@ -36,8 +37,10 @@ export const redesignLayout = (title: string, body: string, { theme, back, lab =
     <a class="iconbtn" href="/settings" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
   </div>
 </nav>
+${bar ? `<div class="reviewbar">${bar}</div>` : ""}
 ${body}
 </div>
+${bar ? `<script src="/js/review-keys.js" defer></script>` : ""}
 <script src="/js/layout.js" defer></script>
 </body></html>`;
 };

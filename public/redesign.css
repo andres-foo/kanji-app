@@ -442,3 +442,23 @@ a.comp:hover{background:#e9ecf1}
 .comp{padding:9px 13px;gap:9px}
 .exfoot{display:flex;align-items:center;margin-top:auto;padding-top:10px;border-top:1px solid #f0f1f4}
 [data-theme="dark"] .exfoot{border-color:#2a2c31}
+
+/* ---------- answer bar on the review page ---------- */
+.reviewbar{display:flex;flex-wrap:wrap;gap:8px;background:var(--card);border-radius:20px;padding:8px;margin-top:14px;box-shadow:0 1px 2px rgba(20,25,40,.035)}
+.reviewbar form{display:flex;flex:1 1 150px}
+.reviewbar .reviewbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;height:44px;border:0;border-radius:14px;background:#f5f6f8;color:#2a2c31;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;transition:filter .15s,background .15s}
+.reviewbar .reviewbtn.bad{background:#fef2f2;color:#b91c1c}
+.reviewbar .reviewbtn.neutral{background:#f5f6f8;color:#2a2c31}
+.reviewbar .reviewbtn.good{background:var(--cyan);color:#08181b}
+.reviewbar .reviewbtn.easy{background:#151619;color:#fff}
+.reviewbar .reviewbtn:hover{filter:brightness(.97)}
+.reviewbar .reviewbtn.pressed{outline:3px solid currentColor;outline-offset:2px}
+.reviewbar .reviewbtn:disabled{opacity:.65;cursor:default}
+.reviewbar .kbd,.reviewbar .pad{display:none;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-right:6px;border-radius:6px;border:1px solid currentColor;font-family:inherit;font-size:9px;font-weight:800;opacity:.7}
+body.keys .reviewbar .kbd{display:inline-flex}
+html[data-input="pad"] .reviewbar .kbd{display:none}
+html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
+[data-theme="dark"] .reviewbar .reviewbtn{background:#26282c;color:#e7e8eb}
+[data-theme="dark"] .reviewbar .reviewbtn.bad{background:#3a1a1a;color:#fca5a5}
+[data-theme="dark"] .reviewbar .reviewbtn.good{background:var(--cyan);color:#08181b}
+[data-theme="dark"] .reviewbar .reviewbtn.easy{background:#f1f2f4;color:#111}
