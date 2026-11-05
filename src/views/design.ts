@@ -70,7 +70,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
         const kw = keywordText(r.keyword);
         return `<a class="comp${state}" href="${base}/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}"><b>${esc(r.literal)}</b>${kw ? `<span>${esc(kw)}</span>` : ""}${dot}</a>`;
       }).join("")
-    : `<span class="sub">Nothing else uses it yet.</span>`;
+    : `<span class="sub">Nothing else uses it.</span>`;
 
   const details = [
     ["On readings", k.onReadings ? readingList(k.onReadings) : null],
