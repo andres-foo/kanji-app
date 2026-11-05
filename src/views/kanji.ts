@@ -21,5 +21,5 @@ export async function kanjiPage(literal: string, url: URL) {
     return html(redesignLayout("Not found", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`, { theme, back, lab: false }), 404);
   }
   const bar = reviewing && !editing ? reviewBar(literal) : "";
-  return html(redesignLayout(view.title, view.body, { theme, back, lab: false, bar }));
+  return html(redesignLayout(view.title, view.body, { theme, back, lab: false, bar, searchValue: q }));
 }

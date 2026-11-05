@@ -1,10 +1,10 @@
 import { esc } from "../html";
 import { dueCounts } from "../review";
 
-type Options = { theme: string; back: string; lab?: boolean; bar?: string; barClass?: string };
+type Options = { theme: string; back: string; lab?: boolean; bar?: string; barClass?: string; searchValue?: string };
 
 // the shared shell for pages that have been moved to the redesign
-export const redesignLayout = (title: string, body: string, { theme, back, lab = false, bar = "", barClass = "" }: Options) => {
+export const redesignLayout = (title: string, body: string, { theme, back, lab = false, bar = "", barClass = "", searchValue = "" }: Options) => {
   const d = dueCounts();
   const total = d.fresh + d.today + d.overdue;
   return `<!doctype html>
@@ -26,7 +26,7 @@ export const redesignLayout = (title: string, body: string, { theme, back, lab =
   <div class="navright">
     <form class="navsearch" action="/" method="get" role="search">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-      <input name="q" placeholder="Search" aria-label="Search">
+      <input name="q" value="${esc(searchValue)}" placeholder="Search" aria-label="Search">
     </form>
     <a class="pill dark" href="/review" aria-label="Review: ${total} due (${d.fresh} new, ${d.today} due today, ${d.overdue} overdue)">Review <span class="rnums"><span class="rn-fresh">${d.fresh}</span><span class="rn-dot">·</span><span class="rn-today">${d.today}</span><span class="rn-dot">·</span><span class="rn-overdue">${d.overdue}</span></span></a>
     <form class="themeswitch" method="post" action="/theme">

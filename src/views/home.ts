@@ -1,74 +1,103 @@
 import { totalKnown } from "../db";
 import { enc, esc, highlight, html, toKata } from "../html";
+import { requestContext } from "../prefs";
 import { romajiToHiragana } from "../romaji";
 import { search, shortQuery } from "../search";
 import type { Kanji, Word } from "../types";
-import { layout } from "./layout";
-import { jlptBadge, kankenBadge, keywordText, meaningGroups, meaningsText, readingList, splitKanjiMarker } from "./shared";
+import { levelBadge } from "./design";
+import { redesignLayout } from "./redesign-layout";
+import { jlptPriority, kankenPriority, keywordText, meaningGroups, meaningsText, readingList, splitKanjiMarker } from "./shared";
 
-const readingsRow = (k: Kanji, q: string) => {
-  const on = readingList(k.onReadings);
-  const kun = readingList(k.kunReadings);
-  if (!on && !kun) return "";
-  const part = (label: string, value: string) =>
-    value ? `<span><span class="rlab">${label}</span>${highlight(value, q)}</span>` : "";
-  return `<span class="readings">${part("On", on)}${part("Kun", kun)}</span>`;
+const statusDot = (k: Kanji) => {
+  if (k.added !== 1) return "";
+  const label = k.unfinished === 1 ? "Unfinished" : "In your study list";
+  return `<i class="sdot ${k.unfinished === 1 ? "unf" : "in"}" role="img" aria-label="${label}" title="${label}"></i>`;
 };
 
-const kanjiRow = (k: Kanji, q: string, total: number) => {
-  const unfinished = k.added === 1 && k.unfinished === 1;
-  return `
-<div class="r${unfinished ? " unfinished" : k.added === 1 ? " in" : ""}">
-<a class="rklink" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}"><span class="rk k">${esc(k.literal)}</span></a>
-<span class="rm">${k.keyword ? `<span class="kw">${highlight(keywordText(k.keyword), q)}</span>` : ""}<span class="mean">${highlight(meaningsText(k.meanings), q)}</span>${readingsRow(k, q)}</span>
-<span class="badges">${unfinished ? `<span class="sr">Unfinished</span>` : k.added === 1 ? `<span class="sr">In your study list</span>` : ""}${jlptBadge(k, total)}${kankenBadge(k, total)}</span></div>`;
+const kanjiRow = (k: Kanji, q: string, known: number) => {
+  const readings = [readingList(k.onReadings), readingList(k.kunReadings)].filter(Boolean).join(" · ");
+  const badges = [
+    k.jlpt ? levelBadge(`JLPT N${k.jlpt}`, jlptPriority(Number(k.jlpt), known)) : "",
+    k.kanken ? levelBadge(`Kanken ${k.kanken}`, kankenPriority(Number(k.kanken), known)) : "",
+  ].join("");
+  return `<div class="resultrow kanjirow">
+    <a class="rtile ktile" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">${esc(k.literal)}${statusDot(k)}</a>
+    <div class="rmain">
+      ${k.keyword ? `<div class="rkw">${highlight(keywordText(k.keyword), q)}</div>` : ""}
+      <div class="rmean">${highlight(meaningsText(k.meanings), q)}</div>
+      ${readings ? `<div class="rread">${highlight(readings, q)}</div>` : ""}
+    </div>
+    <div class="rright">${badges}</div>
+  </div>`;
 };
 
 const wordRow = (w: Word, back: string, q: string) => {
   const inList = w.added === 1;
-  const { text: kanji, marker } = w.kanji ? splitKanjiMarker(w.kanji) : { text: "", marker: "" };
-  const word = w.kanji
-    ? `${kanji ? `<a class="wordlink" href="/?q=${enc(kanji)}" aria-label="Search for ${esc(kanji)}">${highlight(kanji, q)}</a>` : ""}${marker ? `<span class="kmarker">${esc(marker)}</span>` : ""}`
-    : highlight(w.kana, q);
-  return `
-<div class="w${inList ? " in" : ""}" id="w${w.id}">
-<div class="wtop">
-<span class="k wk">${word}${w.kanji && w.kana ? `<span class="kana">「${highlight(w.kana, q)}」</span>` : ""}${w.kanji_alternative ? `<span class="alt">also ${highlight(w.kanji_alternative, q)}</span>` : ""}</span>
-<span class="badges">${inList ? `<span class="sr">In your study list</span>` : ""}${w.jlpt ? `<span class="b">N${esc(w.jlpt)}</span>` : ""}${w.freq_wiki ? `<span class="b">#${esc(w.freq_wiki)}</span>` : ""}</span>
-<form method="post" action="/words/${w.id}/toggle"><input type="hidden" name="back" value="${esc(back)}">
-<button class="btn ${inList ? "rem" : "add"}" type="submit">${inList ? "Remove" : "Add"}</button></form>
-</div>
-<div class="wm">${meaningGroups(w.meanings).map((m) => `<span class="sense">${highlight(m, q)}</span>`).join("")}</div>
-</div>`;
+  const raw = w.kanji ? splitKanjiMarker(w.kanji) : { text: "", marker: "" };
+  const kana = String(w.kana ?? "").split(";")[0];
+  const word = raw.text || kana;
+  return `<div class="resultrow wordrow" id="w${w.id}">
+    <div class="rmain">
+      <div class="rkw">${highlight(word, q)}${kana && kana !== word ? ` <span class="rread">（${highlight(kana, q)}）</span>` : ""}</div>
+      <div class="rmean">${meaningGroups(w.meanings).map((m) => `<span class="sense">${highlight(m, q)}</span>`).join("")}</div>
+    </div>
+    <div class="rright">
+      ${w.jlpt ? `<span class="badge">N${esc(w.jlpt)}</span>` : ""}
+      ${w.freq_wiki ? `<span class="badge">#${esc(w.freq_wiki)}</span>` : ""}
+      <form method="post" action="/words/${w.id}/toggle"><input type="hidden" name="back" value="${esc(back)}"><button class="pill ${inList ? "ghost rem" : "dark"} sm" type="submit">${inList ? "Remove" : "Add"}</button></form>
+    </div>
+  </div>`;
 };
 
-function suggestions(q: string, type: string) {
+const scriptAlt = (q: string, type: string) => {
   const hira = romajiToHiragana(q);
   if (!hira) return "";
-  const link = (label: string, tag: string, text: string) => shortQuery(text) ? "" :
-    `<a class="sug" href="/?q=${enc(text)}&type=${type}"><span class="tag k">${tag}</span><span>${label}</span><span class="to k">${esc(text)}</span></a>`;
-  const links = `${link("Search in hiragana", "あ", hira)}${link("Search in katakana", "ア", toKata(hira))}`;
-  return links ? `<div class="sugs">${links}</div>` : "";
-}
+  const link = (text: string) => shortQuery(text) ? "" : `<a href="/?q=${enc(text)}&type=${type}">${esc(text)}</a>`;
+  const links = [link(hira), link(toKata(hira))].filter(Boolean);
+  return links.length ? ` (search for ${links.join(" / ")} instead)` : "";
+};
+
+const hero = (message = "") => `<div class="searchhero">
+  <div class="crumb">Search</div>
+  <h1>Find a kanji</h1>
+  <p class="sub">Use the search bar above to search by character, keyword, meaning, reading or romaji.</p>
+  ${message ? `<p class="sub" style="margin-top:14px">${message}</p>` : ""}
+</div>`;
 
 export function home(url: URL) {
   const raw = url.searchParams.get("q");
   const q = (raw ?? "").trim().slice(0, 100);
   const t = url.searchParams.get("type");
   const type = t === "kanji" || t === "words" ? t : "all";
-  if (!q) return html(layout("Kanji", "", `<div class="box empty">${raw === null ? "Search by kanji, keyword, meaning, reading, or romaji." : "Enter at least two characters to search."}</div>`));
-  if (shortQuery(q)) return html(layout("Search", q, `<div class="box empty">Enter at least two characters to search.</div>`));
+  const theme = requestContext.getStore()?.theme ?? "light";
+  const back = `${url.pathname}${url.search}`;
+  const page = (title: string, body: string) => html(redesignLayout(title, body, { theme, back, searchValue: q }));
+
+  if (!q) return page("Search – Kanji", hero(raw === null ? "" : "Enter at least two characters to search."));
+  if (shortQuery(q)) return page("Search – Kanji", hero("Enter at least two characters to search."));
 
   const { kanji, words } = search(q);
-  const back = `/?q=${enc(q)}&type=${type}`;
-  const pill = (id: string, label: string) =>
-    `<a class="pill${type === id ? " on" : ""}" href="/?q=${enc(q)}&type=${id}">${label}</a>`;
-  let body = suggestions(q, type);
-  body += `<div class="pills">${pill("all", `All ${kanji.length + words.length}`)}${pill("kanji", `Kanji ${kanji.length}`)}${pill("words", `Words ${words.length}`)}</div>`;
-  if (type !== "words" && kanji.length)
-    body += `<section><h2>Kanji</h2><div class="box">${(() => { const total = totalKnown(); return kanji.map((k) => kanjiRow(k, q, total)).join(""); })()}</div></section>`;
-  if (type !== "kanji" && words.length)
-    body += `<section><h2>Words</h2><div class="box">${words.map((w) => wordRow(w, back, q)).join("")}</div></section>`;
-  if (!kanji.length && !words.length) body += `<div class="box empty">Nothing found for “${esc(q)}”. Try another spelling or a shorter search.</div>`;
-  return html(layout(`${q} – Kanji`, q, body));
+  const known = totalKnown();
+  const backTo = `/?q=${enc(q)}&type=${type}`;
+  const tab = (id: string, label: string, count: number) =>
+    `<a class="tab${type === id ? " on" : ""}" href="/?q=${enc(q)}&type=${id}">${label} ${count}</a>`;
+  const alt = scriptAlt(q, type);
+  const resultHead = `<div class="resulthead"><h2>Results for “${esc(q)}”${alt ? `<span class="alt">${alt}</span>` : ""}</h2><div class="tabs">${tab("all", "All", kanji.length + words.length)}${tab("kanji", "Kanji", kanji.length)}${tab("words", "Words", words.length)}</div></div>`;
+
+  let list = "";
+  if (type !== "words" && kanji.length) {
+    list += `<div class="section-label"><h3>Kanji</h3><span class="sub">${kanji.length}</span></div>`;
+    list += `<div class="kanji-grid">${kanji.map((k) => kanjiRow(k, q, known)).join("")}</div>`;
+  }
+  if (type !== "kanji" && words.length) {
+    list += `<div class="section-label"><h3>Words</h3><span class="sub">${words.length}</span></div>`;
+    list += words.map((w) => wordRow(w, backTo, q)).join("");
+  }
+  if (!list) list = `<div class="sub" style="padding:18px 0">Nothing found for “${esc(q)}”. Try another spelling or a shorter search.</div>`;
+
+  const body = `${resultHead}
+    <div class="grid">
+      <div class="card" style="grid-column:span 12">${list}</div>
+    </div>`;
+  return page(`${q} – Kanji`, body);
 }

@@ -28,7 +28,7 @@ const priorityInfo = (p: Priority): { icon: string; label: string } =>
   p === "medium" ? { icon: "↑", label: "Medium" } :
   p === "low" ? { icon: "", label: "Low" } : { icon: "", label: "Lowest" };
 
-const levelBadge = (label: string, p: Priority) => {
+export const levelBadge = (label: string, p: Priority) => {
   const info = priorityInfo(p);
   return `<span class="badge" title="Priority ${info.label}" aria-label="${esc(label)}, priority ${info.label}">${esc(label)}${info.icon ? ` <span class="prio">${info.icon}</span>` : ""}</span>`;
 };
