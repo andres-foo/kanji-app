@@ -139,7 +139,6 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     ${history.length
       ? shownHistory.map(hRow).join("") + (moreHistory.length ? `<details class="hmore"><summary>Show ${moreHistory.length} more</summary>${moreHistory.map(hRow).join("")}</details>` : "")
       : `<div class="sub" style="padding:6px 0">No reviews yet.</div>`}
-    <div class="sub" style="margin-top:auto;padding-top:10px">${added ? "In your study list" : "Not in your study list yet"} · ${known} known</div>
   </div>
 
   <div class="card" style="grid-column:span 6">
