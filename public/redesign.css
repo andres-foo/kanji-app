@@ -234,9 +234,13 @@ h1 .lite{color:var(--muted);font-weight:400}
 .navsearch input::placeholder{color:#a2a7b0}
 .themeswitch{display:flex;align-items:center}
 .switch{width:44px;height:24px;border-radius:999px;background:#151619;border:0;padding:3px;cursor:pointer;display:flex;align-items:center;transition:background .2s}
-.switch .knob{width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s,background .2s}
+.switch .knob{width:18px;height:18px;border-radius:50%;background:#fff;color:#151619;display:grid;place-items:center;transition:transform .2s,background .2s,color .2s}
+.switch .knob svg{width:12px;height:12px;display:block}
+.switch .knob .moon{display:none}
 [data-theme="dark"] .switch{background:var(--cyan)}
-[data-theme="dark"] .switch .knob{transform:translateX(20px);background:#08181b}
+[data-theme="dark"] .switch .knob{transform:translateX(20px);background:#08181b;color:var(--cyan)}
+[data-theme="dark"] .switch .knob .sun{display:none}
+[data-theme="dark"] .switch .knob .moon{display:block}
 
 /* hero: story and components live with the kanji */
 .heroimg{height:auto;min-height:318px;align-self:stretch}
