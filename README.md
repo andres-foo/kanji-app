@@ -10,7 +10,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 **Write and edit.** Adding a kanji takes a click. Every entry has a story field for your mnemonic with simple formatting (`=keyword=`, `_component_`, `?note?`, `#link#`), rendered while you type with a code toggle for the raw markers, and the keyword, components, related forms, flags and image are edited on the same page.
 
-**Review and measure.** A simple spaced-repetition system moves each kanji's score and uses it to pick the next interval; the queue is split into new, due today and overdue. Answer with the buttons, the keyboard (`Space` to reveal, `A S D F` to answer) or a controller (`A` to reveal, `LT LB RB RT` to answer), and watch the **Stats** page for the list size, the due queue, the level trend and the answer mix.
+**Review and measure.** A simple spaced-repetition system moves each kanji's score and uses it to pick the next interval; the queue is split into new, due today and overdue. Answer with the buttons, the keyboard (`Space` to reveal, `A S D F` to answer) or a controller (`A` to reveal, `LT LB RB RT` to answer), and watch the dashboard stats for the list size, the due queue, the level trend and the answer mix.
 
 **Make it yours.** Light and dark themes, editable review deltas and mastery-level names, and a reset that returns every added kanji to the starting score.
 
@@ -29,7 +29,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 |---|---|
 | `server.ts` | the Bun server: static and font routes, the URL dispatch table, startup |
 | `src/` | the app logic — config, database, HTML helpers, search, settings, mastery, review, stats, images, story |
-| `src/views/` | the HTML for each page: layout, home, lists, kanji, review, settings, stats and charts |
+| `src/views/` | the HTML for each page: layout, home/dashboard, lists, kanji, review, settings and charts |
 | `src/routes/` | the POST handlers: kanji edit/toggle, images, theme/details, review answers, settings |
 | `public/` | the stylesheet, browser scripts and the Jigmo fonts |
 | `data/` | `kanji.db` and the kanji pictures |
@@ -40,7 +40,7 @@ Assumptions the app makes:
 
 ## Overview
 
-Search for a kanji, add it to your list, write a short mnemonic, and let the review queue bring it back when it is due. Each answer moves the score, the score picks the next interval, and the stats show how the list is doing. That is the app in one loop: find, add, write, review, repeat.
+Search for a kanji, add it to your list, write a short mnemonic, and let the review queue bring it back when it is due. Each answer moves the score, the score picks the next interval, and the dashboard shows how the list is doing. That is the app in one loop: find, add, write, review, repeat.
 
 
 ## Scoring and review system
@@ -63,7 +63,7 @@ answer  →  new score  →  interval for that score  →  due date = today + in
 | **Mastery level** | A named band of scores (Weak, New, Learning, Familiar, Strong, Mastered). Shown at the top of the kanji page together with the score and the time until the next review (green = not scheduled yet, blue = due today, red = overdue). |
 | **Interval** | How many days until the kanji is due again. It depends only on the score the kanji has *after* the answer. |
 | **Due date** | `kanjis.due_date`, a `YYYY-MM-DD` date. Empty (`NULL`) means "never scheduled", which counts as due now. |
-| **Queue** | All added kanji with an empty due date or a due date of today or earlier. The Stats page splits it into **new** (no due date), **due today** and **overdue**. |
+| **Queue** | All added kanji with an empty due date or a due date of today or earlier. The dashboard splits it into **new** (no due date), **due today** and **overdue**. |
 | **Review counter** | The numbers in the navbar, `Review (new · today · overdue)`, coloured green, blue and red. Together they are the size of the queue right now. |
 
 ---
@@ -216,7 +216,7 @@ Every answer adds one row to `review_history`. Rows are never deleted: it is a p
 | `after` | Score after the answer (after clamping to the floor and ceiling) |
 | `type` | `bad`, `neutral`, `good` or `easy` |
 
-The Stats page only counts rows whose `type` is one of those four values.
+The dashboard stats only count rows whose `type` is one of those four values.
 
 ---
 
@@ -248,13 +248,14 @@ From the floor, three Goods get a kanji back to 0.
 
 ---
 
-### 10. Stats page
+### 10. Dashboard stats
 
-The **Stats** page (`/stats`) is built from the review history and the current state of your list. Choose 30 days, 90 days or 6 months at the top.
+The stats section at the bottom of the Dashboard (`/`) is built from the review history and the current state of your list. Choose 30 days, 90 days or 6 months above it.
+
+The dashboard cards at the top show the list size, the queue split into **New · no due date** (green), **Due today** (blue) and **Overdue** (red), reviewed today, the current streak, and finished / total counts. Below that, the longer-range section shows:
 
 | Section | What it shows |
 |---|---|
-| **Cards** | Kanji in your list, the queue split into **New · no due date** (green), **Due today** (blue) and **Overdue** (red), reviewed today, and the **Not bad** percentage for the chosen period |
 | **Kanji by level** | A stacked chart of how many kanji sit at each mastery level on each day, rebuilt from the `after` scores in the history |
 | **Coming up** | A stacked **Now** column (green new / blue due today / red overdue), then how many kanji are already scheduled for each of the next 14 days |
 | **Answers by level** | For each score: number of reviews, split of Bad / Neutral / Good / Easy, the **Not bad** percentage and a verdict |
@@ -281,7 +282,7 @@ A kanji is reviewed at score *s* because it was scheduled with the interval of s
 
 - **Dates use the server's local date.** Due dates and the queue use `date('now', 'localtime')`. If the app runs on a server set to another timezone (many hosts use UTC), reviews in the evening can land on the next day. Set the server's timezone (for example `TZ=America/Santiago`).
 - **Database columns.** Reviewing needs `kanjis.score`, `kanjis.last_reviewed` and `kanjis.due_date`, and the tables `review_history`, `settings` and `mastery_levels`. If a column is missing, review pages show an error naming it.
-- **`added_at` is not set by the app yet.** The stats chart counts a kanji from its `added_at` date when it has one. Without it, a kanji counts for the whole period.
-- **Old history.** Reviews saved before the 0-to-10 scale (and the four-button system) used different score meanings. They are still in `review_history` and will skew the Stats page for periods that reach back that far.
+- **`added_at` is not set by the app yet.** The dashboard stats chart counts a kanji from its `added_at` date when it has one. Without it, a kanji counts for the whole period.
+- **Old history.** Reviews saved before the 0-to-10 scale (and the four-button system) used different score meanings. They are still in `review_history` and will skew the dashboard stats for periods that reach back that far.
 - **The priority colours are separate.** The green / orange / red / grey backgrounds on JLPT and Kanken badges depend only on how many kanji are added, finished and not components. They have nothing to do with review scores.
 - **Backups.** The database file is the only copy of your scores and history. Copy it somewhere else regularly, and before using **Reset scores**.

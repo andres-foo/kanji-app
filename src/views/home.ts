@@ -4,6 +4,7 @@ import { requestContext } from "../prefs";
 import { romajiToHiragana } from "../romaji";
 import { search, shortQuery } from "../search";
 import type { Kanji, Word } from "../types";
+import { dashboardView } from "./dashboard";
 import { levelBadge } from "./design";
 import { layout } from "./layout";
 import { jlptPriority, kankenPriority, keywordText, meaningGroups, meaningsText, readingList, splitKanjiMarker } from "./shared";
@@ -65,15 +66,18 @@ const hero = (message = "") => `<div class="searchhero">
 </div>`;
 
 export function home(url: URL) {
-  const raw = url.searchParams.get("q");
-  const q = (raw ?? "").trim().slice(0, 100);
+  const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const t = url.searchParams.get("type");
   const type = t === "kanji" || t === "words" ? t : "all";
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = `${url.pathname}${url.search}`;
   const page = (title: string, body: string) => html(layout(title, body, { theme, back, searchValue: q }));
 
-  if (!q) return page("Search – Kanji", hero(raw === null ? "" : "Enter at least two characters to search."));
+  if (!q) {
+    const days = Number(url.searchParams.get("days") ?? 30);
+    const dash = dashboardView(days);
+    return page(dash.title, dash.body);
+  }
   if (shortQuery(q)) return page("Search – Kanji", hero("Enter at least two characters to search."));
 
   const { kanji, words } = search(q);

@@ -18,10 +18,10 @@ export const layout = (title: string, body: string, { theme, back, lab = false, 
 <body>
 <div class="panel">
 <nav class="nav">
-  <a class="brand" href="/">KANJI</a>
+  <a class="brand" href="/">DASHBOARD</a>
   ${lab ? `<span class="labtag">design lab</span>` : ""}
   <div class="navlinks">
-    <a class="${active === "my-list" ? "on" : ""}" href="/my-list">My List</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a><a class="${active === "kanken" ? "on" : ""}" href="/kanken">Kanken</a><a class="${active === "stats" ? "on" : ""}" href="/stats">Stats</a>
+    <a class="${active === "my-list" ? "on" : ""}" href="/my-list">My List</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a><a class="${active === "kanken" ? "on" : ""}" href="/kanken">Kanken</a>
   </div>
   <form class="navsearch" action="/" method="get" role="search">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>

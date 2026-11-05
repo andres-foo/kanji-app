@@ -9,7 +9,6 @@ import { designKanjiPage } from "./src/views/design";
 import { messagePage } from "./src/views/message";
 import { reviewNext, reviewPage } from "./src/views/review";
 import { settingsPage } from "./src/views/settings";
-import { statsPage } from "./src/views/stats";
 import { toggleWord, toggleKanji, updateKanji } from "./src/routes/kanji";
 import { uploadImage, deleteImage } from "./src/routes/images";
 import { setTheme, toggleDetails } from "./src/routes/prefs";
@@ -54,7 +53,6 @@ Bun.serve({
 
       if (path === "/details/toggle") return req.method === "POST" ? toggleDetails(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/theme") return req.method === "POST" ? setTheme(req) : new Response("Method not allowed", { status: 405 });
-      if (path === "/stats") return statsPage(url);
       if (path === "/settings/reset-scores") return req.method === "POST" ? resetScores(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/settings") return req.method === "POST" ? saveSettings(req, url) : settingsPage(url);
       if (path === "/review") return reviewNext();
