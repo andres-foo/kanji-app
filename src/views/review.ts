@@ -32,7 +32,7 @@ export function reviewPage(literal: string) {
   const k = db.query(`SELECT literal FROM kanjis WHERE literal = ?`).get(literal) as { literal: string } | null;
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = `/review/${enc(literal)}`;
-  if (!k) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
+  if (!k) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404, { href: "/review", label: "Back to review" });
   const words = db.query(`SELECT * FROM examples WHERE COALESCE(added, 0) = 1 AND kanji LIKE ? ESCAPE '\\'`).all(`%${likeEsc(literal)}%`) as Word[];
   words.sort((a, b) => nullsLast(a.freq_wiki || null, b.freq_wiki || null) || (b.jlpt ?? 0) - (a.jlpt ?? 0));
   const chips = words.map((w) => `<span class="qword">${esc(splitKanjiMarker(w.kanji ?? "").text)}</span>`).join("");

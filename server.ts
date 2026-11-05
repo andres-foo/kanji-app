@@ -90,7 +90,7 @@ Bun.serve({
         const f = await findImage(path.slice(5));
         return f ? new Response(f, { headers: { "cache-control": "no-cache" } }) : new Response("Not found", { status: 404 });
       }
-      return messagePage("Page not found", "That page doesn’t exist. Try a search instead.", 404);
+      return messagePage("Page not found", "That page doesn’t exist. Use the search bar above, or head back to the dashboard.", 404);
     });
   },
 });

@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { enc } from "../html";
 import { sameOrigin, safeBack } from "../prefs";
 import { startScore } from "../settings";
 import { messagePage } from "../views/message";
@@ -33,7 +34,7 @@ export async function toggleKanji(req: Request, literal: string) {
       [startScore(), literal],
     );
   } catch (e) {
-    return messagePage("Could not update kanji", `Could not update the kanji: ${(e as Error).message}. Is the database file writable?`, 500);
+    return messagePage("Could not update kanji", `Could not update the kanji: ${(e as Error).message}. Is the database file writable?`, 500, { href: `/kanji/${enc(literal)}`, label: "Back to kanji" });
   }
   return new Response(null, { status: 303, headers: { location: back } });
 }
@@ -61,7 +62,7 @@ export async function updateKanji(req: Request, literal: string) {
     );
     if (!result.changes) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
   } catch (e) {
-    return messagePage("Could not update kanji", `Could not update the kanji: ${(e as Error).message}. Is the database file writable?`, 500);
+    return messagePage("Could not update kanji", `Could not update the kanji: ${(e as Error).message}. Is the database file writable?`, 500, { href: `/kanji/${enc(literal)}?edit=1`, label: "Back to kanji" });
   }
   return new Response(null, { status: 303, headers: { location: back } });
 }

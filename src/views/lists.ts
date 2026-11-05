@@ -20,7 +20,7 @@ const section = (heading: string, list: TileRow[]) =>
   `<section class="listsection"><div class="listsechead"><h2>${esc(heading)}</h2><span class="sub">${list.length}</span></div><div class="lgrid">${list.map(kanjiTile).join("")}</div></section>`;
 
 const emptyCard = (title: string, message: string) =>
-  `<div class="card listempty"><h2>${esc(title)}</h2><p class="sub">${esc(message)}</p><a class="pill dark" href="/">Search kanji</a></div>`;
+  `<div class="card listempty"><h2>${esc(title)}</h2><p class="sub">${esc(message)}</p><a class="pill dark" href="/">Back to dashboard</a></div>`;
 
 const page = (title: string, body: string, active: string) => {
   const theme = requestContext.getStore()?.theme ?? "light";
