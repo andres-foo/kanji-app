@@ -17,7 +17,7 @@ export const redesignLayout = (title: string, body: string, { theme, back, lab =
 <body>
 <div class="panel">
 <nav class="nav">
-  <a class="brand" href="/" style="text-decoration:none;color:inherit">KANJI</a>
+  <a class="brand" href="/">KANJI</a>
   ${lab ? `<span class="labtag">design lab</span>` : ""}
   <div class="navlinks">
     <a href="/my-list">My List</a><a href="/jlpt">JLPT</a><a href="/kanken">Kanken</a><a href="/stats">Stats</a>
