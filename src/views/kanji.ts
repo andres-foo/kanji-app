@@ -8,6 +8,7 @@ import { storyHtml } from "../story";
 import type { Kanji, Word } from "../types";
 import { layout } from "./layout";
 import { kanjiRedesignView } from "./design";
+import { kanjiRedesignEditView } from "./kanji-edit";
 import { redesignLayout } from "./redesign-layout";
 import { jlptBadge, kankenBadge, keywordText, meaningGroups, meanings, readingList, splitKanjiMarker } from "./shared";
 
@@ -105,7 +106,14 @@ function dueLabel(due: string | null): { text: string; cls: string } {
 
 export async function kanjiPage(literal: string, url: URL) {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-  if (url.searchParams.get("edit") !== "1" && url.searchParams.get("review") !== "1") {
+  if (url.searchParams.get("edit") === "1") {
+    const view = await kanjiRedesignEditView(literal, q);
+    const theme = requestContext.getStore()?.theme ?? "light";
+    const back = `${url.pathname}${url.search}`;
+    if (!view) return html(redesignLayout("Not found", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`, { theme, back, lab: false }), 404);
+    return html(redesignLayout(view.title, view.body, { theme, back, lab: false }));
+  }
+  if (url.searchParams.get("review") !== "1") {
     const view = await kanjiRedesignView(literal, "/kanji", q);
     const theme = requestContext.getStore()?.theme ?? "light";
     const back = `/kanji/${enc(literal)}${url.search}`;
