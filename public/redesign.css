@@ -402,3 +402,6 @@ a.comp:hover{background:#e9ecf1}
 .echeck input{width:16px;height:16px}
 .tool{font-size:11.5px}
 .flab{font-size:10px}
+.exrow form{display:flex;align-items:center}
+.pill.ghost.rem{color:#b91c1c;border-color:#f0d0d0}
+[data-theme="dark"] .pill.ghost.rem{color:#fca5a5;border-color:#5a2626}

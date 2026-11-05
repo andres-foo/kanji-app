@@ -52,6 +52,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   const unfinished = k.unfinished === 1;
   const heroState = added ? (unfinished ? " hero-unfinished" : " hero-added") : "";
   const editHref = `/kanji/${enc(k.literal)}?${q ? `q=${enc(q)}&` : ""}edit=1`;
+  const pageHref = `${base}/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
   const badges = [
     k.jlpt ? `<span class="badge pri-${jlptPriority(Number(k.jlpt), known)}">JLPT N${esc(k.jlpt)}</span>` : "",
     k.kanken ? `<span class="badge pri-${kankenPriority(Number(k.kanken), known)}">Kanken ${esc(k.kanken)}</span>` : "",
@@ -90,11 +91,13 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   const exRow = (w: Word) => {
     const text = splitKanjiMarker(w.kanji ?? "").text;
     const kana = String(w.kana ?? "").split(";")[0];
-    return `<div class="exrow">
+    const inList = w.added === 1;
+    return `<div class="exrow" id="w${w.id}">
   <div class="exword">${esc(text)}</div>
   <div class="exkana">${esc(kana)}</div>
   <div class="exmean" title="${esc(meaningsText(w.meanings))}">${esc(firstSense(w.meanings))}</div>
   ${w.jlpt ? `<span class="badge">N${esc(w.jlpt)}</span>` : ""}
+  <form method="post" action="/words/${w.id}/toggle"><input type="hidden" name="back" value="${esc(pageHref)}"><button class="pill ${inList ? "ghost rem" : "dark"} sm" type="submit">${inList ? "Remove" : "Add"}</button></form>
 </div>`;
   };
 
