@@ -1,11 +1,13 @@
 import { db } from "../db";
 import { esc, html } from "../html";
 import { MAX_SCORE, MIN_SCORE, masteryLevels } from "../mastery";
+import { requestContext } from "../prefs";
 import { dueCount, dueCounts, type ReviewResult } from "../review";
 import { startScore } from "../settings";
 import { addDays, STAT_RANGES, verdict } from "../stats";
 import { areaChart, barChart, BLUES } from "./charts";
-import { layout } from "./layout";
+import { messagePage } from "./message";
+import { redesignLayout } from "./redesign-layout";
 
 // the three due states: green = no due date yet (new), blue = due today, red = overdue
 const DUE_COLORS = { fresh: "#16A34A", today: "#2a78d6", overdue: "#DC2626" } as const;
@@ -94,23 +96,22 @@ export function statsPage(url: URL) {
     const comingTitles = fDays.map((d, i) => `${d}: ${fValues[i]} kanji already scheduled`);
 
     const reviewedToday = (db.query(`SELECT COUNT(*) AS n FROM review_history WHERE ${TYPES} AND date(date) = ?`).get(today) as { n: number }).n;
-    const pill = (r: number) => `<a class="pill${r === range ? " on" : ""}" href="/stats?days=${r}">${r === 180 ? "6 months" : `${r} days`}</a>`;
-    const body = `<h1>STATS</h1>
-<div class="pills">${STAT_RANGES.map(pill).join("")}</div>
-<div class="cards">
-<div class="sc"><b>${kanji.length}</b><span>Kanji in your list</span></div>
-<div class="sc due-fresh"><b>${due.fresh}</b><span>New · no due date</span></div>
-<div class="sc due-today"><b>${due.today}</b><span>Due today</span></div>
-<div class="sc due-overdue"><b>${due.overdue}</b><span>Overdue</span></div>
-<div class="sc"><b>${reviewedToday}</b><span>Reviewed today</span></div>
-<div class="sc"><b>${totalAll ? Math.round((100 * okAll) / totalAll) + "%" : "–"}</b><span>Not bad, ${range === 180 ? "6 months" : `${range} days`}</span></div>
-</div>
-<section class="box stat"><h2>Kanji by level</h2><div class="lg">${legend}</div>${areaChart(days, series, `Kanji by level over the last ${range} days`)}</section>
-<section class="box stat"><h2>Coming up</h2><div class="lg"><span><b>${dueCount()}</b> due now:</span><span><i style="background:${DUE_COLORS.fresh}"></i>New, no due date ${due.fresh}</span><span><i style="background:${DUE_COLORS.today}"></i>Due today ${due.today}</span><span><i style="background:${DUE_COLORS.overdue}"></i>Overdue ${due.overdue}</span><span>then kanji already scheduled:</span></div>${barChart(["Now", ...fDays.map((_, i) => `+${i + 1}`)], [nowBar, ...comingBars], [`Now: ${due.fresh} with no due date, ${due.today} due today, ${due.overdue} overdue`, ...comingTitles], "Due kanji now (no due date, due today, overdue) and kanji already scheduled for each of the next 14 days")}</section>
-<section class="box stat"><h2>Answers by level</h2><div class="lg"><span><i style="background:#e34948"></i>Bad</span><span><i style="background:#9CA3AF"></i>Neutral</span><span><i style="background:#2a78d6"></i>Good</span><span><i style="background:#1baf7a"></i>Easy</span></div>
-<div class="tbw"><table class="at"><tr><th>Level</th><th>Interval</th><th class="num">Reviews</th><th>Answers</th><th class="num">Not bad</th><th>Verdict</th></tr>${tableRows}</table></div></section>`;
-    return html(layout("Stats – Kanji", "", body, "stats"));
+    const rangeLabel = range === 180 ? "6 months" : `${range} days`;
+    const notBad = totalAll ? `${Math.round((100 * okAll) / totalAll)}%` : "–";
+    const rangeTab = (r: number) => `<a class="tab${r === range ? " on" : ""}" href="/stats?days=${r}">${r === 180 ? "6 months" : `${r} days`}</a>`;
+    const kpi = (value: string | number, label: string, cls = "") => `<div class="card statkpi${cls ? ` ${cls}` : ""}"><b>${value}</b><span>${label}</span></div>`;
+    const head = `<div class="listhead left"><div><h1>Stats</h1><p class="sub">Review progress and upcoming schedule.</p></div><div class="tabs">${STAT_RANGES.map(rangeTab).join("")}</div></div>`;
+    const kpis = `<div class="statskpis">${kpi(kanji.length, "Kanji in your list")}${kpi(due.fresh, "New · no due date", "fresh")}${kpi(due.today, "Due today", "today")}${kpi(due.overdue, "Overdue", "overdue")}${kpi(reviewedToday, "Reviewed today")}${kpi(notBad, `Not bad · ${rangeLabel}`)}</div>`;
+    const levelChart = `<div class="card statcard" style="grid-column:span 7"><div class="stathead"><div><h2>Kanji by level</h2><p class="sub">Last ${rangeLabel}</p></div></div><div class="statlegend">${legend}</div>${areaChart(days, series, `Kanji by level over the last ${range} days`)}</div>`;
+    const comingLegend = `<span><b>${dueCount()}</b> due now:</span><span><i style="background:${DUE_COLORS.fresh}"></i>New, no due date ${due.fresh}</span><span><i style="background:${DUE_COLORS.today}"></i>Due today ${due.today}</span><span><i style="background:${DUE_COLORS.overdue}"></i>Overdue ${due.overdue}</span><span>then kanji already scheduled:</span>`;
+    const comingChart = `<div class="card statcard" style="grid-column:span 5"><div class="stathead"><div><h2>Coming up</h2><p class="sub">Due queue and the next 14 days</p></div></div><div class="statlegend">${comingLegend}</div>${barChart(["Now", ...fDays.map((_, i) => `+${i + 1}`)], [nowBar, ...comingBars], [`Now: ${due.fresh} with no due date, ${due.today} due today, ${due.overdue} overdue`, ...comingTitles], "Due kanji now (no due date, due today, overdue) and kanji already scheduled for each of the next 14 days")}</div>`;
+    const answersLegend = `<span><i style="background:#e34948"></i>Bad</span><span><i style="background:#9CA3AF"></i>Neutral</span><span><i style="background:#2a78d6"></i>Good</span><span><i style="background:#1baf7a"></i>Easy</span>`;
+    const answersChart = `<div class="card statcard" style="grid-column:span 12"><div class="stathead"><div><h2>Answers by level</h2><p class="sub">How each level performed in the selected range</p></div></div><div class="statlegend">${answersLegend}</div><div class="stattablewrap"><table class="stattable"><thead><tr><th>Level</th><th>Interval</th><th class="num">Reviews</th><th>Answers</th><th class="num">Not bad</th><th>Verdict</th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`;
+    const body = `${head}${kpis}<div class="grid statsgrid">${levelChart}${comingChart}${answersChart}</div>`;
+    const theme = requestContext.getStore()?.theme ?? "light";
+    const back = requestContext.getStore()?.back ?? "/stats";
+    return html(redesignLayout("Stats – Kanji", body, { theme, back, active: "stats" }));
   } catch (e) {
-    return html(layout("Error", "", `<div class="box empty">Could not build the stats: ${esc((e as Error).message)}.</div>`), 500);
+    return messagePage("Stats error", `Could not build the stats: ${(e as Error).message}.`, 500);
   }
 }
