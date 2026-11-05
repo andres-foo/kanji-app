@@ -61,7 +61,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
         const kw = compKw.get(c) ?? "";
         return `<a class="comp" href="${base}/${enc(c)}${q ? `?q=${enc(q)}` : ""}"><b>${esc(c)}</b>${kw ? `<span>${esc(kw)}</span>` : ""}</a>`;
       }).join("")
-    : `<span class="sub">No components recorded.</span>`;
+    : "";
   const componentFor = compFor.length
     ? compFor.map((r) => {
         const state = r.added === 1 ? (r.unfinished === 1 ? " unf" : " in") : "";
@@ -114,7 +114,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
         <div class="heroinfo">
           <div class="kw">${esc(keywordText(k.keyword)) || "No keyword yet"}</div>
           <div class="kmean">${esc(shortMeanings)}</div>
-          <div class="comps">${compChips}</div>
+          ${compChips ? `<div class="comps">${compChips}</div>` : ""}
         </div>
       </div>
       <div class="herostory">
