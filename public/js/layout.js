@@ -1,5 +1,5 @@
 
-// kanji image: click or tap to see it larger, up to the width of the kanji card or the image's own size, whichever is smaller
+// kanji image: click or tap to see it larger; the old card layout also caps it to the card width
 (function () {
   var overlay = null;
   function close() { if (overlay) { overlay.remove(); overlay = null; } }
@@ -8,11 +8,13 @@
     var img = e.target.closest(".pic img");
     if (!img) return;
     var card = img.closest(".kanji-card");
-    var width = Math.min(card ? card.getBoundingClientRect().width : Infinity, img.naturalWidth || Infinity, window.innerWidth - 32);
     var big = document.createElement("img");
     big.src = img.currentSrc || img.src;
     big.alt = img.alt;
-    if (isFinite(width)) big.style.width = Math.floor(width) + "px";
+    if (card) {
+      var width = Math.min(card.getBoundingClientRect().width, img.naturalWidth || Infinity, window.innerWidth - 32);
+      if (isFinite(width)) big.style.width = Math.floor(width) + "px";
+    }
     overlay = document.createElement("div");
     overlay.className = "lightbox";
     overlay.appendChild(big);

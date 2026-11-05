@@ -210,7 +210,7 @@ h1 .lite{color:var(--muted);font-weight:400}
 
 /* ---------- lab additions ---------- */
 .pic{height:100%}
-.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.pic img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
 .labtag{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#8b909a;background:#fff;border-radius:999px;padding:6px 10px;margin-left:6px}
 .story .story_keyword{font-style:normal;background:var(--cyan);border-radius:5px;padding:1px 5px;font-weight:700}
 .story .story_component{font-style:normal;background:#e9e9f2;border-radius:5px;padding:1px 5px;font-weight:700}
@@ -220,7 +220,7 @@ h1 .lite{color:var(--muted);font-weight:400}
 .answers button{width:100%;cursor:pointer}
 .answers button:disabled{opacity:.55;cursor:default}
 .lightbox{position:fixed;inset:0;background:rgba(12,14,18,.72);display:grid;place-items:center;z-index:100;padding:24px;backdrop-filter:blur(4px)}
-.lightbox img{max-width:100%;max-height:100%;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.lightbox img{width:auto;height:auto;max-width:calc(100vw - 48px);max-height:calc(100vh - 48px);object-fit:contain;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
 .noimg{height:100%;display:grid;place-items:center;background:#eef0f4;color:#8b909a;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 
 /* nav search + theme switch */
@@ -236,6 +236,7 @@ h1 .lite{color:var(--muted);font-weight:400}
 /* hero: story and components live with the kanji */
 .heroimg{height:auto;min-height:318px;align-self:stretch}
 .heroimg .pic{height:100%}
+.heroimg:after{pointer-events:none}
 .herobody{justify-content:flex-start;gap:14px}
 .heroheader{display:flex;align-items:center;justify-content:flex-end;gap:12px}
 .heroheader .badges{margin-top:0}
