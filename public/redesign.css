@@ -241,6 +241,15 @@ h1 .lite{color:var(--muted);font-weight:400}
 [data-theme="dark"] .switch .knob{transform:translateX(20px);background:#08181b;color:var(--cyan)}
 [data-theme="dark"] .switch .knob .sun{display:none}
 [data-theme="dark"] .switch .knob .moon{display:block}
+.rnums{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800}
+.rnums .rn-dot{color:#8b909a}
+.rnums .rn-fresh{color:#4ade80}
+.rnums .rn-today{color:#60a5fa}
+.rnums .rn-overdue{color:#f87171}
+[data-theme="dark"] .rnums .rn-fresh{color:#16A34A}
+[data-theme="dark"] .rnums .rn-today{color:#2a78d6}
+[data-theme="dark"] .rnums .rn-overdue{color:#DC2626}
+[data-theme="dark"] .rnums .rn-dot{color:#6b7280}
 
 /* hero: story and components live with the kanji */
 .heroimg{height:auto;min-height:318px;align-self:stretch}

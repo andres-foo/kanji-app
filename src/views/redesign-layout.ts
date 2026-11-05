@@ -1,9 +1,13 @@
 import { esc } from "../html";
+import { dueCounts } from "../review";
 
 type Options = { theme: string; back: string; lab?: boolean };
 
 // the shared shell for pages that have been moved to the redesign
-export const redesignLayout = (title: string, body: string, { theme, back, lab = false }: Options) => `<!doctype html>
+export const redesignLayout = (title: string, body: string, { theme, back, lab = false }: Options) => {
+  const d = dueCounts();
+  const total = d.fresh + d.today + d.overdue;
+  return `<!doctype html>
 <html lang="en" data-theme="${theme}">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -23,7 +27,7 @@ export const redesignLayout = (title: string, body: string, { theme, back, lab =
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
       <input name="q" placeholder="Search" aria-label="Search">
     </form>
-    <a class="pill dark" href="/review">Review</a>
+    <a class="pill dark" href="/review" aria-label="Review: ${total} due (${d.fresh} new, ${d.today} due today, ${d.overdue} overdue)">Review <span class="rnums"><span class="rn-fresh">${d.fresh}</span><span class="rn-dot">·</span><span class="rn-today">${d.today}</span><span class="rn-dot">·</span><span class="rn-overdue">${d.overdue}</span></span></a>
     <form class="themeswitch" method="post" action="/theme">
       <input type="hidden" name="theme" value="${theme === "dark" ? "light" : "dark"}">
       <input type="hidden" name="back" value="${esc(back)}">
@@ -36,3 +40,4 @@ ${body}
 </div>
 <script src="/js/layout.js" defer></script>
 </body></html>`;
+};
