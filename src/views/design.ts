@@ -41,10 +41,8 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   );
   const compFor = db.query(`SELECT literal, keyword, jlpt, added, unfinished FROM kanjis WHERE components LIKE ? ESCAPE '\\' AND literal != ? ORDER BY COALESCE(added,0) DESC, COALESCE(jlpt,0) DESC LIMIT 10`)
     .all(`%${likeEsc(k.literal)}%`, k.literal) as Pick<Kanji, "literal" | "keyword" | "jlpt" | "added" | "unfinished">[];
-  const wordsAll = db.query(`SELECT * FROM examples WHERE kanji LIKE ? ESCAPE '\\' ORDER BY COALESCE(added,0) DESC, COALESCE(freq_wiki, 999999)`)
+  const addedWords = db.query(`SELECT * FROM examples WHERE kanji LIKE ? ESCAPE '\\' AND COALESCE(added, 0) = 1 ORDER BY COALESCE(freq_wiki, 999999)`)
     .all(`%${likeEsc(k.literal)}%`) as Word[];
-  const addedWords = wordsAll.filter((w) => w.added === 1);
-  const otherWords = wordsAll.filter((w) => w.added !== 1);
   const history = db.query(`SELECT date, "before" AS b, "after" AS a, type FROM review_history WHERE kanji = ? ORDER BY date DESC, id DESC`).all(k.literal) as { date: string; b: number; a: number; type: string }[];
 
   const shortMeanings = meaningsText(k.meanings).split(", ").slice(0, 3).join(", ");
@@ -144,11 +142,10 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
       : `<div class="sub" style="padding:6px 0">No reviews yet.</div>`}
   </div>
 
-  <div class="card" style="grid-column:span 6">
-    <div class="cardhead"><h3 class="h3">Examples</h3><span class="badge">${wordsAll.length} words</span></div>
-    <div class="sub" style="margin-top:6px">In your list</div>
-    ${addedWords.length ? addedWords.map(exRow).join("") : `<div class="sub" style="padding:6px 0">No added examples yet.</div>`}
-    ${otherWords.length ? `<details class="exmore"><summary>Show ${otherWords.length} more words</summary>${otherWords.map(exRow).join("")}</details>` : ""}
+  <div class="card" style="grid-column:span 6;display:flex;flex-direction:column">
+    <div class="cardhead"><h3 class="h3">Examples in your list</h3><span class="badge">${addedWords.length} added</span></div>
+    ${addedWords.length ? addedWords.map(exRow).join("") : `<div class="sub" style="padding:6px 0">No examples in your list yet.</div>`}
+    <div class="exfoot"><a class="pill ghost sm" href="/?q=${enc(k.literal)}&type=words">Find more words</a></div>
   </div>
 
   <div class="card" style="grid-column:span 6">

@@ -414,3 +414,5 @@ a.comp:hover{background:#e9ecf1}
 .comp b{font-size:25px}
 .comp span{font-size:14px}
 .comp{padding:9px 13px;gap:9px}
+.exfoot{display:flex;align-items:center;margin-top:auto;padding-top:10px;border-top:1px solid #f0f1f4}
+[data-theme="dark"] .exfoot{border-color:#2a2c31}
