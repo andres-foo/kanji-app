@@ -405,3 +405,12 @@ a.comp:hover{background:#e9ecf1}
 .exrow form{display:flex;align-items:center}
 .pill.ghost.rem{color:#b91c1c;border-color:#f0d0d0}
 [data-theme="dark"] .pill.ghost.rem{color:#fca5a5;border-color:#5a2626}
+
+/* examples and component chips: one more size up */
+.exword{font-size:22px;min-width:96px}
+.exkana{font-size:14px;min-width:80px}
+.exmean{font-size:14px;min-width:0}
+.exrow{padding:10px 0;gap:10px}
+.comp b{font-size:25px}
+.comp span{font-size:14px}
+.comp{padding:9px 13px;gap:9px}
