@@ -5,7 +5,7 @@ import { MAX_SCORE, MIN_SCORE, masteryFor } from "../mastery";
 import { requestContext } from "../prefs";
 import { storyHtml } from "../story";
 import type { Kanji, Word } from "../types";
-import { jlptPriority, kankenPriority, keywordText, meaningsText, readingList, splitKanjiMarker } from "./shared";
+import { jlptPriority, kankenPriority, keywordText, meaningsText, readingList, splitKanjiMarker, type Priority } from "./shared";
 import { redesignLayout } from "./redesign-layout";
 
 const dueLabel = (due: string | null) => {
@@ -21,6 +21,16 @@ const dueLabel = (due: string | null) => {
 const firstSense = (s: unknown) => {
   const text = String(s ?? "").replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
   return text.split(";")[0].trim().slice(0, 58);
+};
+
+const priorityInfo = (p: Priority): { icon: string; label: string } =>
+  p === "high" ? { icon: "↑↑", label: "High" } :
+  p === "medium" ? { icon: "↑", label: "Medium" } :
+  p === "low" ? { icon: "", label: "Low" } : { icon: "", label: "Lowest" };
+
+const levelBadge = (label: string, p: Priority) => {
+  const info = priorityInfo(p);
+  return `<span class="badge" title="Priority ${info.label}" aria-label="${esc(label)}, priority ${info.label}">${esc(label)}${info.icon ? ` <span class="prio">${info.icon}</span>` : ""}</span>`;
 };
 
 export async function kanjiRedesignView(literal: string, base: string, q = "") {
@@ -52,8 +62,8 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   const editHref = `/kanji/${enc(k.literal)}?${q ? `q=${enc(q)}&` : ""}edit=1`;
   const pageHref = `${base}/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
   const badges = [
-    k.jlpt ? `<span class="badge pri-${jlptPriority(Number(k.jlpt), known)}">JLPT N${esc(k.jlpt)}</span>` : "",
-    k.kanken ? `<span class="badge pri-${kankenPriority(Number(k.kanken), known)}">Kanken ${esc(k.kanken)}</span>` : "",
+    k.jlpt ? levelBadge(`JLPT N${k.jlpt}`, jlptPriority(Number(k.jlpt), known)) : "",
+    k.kanken ? levelBadge(`Kanken ${k.kanken}`, kankenPriority(Number(k.kanken), known)) : "",
   ].join("");
 
   const compChips = comps.length
@@ -91,10 +101,11 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     const kana = String(w.kana ?? "").split(";")[0];
     const inList = w.added === 1;
     return `<div class="exrow" id="w${w.id}">
-  <div class="exword">${esc(text)}</div>
+  <a class="exword" href="/?q=${enc(text)}" aria-label="Search for ${esc(text)}">${esc(text)}</a>
   <div class="exkana">${esc(kana)}</div>
   <div class="exmean" title="${esc(meaningsText(w.meanings))}">${esc(firstSense(w.meanings))}</div>
   ${w.jlpt ? `<span class="badge">N${esc(w.jlpt)}</span>` : ""}
+  ${w.freq_wiki ? `<span class="badge">#${esc(w.freq_wiki)}</span>` : ""}
   <form method="post" action="/words/${w.id}/toggle"><input type="hidden" name="back" value="${esc(pageHref)}"><button class="pill ${inList ? "ghost rem" : "dark"} sm" type="submit">${inList ? "Remove" : "Add"}</button></form>
 </div>`;
   };

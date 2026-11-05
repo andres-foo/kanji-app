@@ -354,15 +354,8 @@ a.comp:hover{background:#e9ecf1}
 [data-theme="dark"] .lightbox{background:rgba(0,0,0,.82)}
 [data-theme="dark"] .heroimg .cap{color:#fff}
 
-/* level priority badges (same thresholds and colours as the old cards) */
-.badge.pri-high{background:#BBF7D0;color:#14532D}
-.badge.pri-medium{background:#FED7AA;color:#7C2D12}
-.badge.pri-low{background:#FECACA;color:#7F1D1D}
-.badge.pri-zero{background:#E5E7EB;color:#374151}
-[data-theme="dark"] .badge.pri-high{background:#14532D;color:#BBF7D0}
-[data-theme="dark"] .badge.pri-medium{background:#7C2D12;color:#FED7AA}
-[data-theme="dark"] .badge.pri-low{background:#7F1D1D;color:#FECACA}
-[data-theme="dark"] .badge.pri-zero{background:#374151;color:#E5E7EB}
+/* priority hint: neutral badge, arrows for high/medium, title for all */
+.badge .prio{font-weight:900;margin-left:2px;letter-spacing:-.06em}
 
 /* ---------- edit page ---------- */
 .edithead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:18px 2px 16px}
@@ -439,7 +432,8 @@ a.comp:hover{background:#e9ecf1}
 [data-theme="dark"] .pill.ghost.rem{color:#fca5a5;border-color:#5a2626}
 
 /* examples and component chips: one more size up */
-.exword{font-size:22px;min-width:96px}
+.exword{font-size:22px;min-width:96px;color:inherit;text-decoration:none}
+.exword:hover{color:var(--cyan);text-decoration:underline;text-underline-offset:3px}
 .exkana{font-size:14px;min-width:80px}
 .exmean{font-size:14px;min-width:0}
 .exrow{padding:10px 0;gap:10px}
