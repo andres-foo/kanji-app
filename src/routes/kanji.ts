@@ -1,8 +1,7 @@
 import { db } from "../db";
-import { esc, html } from "../html";
 import { sameOrigin, safeBack } from "../prefs";
 import { startScore } from "../settings";
-import { layout } from "../views/layout";
+import { messagePage } from "../views/message";
 
 // flip examples.added between 0 and 1, then go back to where the user was
 export async function toggleWord(req: Request, id: number) {
@@ -12,7 +11,7 @@ export async function toggleWord(req: Request, id: number) {
   try {
     db.run(`UPDATE examples SET added = CASE WHEN COALESCE(added, 0) = 1 THEN 0 ELSE 1 END WHERE id = ?`, [id]);
   } catch (e) {
-    return html(layout("Error", "", `<div class="box empty">Could not update the word: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+    return messagePage("Could not update word", `Could not update the word: ${(e as Error).message}. Is the database file writable?`, 500);
   }
   return new Response(null, { status: 303, headers: { location: `${back}#w${id}` } });
 }
@@ -34,7 +33,7 @@ export async function toggleKanji(req: Request, literal: string) {
       [startScore(), literal],
     );
   } catch (e) {
-    return html(layout("Error", "", `<div class="box empty">Could not update the kanji: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+    return messagePage("Could not update kanji", `Could not update the kanji: ${(e as Error).message}. Is the database file writable?`, 500);
   }
   return new Response(null, { status: 303, headers: { location: back } });
 }
@@ -60,9 +59,9 @@ export async function updateKanji(req: Request, literal: string) {
        WHERE literal = ?`,
       [text("keyword"), text("components"), text("other_forms"), text("related"), text("story"), flag("unfinished"), flag("is_component"), added, startScore(), added, added, added, literal],
     );
-    if (!result.changes) return html(layout("Not found", "", `<div class="box empty">“${esc(literal)}” is not in the database.</div>`), 404);
+    if (!result.changes) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
   } catch (e) {
-    return html(layout("Error", "", `<div class="box empty">Could not update the kanji: ${esc((e as Error).message)}. Is the database file writable?</div>`), 500);
+    return messagePage("Could not update kanji", `Could not update the kanji: ${(e as Error).message}. Is the database file writable?`, 500);
   }
   return new Response(null, { status: 303, headers: { location: back } });
 }

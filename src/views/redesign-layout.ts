@@ -23,11 +23,11 @@ export const redesignLayout = (title: string, body: string, { theme, back, lab =
   <div class="navlinks">
     <a class="${active === "my-list" ? "on" : ""}" href="/my-list">My List</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a><a class="${active === "kanken" ? "on" : ""}" href="/kanken">Kanken</a><a class="${active === "stats" ? "on" : ""}" href="/stats">Stats</a>
   </div>
+  <form class="navsearch" action="/" method="get" role="search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <input name="q" value="${esc(searchValue)}" placeholder="Search" aria-label="Search">
+  </form>
   <div class="navright">
-    <form class="navsearch" action="/" method="get" role="search">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-      <input name="q" value="${esc(searchValue)}" placeholder="Search" aria-label="Search">
-    </form>
     <a class="pill dark" href="/review" aria-label="Review: ${total} due (${d.fresh} new, ${d.today} due today, ${d.overdue} overdue)">Review <span class="rnums"><span class="rn-fresh">${d.fresh}</span><span class="rn-dot">·</span><span class="rn-today">${d.today}</span><span class="rn-dot">·</span><span class="rn-overdue">${d.overdue}</span></span></a>
     <form class="themeswitch" method="post" action="/theme">
       <input type="hidden" name="theme" value="${theme === "dark" ? "light" : "dark"}">

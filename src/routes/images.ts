@@ -1,10 +1,8 @@
-import { esc, html } from "../html";
 import { imagePath, kanjiExists, MAX_IMAGE_BYTES, removeImages, sniffImage } from "../images";
 import { sameOrigin, safeBack } from "../prefs";
-import { layout } from "../views/layout";
+import { messagePage } from "../views/message";
 
-const imageError = (msg: string, status: number) =>
-  html(layout("Error", "", `<div class="box empty">${esc(msg)}</div>`), status);
+const imageError = (msg: string, status: number) => messagePage("Image error", msg, status);
 
 // replace the kanji's image with an uploaded jpg/png and make sure no file of the other format remains
 export async function uploadImage(req: Request, literal: string) {
