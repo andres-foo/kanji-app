@@ -528,6 +528,7 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 
 /* ---------- list pages ---------- */
 .listhead{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin:18px 0 14px}
+.listhead.left{flex-direction:column;align-items:flex-start;gap:10px}
 .listhead h1{font-size:42px;font-weight:500;letter-spacing:-.04em;margin:4px 0 2px}
 .listhead .sub{font-size:14px}
 .listhead .tabs{flex:none}
@@ -542,6 +543,27 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .lkt .sdot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;box-shadow:0 0 0 2px var(--card)}
 .lkt .sdot.in{background:#16A34A}
 .lkt .sdot.unf{background:#DC2626}
+.levelhead{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+.levelhead h2{font-size:24px;font-weight:600;letter-spacing:-.02em;margin:0}
+.levelhead .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.levelcounts{display:flex;align-items:center;gap:14px;font-size:12px;font-weight:800}
+.levelcounts .fin{color:#16A34A}
+.levelcounts .learn{color:#DC2626}
+.levelcounts .miss{color:#7c818a}
+.levelbar{display:flex;height:8px;border-radius:999px;background:#e9ebef;overflow:hidden;margin:14px 0 18px}
+.levelbar .fin{background:#16A34A}
+.levelbar .learn{background:#DC2626}
+.lkt.notadded{background:transparent;border:1.5px dashed #c6cbd3;color:#a3a8b0}
+.lkt.notadded:hover{border-color:var(--cyan);color:var(--cyan);background:transparent}
+[data-theme="dark"] .levelbar{background:#2a2c31}
+[data-theme="dark"] .levelcounts .fin{color:#4ade80}
+[data-theme="dark"] .levelcounts .learn{color:#f87171}
+[data-theme="dark"] .lkt.notadded{border-color:#3a3d44;color:#6f747d}
+[data-theme="dark"] .lkt.notadded:hover{border-color:var(--cyan);color:var(--cyan);background:transparent}
+@media(max-width:800px){
+  .levelhead{flex-direction:column;align-items:flex-start;gap:6px}
+  .levelcounts{flex-wrap:wrap;gap:10px;font-size:11px}
+}
 .listempty{text-align:center;padding:48px 24px}
 .listempty h2{font-size:26px;font-weight:500;letter-spacing:-.03em;margin:0 0 4px}
 .listempty .sub{max-width:420px;margin:0 auto}

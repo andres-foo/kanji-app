@@ -84,8 +84,8 @@ Bun.serve({
       }
       if (path === "/") return home(url);
       if (path === "/my-list") return myListPage(url);
-      if (path === "/jlpt") return levelPage("jlpt", "JLPT", "jlpt");
-      if (path === "/kanken") return levelPage("kanken", "KANKEN", "kanken");
+      if (path === "/jlpt") return levelPage("jlpt", "JLPT", "jlpt", url);
+      if (path === "/kanken") return levelPage("kanken", "KANKEN", "kanken", url);
       const designKanji = path.match(/^\/design\/kanji\/([^/]+)$/);
       if (designKanji) return designKanjiPage(designKanji[1]);
       if (path.startsWith("/kanji/")) return kanjiPage(path.slice(7), url);
