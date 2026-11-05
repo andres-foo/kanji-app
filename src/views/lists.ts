@@ -1,17 +1,34 @@
 import { db } from "../db";
 import { enc, esc, html, nullsLast } from "../html";
+import { requestContext } from "../prefs";
 import type { Kanji } from "../types";
-import { layout } from "./layout";
+import { redesignLayout } from "./redesign-layout";
 
-// one plain character tile linking to the kanji page; green when added, red when added but unfinished, no marking otherwise
-const kanjiTile = (r: Pick<Kanji, "literal" | "added" | "unfinished">) => {
-  const state = r.added === 1 ? (r.unfinished === 1 ? "unfinished" : "added") : "";
-  const status = state === "unfinished" ? " (unfinished)" : state === "added" ? " (in your study list)" : "";
-  return `<a class="kt k${state ? ` ${state}` : ""}" href="/kanji/${enc(r.literal)}" aria-label="Open ${esc(r.literal)}${status}">${esc(r.literal)}</a>`;
+type TileRow = Pick<Kanji, "literal" | "added" | "unfinished">;
+type ListRow = TileRow & { frequency: number | null; score: number | null; added_at: string | null };
+
+const kanjiTile = (r: TileRow) => {
+  const state = r.added === 1 ? (r.unfinished === 1 ? "unf" : "in") : "";
+  const status = state === "unf" ? " (unfinished)" : state === "in" ? " (in your study list)" : "";
+  const dot = state
+    ? `<i class="sdot ${state}" role="img" aria-label="${state === "unf" ? "Unfinished" : "In your study list"}" title="${state === "unf" ? "Unfinished" : "In your study list"}"></i>`
+    : "";
+  return `<a class="lkt" href="/kanji/${enc(r.literal)}" aria-label="Open ${esc(r.literal)}${status}">${esc(r.literal)}${dot}</a>`;
 };
-const countLabel = (n: number) => `<span class="cnt">(${n} ${n === 1 ? "character" : "characters"})</span>`;
 
-// every kanji with a level in the given column, grouped by level (easiest first), shown as plain characters coloured by study state
+const section = (heading: string, list: TileRow[]) =>
+  `<section class="listsection"><div class="listsechead"><h2>${esc(heading)}</h2><span class="sub">${list.length}</span></div><div class="lgrid">${list.map(kanjiTile).join("")}</div></section>`;
+
+const emptyCard = (title: string, message: string) =>
+  `<div class="card listempty"><h2>${esc(title)}</h2><p class="sub">${esc(message)}</p><a class="pill dark" href="/">Search kanji</a></div>`;
+
+const page = (title: string, body: string, active: string) => {
+  const theme = requestContext.getStore()?.theme ?? "light";
+  const back = requestContext.getStore()?.back ?? "/";
+  return html(redesignLayout(title, body, { theme, back, active }));
+};
+
+// every kanji with a level in the given column, grouped by level (easiest first)
 export function levelPage(column: "jlpt" | "kanken", label: string, active: string) {
   const rows = db.query(`SELECT literal, ${column} AS lvl, frequency, added, unfinished FROM kanjis WHERE ${column} IS NOT NULL AND ${column} > 0`)
     .all() as (Pick<Kanji, "literal" | "frequency" | "added" | "unfinished"> & { lvl: number })[];
@@ -20,10 +37,11 @@ export function levelPage(column: "jlpt" | "kanken", label: string, active: stri
   // JLPT counts down from 5 to 1 and Kanken from 10 to 1, so the highest number is always the easiest level
   const sections = [...levels.keys()].sort((a, b) => b - a).map((lvl) => {
     const list = levels.get(lvl)!.sort((a, b) => nullsLast(a.frequency, b.frequency) || a.literal.localeCompare(b.literal));
-    const tiles = list.map(kanjiTile).join("");
-    return `<section><h2>${label} ${lvl}${countLabel(list.length)}</h2><div class="kgrid">${tiles}</div></section>`;
+    return section(`${label} ${lvl}`, list);
   });
-  return html(layout(`${label} – Kanji`, "", `<h1>${label}</h1>` + (sections.join("") || `<div class="box empty">No kanji have a ${label} level.</div>`), active));
+  const head = `<div class="listhead"><div><h1>${esc(label)}</h1><p class="sub">${rows.length} kanji · ${levels.size} levels</p></div></div>`;
+  const body = head + (sections.length ? `<div class="card listcard">${sections.join("")}</div>` : emptyCard(`No ${label} kanji`, `No kanji have a ${label} level yet.`));
+  return page(`${label} – Kanji`, body, active);
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -32,11 +50,10 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 export function myListPage(url: URL) {
   const by = url.searchParams.get("by") === "score" ? "score" : "date";
   const rows = db.query(`SELECT literal, added, unfinished, score, added_at, frequency FROM kanjis WHERE COALESCE(added, 0) = 1`)
-    .all() as (Pick<Kanji, "literal" | "added" | "unfinished" | "frequency"> & { score: number | null; added_at: string | null })[];
+    .all() as ListRow[];
 
-  // group key -> { heading, sort position, kanji }; kanji without a date/score go in a last group
-  const groups = new Map<string, { heading: string; order: number; list: typeof rows }>();
-  const put = (key: string, heading: string, order: number, r: (typeof rows)[number]) => {
+  const groups = new Map<string, { heading: string; order: number; list: ListRow[] }>();
+  const put = (key: string, heading: string, order: number, r: ListRow) => {
     const g = groups.get(key) ?? { heading, order, list: [] };
     g.list.push(r);
     groups.set(key, g);
@@ -49,17 +66,18 @@ export function myListPage(url: URL) {
     } else if (r.score === null || r.score === undefined) put("none", "No score", Infinity, r);
     else put(`s${r.score}`, `Score ${r.score}`, Number(r.score), r);
   }
-  const addedAt = (r: (typeof rows)[number]) => String(r.added_at ?? "");
+  const addedAt = (r: ListRow) => String(r.added_at ?? "");
   const sections = [...groups.values()].sort((a, b) => a.order - b.order).map((g) => {
     g.list.sort((a, b) => (by === "date" ? addedAt(b).localeCompare(addedAt(a)) : 0) || nullsLast(a.frequency, b.frequency) || a.literal.localeCompare(b.literal));
-    return `<section><h2>${esc(g.heading)}${countLabel(g.list.length)}</h2><div class="kgrid">${g.list.map(kanjiTile).join("")}</div></section>`;
+    return section(g.heading, g.list);
   });
-  const pill = (id: string, text: string) => `<a class="pill${by === id ? " on" : ""}" href="/my-list?by=${id}">${text}</a>`;
-  const unfinishedCount = rows.filter((r) => r.unfinished === 1).length;
-  const summary = rows.length
-    ? `<p class="summary"><b class="fin">${rows.length - unfinishedCount}</b> finished, <b class="unfin">${unfinishedCount}</b> unfinished</p>`
-    : "";
-  const body = `<h1>MY LIST (${rows.length})</h1>${summary}<div class="pills">${pill("date", "By date added")}${pill("score", "By score")}</div>`
-    + (sections.join("") || `<div class="box empty">No kanji in your list yet.</div>`);
-  return html(layout("My list – Kanji", "", body, "my-list"));
+
+  const tab = (id: string, text: string) => `<a class="tab${by === id ? " on" : ""}" href="/my-list?by=${id}">${text}</a>`;
+  const unfinished = rows.filter((r) => r.unfinished === 1).length;
+  const head = `<div class="listhead">
+    <div><h1>Your kanji</h1><p class="sub">${rows.length} characters · ${rows.length - unfinished} finished · ${unfinished} unfinished</p></div>
+    ${rows.length ? `<div class="tabs">${tab("date", "By date added")}${tab("score", "By score")}</div>` : ""}
+  </div>`;
+  const body = head + (sections.length ? `<div class="card listcard">${sections.join("")}</div>` : emptyCard("No kanji in your list yet.", "Search for a kanji and add it to start."));
+  return page("My list – Kanji", body, "my-list");
 }

@@ -1,10 +1,10 @@
 import { esc } from "../html";
 import { dueCounts } from "../review";
 
-type Options = { theme: string; back: string; lab?: boolean; bar?: string; barClass?: string; searchValue?: string };
+type Options = { theme: string; back: string; lab?: boolean; bar?: string; barClass?: string; searchValue?: string; active?: string };
 
 // the shared shell for pages that have been moved to the redesign
-export const redesignLayout = (title: string, body: string, { theme, back, lab = false, bar = "", barClass = "", searchValue = "" }: Options) => {
+export const redesignLayout = (title: string, body: string, { theme, back, lab = false, bar = "", barClass = "", searchValue = "", active = "" }: Options) => {
   const d = dueCounts();
   const total = d.fresh + d.today + d.overdue;
   return `<!doctype html>
@@ -21,7 +21,7 @@ export const redesignLayout = (title: string, body: string, { theme, back, lab =
   <a class="brand" href="/">KANJI</a>
   ${lab ? `<span class="labtag">design lab</span>` : ""}
   <div class="navlinks">
-    <a href="/my-list">My List</a><a href="/jlpt">JLPT</a><a href="/kanken">Kanken</a><a href="/stats">Stats</a>
+    <a class="${active === "my-list" ? "on" : ""}" href="/my-list">My List</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a><a class="${active === "kanken" ? "on" : ""}" href="/kanken">Kanken</a><a class="${active === "stats" ? "on" : ""}" href="/stats">Stats</a>
   </div>
   <div class="navright">
     <form class="navsearch" action="/" method="get" role="search">
