@@ -286,3 +286,39 @@ A kanji is reviewed at score *s* because it was scheduled with the interval of s
 - **Old history.** Reviews saved before the 0-to-10 scale (and the four-button system) used different score meanings. They are still in `review_history` and will skew the dashboard stats for periods that reach back that far.
 - **The priority colours are separate.** The green / orange / red / grey backgrounds on JLPT and Kanken badges depend only on how many kanji are added, finished and not components. They have nothing to do with review scores.
 - **Backups.** The database file is the only copy of your scores and history. Copy it somewhere else regularly, and before using **Reset scores**.
+
+---
+
+## Credits
+
+Confirmed sources used by this app:
+
+### Dictionary data
+
+Example word headwords, readings, meanings, parts of speech and alternative spellings are derived from **EDICT2/JMdict**, copyright © James William Breen and the Electronic Dictionary Research and Development Group (EDRDG).
+
+Kanji reference data is derived from [**KANJIDIC2**](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project), also copyright © James William Breen and the EDRDG.
+
+Both sets of data are stored here as modified SQLite transformations and are used under [CC BY-SA 4.0](https://www.edrdg.org/edrdg/licence.html).
+
+### JLPT kanji levels
+
+Kanji JLPT levels come from the [Nihongo-Pro Kanji Pal JLPT lists](https://www.nihongo-pro.com/kanji-pal/list/jlpt). These are unofficial study lists; the JLPT does not publish an official kanji list.
+
+### Word JLPT levels
+
+Word JLPT levels come from the [Tanos JLPT vocabulary lists](https://www.tanos.co.uk/jlpt/) by Jonathan Waller, licensed under Creative Commons BY. The import uses the [Bluskyo CSV conversion](https://github.com/Bluskyo/JLPT_Vocabulary). These are unofficial study lists; the JLPT does not publish an official vocabulary list. Words added manually by the app owner are marked with `jlpt = -1` and are not from Tanos.
+
+### Word frequency
+
+The `examples.freq_wiki` values come from the [Wiktionary Japanese 2022 frequency lists](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10000) ([1–10,000](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10000) and [10,001–20,000](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10001-20000)), based on Japanese Wikipedia data. This is Wikimedia content; see those pages for attribution and licence details.
+
+### Fonts
+
+- **Jigmo / Jigmo2 / Jigmo3** — [Jigmo](https://kamichikoichi.github.io/jigmo/), CC0-1.0
+- **Noto Serif JP** — [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Serif+JP), SIL Open Font License 1.1
+- **Manrope** — [Google Fonts](https://fonts.google.com/specimen/Manrope), SIL Open Font License 1.1
+
+### Original material
+
+The kanji images and component data are original to this project.
