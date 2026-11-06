@@ -11,8 +11,10 @@ const SETTING_DEFAULTS = {
   review_delta_good: 1,
   review_delta_easy: 2,
   history_limit: 50, // entries shown in each History column
+  word_results_per_page: 20, // word results shown per search page
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
+export const WORD_RESULTS_MAX = 200;
 
 export function setting(key: SettingKey): number {
   try {
@@ -25,9 +27,10 @@ export function setting(key: SettingKey): number {
   }
 }
 
+export const wordResultsPerPage = () => Math.max(1, Math.min(WORD_RESULTS_MAX, Math.round(setting("word_results_per_page"))));
+
 // lowest and highest score allowed: the settings, but never outside the -3 to 10 scale
-export function scoreBounds(): [number, number] {
-  const a = setting("review_score_floor");
+export function scoreBounds(): [number, number] {  const a = setting("review_score_floor");
   const b = setting("review_score_ceiling");
   return [Math.max(MIN_SCORE, Math.min(a, b)), Math.min(MAX_SCORE, Math.max(a, b))];
 }

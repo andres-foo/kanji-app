@@ -2,7 +2,7 @@ import { db } from "../db";
 import { HISTORY_MAX } from "../history";
 import { MAX_SCORE, MIN_SCORE, type Mastery } from "../mastery";
 import { sameOrigin } from "../prefs";
-import { startScore, type SettingKey } from "../settings";
+import { startScore, type SettingKey, WORD_RESULTS_MAX } from "../settings";
 import { DELTA_FIELDS, settingsPage } from "../views/settings";
 
 export async function saveSettings(req: Request, url: URL) {
@@ -25,6 +25,12 @@ export async function saveSettings(req: Request, url: URL) {
   if (historyText === "" || !Number.isInteger(historyLimit) || historyLimit < 1 || historyLimit > HISTORY_MAX) {
     errors.push(`History limit must be a whole number from 1 to ${HISTORY_MAX}.`);
   }
+  const wordText = String(form.get("word_results_per_page") ?? "").trim();
+  submitted.word_results_per_page = wordText;
+  const wordResults = Number(wordText);
+  if (wordText === "" || !Number.isInteger(wordResults) || wordResults < 1 || wordResults > WORD_RESULTS_MAX) {
+    errors.push(`Word results per page must be a whole number from 1 to ${WORD_RESULTS_MAX}.`);
+  }
   for (let score = MIN_SCORE; score <= MAX_SCORE; score++) {
     const label = String(form.get(`label_${score}`) ?? "").trim();
     const daysText = String(form.get(`days_${score}`) ?? "").trim();
@@ -43,6 +49,7 @@ export async function saveSettings(req: Request, url: URL) {
         db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, String(value)]);
       }
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["history_limit", String(historyLimit)]);
+      db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["word_results_per_page", String(wordResults)]);
       for (const m of levels) {
         db.run(
           `INSERT INTO mastery_levels (score, label, interval_days) VALUES (?, ?, ?)

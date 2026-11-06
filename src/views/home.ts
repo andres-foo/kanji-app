@@ -3,6 +3,7 @@ import { enc, esc, highlight, html, toKata } from "../html";
 import { requestContext } from "../prefs";
 import { romajiToHiragana } from "../romaji";
 import { search, shortQuery } from "../search";
+import { wordResultsPerPage } from "../settings";
 import type { Kanji, Word } from "../types";
 import { dashboardView } from "./dashboard";
 import { levelBadge } from "./design";
@@ -100,26 +101,57 @@ export function home(url: URL) {
 
   const { kanji, words } = search(q);
   const known = totalKnown();
-  const backTo = `/?q=${enc(q)}&type=${type}`;
+  const wordTotal = words.length;
+  const perPage = wordResultsPerPage();
+  const pageCount = Math.max(1, Math.ceil(wordTotal / perPage));
+  const requestedPage = Number(url.searchParams.get("page") ?? 1);
+  const wordPage = Number.isInteger(requestedPage) ? Math.min(pageCount, Math.max(1, requestedPage)) : 1;
+  const pageWords = words.slice((wordPage - 1) * perPage, wordPage * perPage);
+  const wordPageUrl = (p: number) => `/?q=${enc(q)}&type=words${p > 1 ? `&page=${p}` : ""}`;
+  // pagination belongs to the word list; page 2+ always uses the Words view so the kanji card doesn't repeat
+  if (type === "all" && wordPage > 1) {
+    return new Response(null, { status: 303, headers: { location: wordPageUrl(wordPage) } });
+  }
+  const backTo = `/?q=${enc(q)}&type=${type}${wordPage > 1 ? `&page=${wordPage}` : ""}`;
   const tab = (id: string, label: string, count: number) =>
     `<a class="tab${type === id ? " on" : ""}" href="/?q=${enc(q)}&type=${id}">${label} ${count}</a>`;
   const alt = scriptAlt(q, type);
-  const resultHead = `<div class="resulthead"><h2>Results for “${esc(q)}”${alt ? `<span class="alt">${alt}</span>` : ""}</h2><div class="tabs">${tab("all", "All", kanji.length + words.length)}${tab("kanji", "Kanji", kanji.length)}${tab("words", "Words", words.length)}</div></div>`;
+  const resultHead = `<div class="resulthead"><h2>Results for “${esc(q)}”${alt ? `<span class="alt">${alt}</span>` : ""}</h2><div class="tabs">${tab("all", "All", kanji.length + wordTotal)}${tab("kanji", "Kanji", kanji.length)}${tab("words", "Words", wordTotal)}</div></div>`;
 
-  let list = "";
+  const pageControls = (top = false) => {
+    if (pageCount <= 1) return "";
+    const first = wordPage > 1
+      ? `<a class="pill ghost sm" rel="first" href="${wordPageUrl(1)}">« First</a>`
+      : `<span class="pill ghost sm disabled" aria-disabled="true">« First</span>`;
+    const prev = wordPage > 1
+      ? `<a class="pill ghost sm" rel="prev" href="${wordPageUrl(wordPage - 1)}">← Previous</a>`
+      : `<span class="pill ghost sm disabled" aria-disabled="true">← Previous</span>`;
+    const next = wordPage < pageCount
+      ? `<a class="pill ghost sm" rel="next" href="${wordPageUrl(wordPage + 1)}">Next →</a>`
+      : `<span class="pill ghost sm disabled" aria-disabled="true">Next →</span>`;
+    const last = wordPage < pageCount
+      ? `<a class="pill ghost sm" rel="last" href="${wordPageUrl(pageCount)}">Last »</a>`
+      : `<span class="pill ghost sm disabled" aria-disabled="true">Last »</span>`;
+    return `<div class="pagination${top ? " top" : ""}">${first}${prev}<span class="sub">Page ${wordPage} of ${pageCount}</span>${next}${last}</div>`;
+  };
+
+  let sections = "";
   if (type !== "words" && kanji.length) {
-    list += `<div class="section-label"><h3>Kanji</h3><span class="sub">${kanji.length}</span></div>`;
-    list += `<div class="kanji-grid">${kanji.map((k) => kanjiRow(k, q, known)).join("")}</div>`;
-  }
-  if (type !== "kanji" && words.length) {
-    list += `<div class="section-label"><h3>Words</h3><span class="sub">${words.length}</span></div>`;
-    list += words.map((w) => wordRow(w, backTo, q)).join("");
-  }
-  if (!list) list = `<div class="sub" style="padding:18px 0">Nothing found for “${esc(q)}”. Try another spelling or a shorter search.</div>`;
-
-  const body = `${resultHead}
-    <div class="grid">
-      <div class="card" style="grid-column:span 12">${list}</div>
+    sections += `<div class="card" style="grid-column:span 12">
+      <div class="section-label"><h3>Kanji</h3><span class="sub">${kanji.length}</span></div>
+      <div class="kanji-grid">${kanji.map((k) => kanjiRow(k, q, known)).join("")}</div>
     </div>`;
+  }
+  if (type !== "kanji" && wordTotal) {
+    sections += `<div class="card" style="grid-column:span 12">
+      <div class="section-label"><h3>Words</h3><span class="sub">${wordTotal}</span></div>
+      ${pageControls(true)}
+      ${pageWords.map((w) => wordRow(w, backTo, q)).join("")}
+      ${pageControls()}
+    </div>`;
+  }
+  if (!sections) sections = `<div class="card" style="grid-column:span 12"><div class="sub" style="padding:18px 0">Nothing found for “${esc(q)}”. Try another spelling or a shorter search.</div></div>`;
+
+  const body = `${resultHead}<div class="grid">${sections}</div>`;
   return page(`${q} – Kanji`, body);
 }

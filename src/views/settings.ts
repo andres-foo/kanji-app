@@ -2,7 +2,7 @@ import { esc, html } from "../html";
 import { HISTORY_MAX } from "../history";
 import { masteryLevels } from "../mastery";
 import { requestContext } from "../prefs";
-import { setting, startScore, type SettingKey } from "../settings";
+import { setting, startScore, type SettingKey, WORD_RESULTS_MAX } from "../settings";
 import { layout } from "./layout";
 
 export const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = [
@@ -13,7 +13,7 @@ export const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = 
 ];
 
 // the score scale (-3 to 10) and the starting score live in the settings table and are edited in the database; this page
-// edits the score changes for Bad / Neutral / Good / Easy, the mastery levels, the history limit, and resets scores.
+// edits the score changes for Bad / Neutral / Good / Easy, the mastery levels, pagination and history limits, and resets scores.
 export function settingsPage(url: URL, errors: string[] = [], submitted?: Record<string, string>, status = 200) {
   const resetCount = url.searchParams.get("reset");
   const notice = errors.length
@@ -27,7 +27,8 @@ export function settingsPage(url: URL, errors: string[] = [], submitted?: Record
 <input class="setinput" type="number" step="1" min="-10" max="10" name="${f.key}" value="${esc(submitted?.[f.key] ?? String(setting(f.key)))}" required>
 <span class="hint">${f.hint}</span></label>`).join("");
   const historyLimit = submitted?.history_limit ?? String(setting("history_limit"));
-  const body = `<div class="listhead"><div><h1>Settings</h1><p class="sub">Review scoring and mastery timing.</p></div></div>
+  const wordPerPage = submitted?.word_results_per_page ?? String(setting("word_results_per_page"));
+  const body = `<div class="listhead"><div><h1>Settings</h1><p class="sub">Review scoring, mastery timing and other settings.</p></div></div>
 ${notice}
 <form class="setform" method="post" action="/settings">
   <div class="card setcard">
@@ -42,11 +43,14 @@ ${notice}
     </div>
   </div>
   <div class="card setcard">
-    <div class="sethead"><h2>History</h2><p class="sub">How many entries the History page shows in each column.</p></div>
-    <div class="setfields" style="grid-template-columns:minmax(0,1fr)">
+    <div class="sethead"><h2>Other settings</h2><p class="sub">Search pagination and history limits.</p></div>
+    <div class="setfields">
+      <label class="setfield"><span class="setflabel">Word results per page</span>
+      <input class="setinput" type="number" step="1" min="1" max="${WORD_RESULTS_MAX}" name="word_results_per_page" value="${esc(wordPerPage)}" required>
+      <span class="hint">How many word results are shown on each search page (default 20).</span></label>
       <label class="setfield"><span class="setflabel">History limit</span>
       <input class="setinput" type="number" step="1" min="1" max="${HISTORY_MAX}" name="history_limit" value="${esc(historyLimit)}" required>
-      <span class="hint">Applies separately: this many searches and this many kanji visits (default 50 each).</span></label>
+      <span class="hint">Entries shown in each History column: this many searches and this many kanji visits (default 50).</span></label>
     </div>
   </div>
   <div class="setactions"><button class="pill dark" type="submit">Save settings</button></div>

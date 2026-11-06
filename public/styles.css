@@ -393,6 +393,12 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .wordkanji:hover{color:#2a78d6;border-color:currentColor}
 [data-theme="dark"] .wordkanji{border-color:#3a3d44}
 [data-theme="dark"] .wordkanji:hover{color:var(--cyan)}
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:16px 0 2px;margin-top:8px;border-top:1px solid #f0f1f4}
+.pagination.top{padding:0 0 14px;margin-top:0;border-top:0;border-bottom:1px solid #f0f1f4}
+.pagination .sub{font-size:11px;color:var(--muted);font-weight:700}
+.pagination .pill.disabled{opacity:.35;pointer-events:none}
+[data-theme="dark"] .pagination{border-color:#2a2c31}
+[data-theme="dark"] .pagination.top{border-color:#2a2c31}
 .wordrow .rread{font-size:13.5px;font-weight:600}
 .wordrow .rmean{display:flex;flex-direction:column;gap:1px;margin-top:3px;font-size:14px;font-weight:600;line-height:1.45;color:var(--ink);white-space:normal;overflow:visible;text-overflow:clip;min-width:0}
 .wordrow .sense{display:block;position:relative;min-width:0;padding-left:18px;overflow-wrap:anywhere}
