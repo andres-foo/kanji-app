@@ -8,6 +8,7 @@ import { statsSection } from "./stats-section";
 const ANSWER_TYPES = `type IN ('bad', 'neutral', 'good', 'easy')`;
 const REVIEW_LABEL: Record<string, string> = { bad: "Bad", neutral: "Neutral", good: "Good", easy: "Easy" };
 const number = (n: number) => n.toLocaleString("en-US");
+const heatLevel = (n: number) => n <= 0 ? 0 : n <= 20 ? 1 : n <= 40 ? 2 : n <= 60 ? 3 : 4;
 
 type Counts = { total: number; finished: number; unfinished: number };
 
@@ -96,5 +97,45 @@ export function dashboardView(days = 30) {
     <div class="dashreviews">${reviewRows || `<div class="sub" style="padding:8px 0">No reviews yet.</div>`}</div>
   </div>`;
 
-  return { title: "Dashboard – Kanji", body: `${header}${kpis}<div class="grid">${progress}${recent}${reviews}</div>${statsSection(days)}` };
+  const heatWindowStart = addDays(today, -364);
+  const heatStartDow = (new Date(`${heatWindowStart}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const heatStart = addDays(heatWindowStart, -heatStartDow);
+  const heatRows = db.query(`SELECT date(date) AS d, COUNT(DISTINCT kanji) AS n
+    FROM review_history WHERE ${ANSWER_TYPES} AND date(date) >= ?
+    GROUP BY d`).all(heatStart) as { d: string; n: number }[];
+  const heatByDay = new Map(heatRows.map((r) => [r.d, r.n]));
+  const heatWeeks: string[][] = [];
+  let heatWeek: string[] = [];
+  for (let day = heatStart; day <= today; day = addDays(day, 1)) {
+    const n = heatByDay.get(day) ?? 0;
+    const level = heatLevel(n);
+    const label = n ? `${day}: ${n} kanji reviewed` : `${day}: no reviews`;
+    heatWeek.push(`<span class="heatcell l${level}" title="${esc(label)}" aria-label="${esc(label)}"></span>`);
+    if (new Date(`${day}T00:00:00Z`).getUTCDay() === 0) {
+      heatWeeks.push(heatWeek);
+      heatWeek = [];
+    }
+  }
+  if (heatWeek.length) {
+    while (heatWeek.length < 7) heatWeek.push(`<span class="heatcell future" aria-hidden="true"></span>`);
+    heatWeeks.push(heatWeek);
+  }
+  const heatmap = `<div class="card" style="grid-column:span 12">
+    <div class="stathead"><div><h2>Review heatmap</h2><p class="sub">Kanjis reviewed per day · last year</p></div></div>
+    <div class="heatmap-scroll">
+      <div class="heatmap">
+        <div class="heatdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+        <div class="heatweeks">${heatWeeks.map((week) => `<div class="heatweek">${week.join("")}</div>`).join("")}</div>
+      </div>
+    </div>
+    <div class="heatlegend">
+      <span><i class="l0"></i>No reviews</span>
+      <span><i class="l1"></i>≤20</span>
+      <span><i class="l2"></i>≤40</span>
+      <span><i class="l3"></i>≤60</span>
+      <span><i class="l4"></i>60+</span>
+    </div>
+  </div>`;
+
+  return { title: "Dashboard – Kanji", body: `${header}${kpis}<div class="grid">${progress}${recent}${reviews}${heatmap}</div>${statsSection(days)}` };
 }
