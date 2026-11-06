@@ -63,6 +63,7 @@ const definitionMatch = (meanings: unknown, q: string): DefinitionMatch | null =
 };
 
 const hasJapanese = (q: string) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(q);
+const lowRank = (k: Kanji) => k.low_priority === 1 ? 1 : 0;
 
 export function search(q: string) {
   const japanese = hasJapanese(q);
@@ -103,8 +104,16 @@ export function search(q: string) {
     wp.push(pat(q));
     words = db.query(`SELECT * FROM examples WHERE ${wc.join(" OR ")}`).all(...wp) as Word[];
 
-    const kanjiRank = (k: Kanji) => k.literal === q ? 0 : lits.includes(k.literal) ? 1 : 2;
+    const readingRank = (k: Kanji) => {
+      const readings = `${k.onReadings ?? ""} ${k.kunReadings ?? ""}`.replace(/[.\-]/g, " ").split(/[\s、,;]+/).filter(Boolean).map(toHira);
+      if (readings.includes(qHira)) return 0;
+      if (readings.some((r) => r.startsWith(qHira))) return 1;
+      if (readings.some((r) => r.includes(qHira))) return 2;
+      return 3;
+    };
+    const kanjiRank = (k: Kanji) => k.literal === q ? 0 : lits.includes(k.literal) ? 1 : 2 + readingRank(k);
     kanji.sort((a, b) =>
+      lowRank(a) - lowRank(b) ||
       kanjiRank(a) - kanjiRank(b) ||
       jlpt(b.jlpt) - jlpt(a.jlpt) ||
       nullsLast(a.frequency, b.frequency));
@@ -136,6 +145,7 @@ export function search(q: string) {
     const score = (h: { exact: boolean; keyStart: boolean; match: DefinitionMatch | null }) =>
       h.exact ? 0 : h.keyStart ? 1 : h.match !== null ? 2 + (h.match.exact ? 0 : 1) + h.match.sense / 1000 : 99;
     khits.sort((a, b) =>
+      lowRank(a.k) - lowRank(b.k) ||
       score(a) - score(b) ||
       jlpt(b.k.jlpt) - jlpt(a.k.jlpt) ||
       nullsLast(a.k.frequency, b.k.frequency));

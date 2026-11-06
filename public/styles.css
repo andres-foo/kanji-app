@@ -79,6 +79,7 @@ h1 .lite{color:var(--muted);font-weight:400}
 .kmean{font-size:12px;color:var(--muted);margin-top:5px}
 .badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
 .badge{font-size:9.5px;font-weight:800;letter-spacing:.03em;border-radius:999px;padding:5px 9px;background:#f2f3f6;color:#4b5058}
+.badge.low{background:#eef0f4;color:#7c818a;border:1px dashed #d6dae1}
 .scorebig{font-size:60px;font-weight:300;letter-spacing:-.06em;line-height:.9}
 .seg{display:flex;height:32px;border-radius:10px;overflow:hidden;background:#eef0f4;margin:12px 0 10px}
 .seg i{display:block;height:100%}
@@ -405,6 +406,10 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .wordrow .sense::before{content:"•";position:absolute;left:2px;top:.35em;color:var(--muted);font-size:12px;font-weight:900}
 .kanjirow .rmean{font-size:15px}
 .kanjirow .rkw{font-size:15px}
+.kanjirow.lowpriority .rtile{background:transparent;color:#9aa0a9}
+.kanjirow.lowpriority .rtile:hover{background:var(--cyan);color:#08181b}
+[data-theme="dark"] .badge.low{background:#26282c;color:#9aa0a9;border-color:#3a3d44}
+[data-theme="dark"] .kanjirow.lowpriority .rtile{color:#9aa0a9}
 .rright{flex-wrap:wrap;justify-content:flex-end}
 .section-label h3{font-size:14px}
 .story .story_note{color:#6f747d;border-bottom:1px dashed #b9bec7}

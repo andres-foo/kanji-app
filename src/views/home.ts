@@ -35,11 +35,13 @@ const wordMarkup = (text: string, q: string) => {
 
 const kanjiRow = (k: Kanji, q: string, known: number) => {
   const readings = [readingList(k.onReadings), readingList(k.kunReadings)].filter(Boolean).join(" · ");
+  const low = k.low_priority === 1;
   const badges = [
     k.jlpt ? levelBadge(`JLPT N${k.jlpt}`, jlptPriority(Number(k.jlpt), known)) : "",
     k.kanken ? levelBadge(`Kanken ${k.kanken}`, kankenPriority(Number(k.kanken), known)) : "",
+    low ? `<span class="badge low">Low priority</span>` : "",
   ].join("");
-  return `<div class="resultrow kanjirow">
+  return `<div class="resultrow kanjirow${low ? " lowpriority" : ""}">
     <a class="rtile ktile" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">${esc(k.literal)}${statusDot(k)}</a>
     <div class="rmain">
       ${k.keyword ? `<div class="rkw">${highlight(keywordText(k.keyword), q)}</div>` : ""}
@@ -99,7 +101,9 @@ export function home(url: URL) {
   if (shortQuery(q)) return page("Search – Kanji", hero("Enter at least two characters to search."));
   if (!url.searchParams.has("type")) recordHistory("search", q);
 
-  const { kanji, words } = search(q);
+  const found = search(q);
+  const kanji = found.kanji;
+  const words = found.words;
   const known = totalKnown();
   const wordTotal = words.length;
   const perPage = wordResultsPerPage();
