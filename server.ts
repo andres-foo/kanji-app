@@ -22,6 +22,7 @@ const STATIC_FILES: Record<string, [string, string]> = {
   "/js/layout.js": ["public/js/layout.js", "text/javascript; charset=utf-8"],
   "/js/story-editor.js": ["public/js/story-editor.js", "text/javascript; charset=utf-8"],
   "/js/review-keys.js": ["public/js/review-keys.js", "text/javascript; charset=utf-8"],
+  "/js/stroke.js": ["public/js/stroke.js", "text/javascript; charset=utf-8"],
 };
 
 Bun.serve({

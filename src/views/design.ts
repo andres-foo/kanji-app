@@ -8,6 +8,26 @@ import type { Kanji, Word } from "../types";
 import { jlptPriority, kankenPriority, keywordText, meaningsText, readingList, splitKanjiMarker, type Priority } from "./shared";
 import { messagePage } from "./message";
 import { layout } from "./layout";
+import { readFile } from "node:fs/promises";
+
+const strokeOrderSvg = async (literal: string) => {
+  const chars = [...literal.trim()];
+  if (chars.length !== 1) return null;
+  const key = chars[0].codePointAt(0)!.toString(16).padStart(5, "0");
+  let raw: string;
+  try {
+    raw = await readFile(new URL(`../../data/stroke-order/${key}.svg`, import.meta.url), "utf8");
+  } catch {
+    return null;
+  }
+  const start = raw.indexOf("<svg");
+  const end = raw.lastIndexOf("</svg>");
+  if (start < 0 || end < 0) return null;
+  return raw
+    .slice(start, end + 6)
+    .replace(/width="109"\s+height="109"/, "")
+    .replace("<svg ", `<svg role="img" aria-label="Stroke order for ${esc(chars[0])}" `);
+};
 
 const dueLabel = (due: string | null) => {
   if (!due) return "Due now";
@@ -39,6 +59,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   if (!k) return null;
 
   const img = await findImage(k.literal);
+  const strokeSvg = await strokeOrderSvg(k.literal);
   const known = totalKnown();
   const score = Math.round(Number(k.score ?? 0) || 0);
   const label = masteryFor(score).label;
@@ -122,7 +143,9 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
         <div class="badges">${badges}</div>
       </div>
       <div class="herotop">
-        <div class="heroid"><div class="kbig">${esc(k.literal)}</div></div>
+        <div class="heroid">
+          <div class="kbig">${esc(k.literal)}</div>
+        </div>
         <div class="heroinfo">
           <div class="kw">${esc(keywordText(k.keyword)) || "No keyword yet"}</div>
           <div class="kmean">${esc(shortMeanings)}</div>
@@ -141,7 +164,12 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     <div class="details">${details}</div>
   </div>
 
-  <div class="card statcard" style="grid-column:span 6;display:flex;flex-direction:column">
+  <div class="card" style="grid-column:span 3;display:flex;flex-direction:column">
+    <div class="cardhead"><h3 class="h3">Stroke order</h3>${strokeSvg ? `<button class="pill ghost sm stroke-play" type="button" hidden aria-label="Play stroke order animation">Play</button>` : ""}</div>
+    <div class="stroke-card">${strokeSvg ? `<div class="stroke-order">${strokeSvg}</div>` : `<span class="sub">No stroke-order diagram.</span>`}</div>
+  </div>
+
+  <div class="card statcard" style="grid-column:span 3;display:flex;flex-direction:column">
     <div class="cardhead"><h3 class="h3">Review history</h3></div>
     <div style="display:flex;align-items:flex-end;gap:8px;margin-top:10px">
       <span class="scorebig">${score}</span><span style="color:var(--muted);font-size:11px;padding-bottom:7px">/ ${MAX_SCORE}</span>
@@ -164,7 +192,8 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     <div class="cardhead"><h3 class="h3">Component for</h3><span class="badge">${compFor.length} kanji</span></div>
     <div class="comps" style="margin-top:12px">${componentFor}</div>
   </div>
-</div>`;
+</div>
+${strokeSvg ? `<script src="/js/stroke.js" defer></script>` : ""}`;
 
   return { title: `${k.literal} — Kanji`, body };
 }

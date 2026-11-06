@@ -326,6 +326,10 @@ Component data was initially derived from the following sources:
 - [CJKVI IDS](https://github.com/cjkvi/cjkvi-ids)
 - [Wiktionary](https://en.wiktionary.org/)
 
+### Stroke order
+
+Stroke order diagrams are from [KanjiVG](https://kanjivg.tagaini.net/), copyright © Ulrich Apel, licensed under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
+
 ### Original material
 
 The kanji images are original to this project.

@@ -176,6 +176,13 @@ h1 .lite{color:var(--muted);font-weight:400}
 .heroheader{display:flex;align-items:center;justify-content:flex-end;gap:12px}
 .heroheader .badges{margin-top:0}
 .herotop{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start}
+.heroid{flex:none;max-width:250px}
+.stroke-card{flex:1;display:grid;place-items:center;padding:10px 0 4px}
+.stroke-card .stroke-order{width:200px;max-width:100%}
+.stroke-play[hidden]{display:none}
+.stroke-order svg{display:block;width:100%;height:auto}
+.stroke-order g[id^="kvg:StrokePaths"]{stroke:currentColor!important}
+.stroke-order g[id^="kvg:StrokeNumbers"]{fill:var(--muted)!important}
 .herotop .heroid{max-width:none}
 .heroinfo{min-width:0;padding-top:4px}
 .heroinfo .kw{margin-top:0}
