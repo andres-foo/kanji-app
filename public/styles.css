@@ -173,8 +173,13 @@ h1 .lite{color:var(--muted);font-weight:400}
 .heroimg .pic{height:100%}
 .heroimg:after{pointer-events:none}
 .herobody{justify-content:flex-start;gap:14px}
-.heroheader{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+.heroheader{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
 .heroheader .badges{margin-top:0}
+.herolinks{display:flex;align-items:center;gap:5px}
+.badge.ext{background:#fff;border:1px solid #e9ebef;color:#4b5058;text-decoration:none}
+.badge.ext:hover{background:var(--cyan);border-color:var(--cyan);color:#08181b}
+[data-theme="dark"] .badge.ext{background:#26282c;border-color:#3a3d44;color:#b9bec7}
+[data-theme="dark"] .badge.ext:hover{background:var(--cyan);border-color:var(--cyan);color:#08181b}
 .herotop{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start}
 .heroid{flex:none;max-width:250px}
 .stroke-card{flex:1;display:grid;place-items:center;padding:10px 0 4px}

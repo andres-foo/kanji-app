@@ -87,6 +87,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     k.jlpt ? levelBadge(`JLPT N${k.jlpt}`, jlptPriority(Number(k.jlpt), known)) : "",
     k.kanken ? levelBadge(`Kanken ${k.kanken}`, kankenPriority(Number(k.kanken), known)) : "",
   ].join("");
+  const linkKanji = k.literal.trim();
 
   const compChips = comps.length
     ? comps.map((c) => {
@@ -140,6 +141,10 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     </div>
     <div class="herobody">
       <div class="heroheader">
+        <div class="herolinks">
+          <a class="badge ext" href="https://www.kanshudo.com/kanji/${enc(linkKanji)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(linkKanji)} on Kanshudo">kanshudo</a>
+          <a class="badge ext" href="https://en.wiktionary.org/wiki/${enc(linkKanji)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(linkKanji)} on Wiktionary">wiki</a>
+        </div>
         <div class="badges">${badges}</div>
       </div>
       <div class="herotop">
