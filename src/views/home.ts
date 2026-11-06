@@ -16,6 +16,22 @@ const statusDot = (k: Kanji) => {
   return `<i class="sdot ${k.unfinished === 1 ? "unf" : "in"}" role="img" aria-label="${label}" title="${label}"></i>`;
 };
 
+const KANJI_CHAR = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{2FA1F}々〇]/u;
+
+// only runs of kanji become search links; kana and other characters stay plain text
+const wordMarkup = (text: string, q: string) => {
+  const parts: { text: string; kanji: boolean }[] = [];
+  for (const ch of text) {
+    const kanji = KANJI_CHAR.test(ch);
+    const last = parts[parts.length - 1];
+    if (last && last.kanji === kanji) last.text += ch;
+    else parts.push({ text: ch, kanji });
+  }
+  return parts.map((part) => part.kanji
+    ? `<a class="wordkanji" href="/?q=${enc(part.text)}">${highlight(part.text, q)}</a>`
+    : highlight(part.text, q)).join("");
+};
+
 const kanjiRow = (k: Kanji, q: string, known: number) => {
   const readings = [readingList(k.onReadings), readingList(k.kunReadings)].filter(Boolean).join(" · ");
   const badges = [
@@ -40,7 +56,7 @@ const wordRow = (w: Word, back: string, q: string) => {
   const word = raw.text || kana;
   return `<div class="resultrow wordrow" id="w${w.id}">
     <div class="rmain">
-      <div class="rkw">${highlight(word, q)}${kana && kana !== word ? ` <span class="rread">（${highlight(kana, q)}）</span>` : ""}</div>
+      <div class="rkw">${wordMarkup(word, q)}${kana && kana !== word ? ` <span class="rread">（${highlight(kana, q)}）</span>` : ""}</div>
       <div class="rmean">${meaningGroups(w.meanings).map((m) => `<span class="sense">${highlight(m, q)}</span>`).join("")}</div>
     </div>
     <div class="rright">
