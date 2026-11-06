@@ -319,6 +319,13 @@ The `examples.freq_wiki` values come from the [Wiktionary Japanese 2022 frequenc
 - **Noto Serif JP** — [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Serif+JP), SIL Open Font License 1.1
 - **Manrope** — [Google Fonts](https://fonts.google.com/specimen/Manrope), SIL Open Font License 1.1
 
+### Component data
+
+Component data was initially derived from the following sources:
+
+- [CJKVI IDS](https://github.com/cjkvi/cjkvi-ids)
+- [Wiktionary](https://en.wiktionary.org/)
+
 ### Original material
 
-The kanji images and component data are original to this project.
+The kanji images are original to this project.
