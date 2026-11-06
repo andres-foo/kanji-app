@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { HISTORY_MAX } from "../history";
 import { MAX_SCORE, MIN_SCORE, type Mastery } from "../mastery";
 import { sameOrigin } from "../prefs";
 import { startScore, type SettingKey } from "../settings";
@@ -18,6 +19,12 @@ export async function saveSettings(req: Request, url: URL) {
     if (text === "" || !Number.isInteger(n) || n < -10 || n > 10) errors.push(`${f.label} must be a whole number from -10 to 10.`);
     else deltas.push([f.key, n]);
   }
+  const historyText = String(form.get("history_limit") ?? "").trim();
+  submitted.history_limit = historyText;
+  const historyLimit = Number(historyText);
+  if (historyText === "" || !Number.isInteger(historyLimit) || historyLimit < 1 || historyLimit > HISTORY_MAX) {
+    errors.push(`History limit must be a whole number from 1 to ${HISTORY_MAX}.`);
+  }
   for (let score = MIN_SCORE; score <= MAX_SCORE; score++) {
     const label = String(form.get(`label_${score}`) ?? "").trim();
     const daysText = String(form.get(`days_${score}`) ?? "").trim();
@@ -35,6 +42,7 @@ export async function saveSettings(req: Request, url: URL) {
       for (const [key, value] of deltas) {
         db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, String(value)]);
       }
+      db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["history_limit", String(historyLimit)]);
       for (const m of levels) {
         db.run(
           `INSERT INTO mastery_levels (score, label, interval_days) VALUES (?, ?, ?)

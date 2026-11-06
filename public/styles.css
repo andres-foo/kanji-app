@@ -704,3 +704,11 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 [data-theme="dark"] .dashstats{border-color:#2a2c31}
 @media(max-width:800px){.dashstats-head{flex-direction:column;align-items:flex-start;gap:8px}.dashstats-head .tabs{width:100%}}
 @media(max-width:600px){.dashstats-head h2{font-size:20px}}
+
+/* ---------- history ---------- */
+.historysearches{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.historyquery{display:inline-flex;align-items:center;max-width:100%;padding:7px 12px;border-radius:999px;background:#f2f3f6;color:var(--ink);font-size:12.5px;font-weight:700;line-height:1.2;text-decoration:none;overflow-wrap:anywhere}
+.historyquery:hover{background:var(--cyan);color:#08181b}
+.historyempty{padding:12px 0 4px}
+[data-theme="dark"] .historyquery{background:#2a2c31;color:#f4f5f7}
+[data-theme="dark"] .historyquery:hover{background:var(--cyan);color:#08181b}

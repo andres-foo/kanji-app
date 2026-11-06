@@ -1,4 +1,5 @@
 import { enc, html } from "../html";
+import { recordHistory } from "../history";
 import { requestContext } from "../prefs";
 import { REVIEW_BUTTONS, REVIEW_KEYS, REVIEW_PAD } from "../review";
 import { kanjiRedesignView } from "./design";
@@ -19,6 +20,7 @@ export async function kanjiPage(literal: string, url: URL) {
   const reviewing = url.searchParams.get("review") === "1";
   const view = editing ? await kanjiRedesignEditView(literal, q) : await kanjiRedesignView(literal, "/kanji", q);
   if (!view) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404);
+  if (!editing && !reviewing) recordHistory("kanji", literal);
   const bar = reviewing && !editing ? reviewBar(literal) : "";
   return html(layout(view.title, view.body, { theme, back, lab: false, bar, searchValue: q }));
 }

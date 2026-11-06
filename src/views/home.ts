@@ -6,6 +6,7 @@ import { search, shortQuery } from "../search";
 import type { Kanji, Word } from "../types";
 import { dashboardView } from "./dashboard";
 import { levelBadge } from "./design";
+import { recordHistory } from "../history";
 import { layout } from "./layout";
 import { jlptPriority, kankenPriority, keywordText, meaningGroups, meaningsText, readingList, splitKanjiMarker } from "./shared";
 
@@ -79,6 +80,7 @@ export function home(url: URL) {
     return page(dash.title, dash.body);
   }
   if (shortQuery(q)) return page("Search – Kanji", hero("Enter at least two characters to search."));
+  if (!url.searchParams.has("type")) recordHistory("search", q);
 
   const { kanji, words } = search(q);
   const known = totalKnown();

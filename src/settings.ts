@@ -10,6 +10,7 @@ const SETTING_DEFAULTS = {
   review_delta_neutral: 0,
   review_delta_good: 1,
   review_delta_easy: 2,
+  history_limit: 50, // entries shown in each History column
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 

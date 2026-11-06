@@ -3,6 +3,7 @@ import { requestContext, themeFrom, detailsOpenFrom } from "./src/prefs";
 import { findImage } from "./src/images";
 import type { ReviewResult } from "./src/review";
 import { home } from "./src/views/home";
+import { historyPage } from "./src/views/history";
 import { levelPage, myListPage } from "./src/views/lists";
 import { kanjiPage } from "./src/views/kanji";
 import { designKanjiPage } from "./src/views/design";
@@ -81,6 +82,7 @@ Bun.serve({
       }
       if (path === "/") return home(url);
       if (path === "/my-list") return myListPage(url);
+      if (path === "/history") return historyPage();
       if (path === "/jlpt") return levelPage("jlpt", "JLPT", "jlpt", url);
       if (path === "/kanken") return levelPage("kanken", "KANKEN", "kanken", url);
       const designKanji = path.match(/^\/design\/kanji\/([^/]+)$/);

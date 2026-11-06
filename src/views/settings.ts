@@ -1,4 +1,5 @@
 import { esc, html } from "../html";
+import { HISTORY_MAX } from "../history";
 import { masteryLevels } from "../mastery";
 import { requestContext } from "../prefs";
 import { setting, startScore, type SettingKey } from "../settings";
@@ -12,7 +13,7 @@ export const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = 
 ];
 
 // the score scale (-3 to 10) and the starting score live in the settings table and are edited in the database; this page
-// edits the score changes for Bad / Neutral / Good / Easy and the mastery levels (label and days until the next review), and resets scores.
+// edits the score changes for Bad / Neutral / Good / Easy, the mastery levels, the history limit, and resets scores.
 export function settingsPage(url: URL, errors: string[] = [], submitted?: Record<string, string>, status = 200) {
   const resetCount = url.searchParams.get("reset");
   const notice = errors.length
@@ -25,6 +26,7 @@ export function settingsPage(url: URL, errors: string[] = [], submitted?: Record
   const fields = DELTA_FIELDS.map((f) => `<label class="setfield"><span class="setflabel">${f.label}</span>
 <input class="setinput" type="number" step="1" min="-10" max="10" name="${f.key}" value="${esc(submitted?.[f.key] ?? String(setting(f.key)))}" required>
 <span class="hint">${f.hint}</span></label>`).join("");
+  const historyLimit = submitted?.history_limit ?? String(setting("history_limit"));
   const body = `<div class="listhead"><div><h1>Settings</h1><p class="sub">Review scoring and mastery timing.</p></div></div>
 ${notice}
 <form class="setform" method="post" action="/settings">
@@ -37,6 +39,14 @@ ${notice}
     <div class="settable">
       <div class="setrow setheadrow"><span>Score</span><span>Label</span><span>Days until review</span></div>
       ${rows}
+    </div>
+  </div>
+  <div class="card setcard">
+    <div class="sethead"><h2>History</h2><p class="sub">How many entries the History page shows in each column.</p></div>
+    <div class="setfields" style="grid-template-columns:minmax(0,1fr)">
+      <label class="setfield"><span class="setflabel">History limit</span>
+      <input class="setinput" type="number" step="1" min="1" max="${HISTORY_MAX}" name="history_limit" value="${esc(historyLimit)}" required>
+      <span class="hint">Applies separately: this many searches and this many kanji visits (default 50 each).</span></label>
     </div>
   </div>
   <div class="setactions"><button class="pill dark" type="submit">Save settings</button></div>
