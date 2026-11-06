@@ -1,0 +1,33 @@
+# Local previews and screenshots
+previews/
+
+# Dependencies
+node_modules/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# SQLite runtime files
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp/
+temp/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Build and test output
+dist/
+coverage/
+*.tsbuildinfo
