@@ -87,7 +87,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     ["On readings", k.onReadings ? readingList(k.onReadings) : null],
     ["Kun readings", k.kunReadings ? readingList(k.kunReadings) : null],
     ["Strokes", k.strokes], ["Grade", k.grade], ["JLPT", k.jlpt ? `N${k.jlpt}` : null],
-    ["Kanken", k.kanken], ["Frequency", k.frequency ? `#${k.frequency}` : null], ["Heisig 6", k.heisg6],
+    ["Kanken", k.kanken], ["Frequency", k.frequency ? `#${k.frequency}` : null],
   ].map(([lab, val]) => `<div class="detail"><span>${lab}</span><b>${val ?? "–"}</b></div>`).join("");
 
   const typeLabel: Record<string, string> = { bad: "Bad", neutral: "Neutral", good: "Good", easy: "Easy" };
