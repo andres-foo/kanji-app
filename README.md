@@ -6,21 +6,16 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 ## Screenshots
 
-### Dashboard
-
-![Dashboard](docs/screenshots/dashboard.png)
-
-### Kanji detail
-
-![Kanji detail page](docs/screenshots/kanji.png)
-
-### Review
-
-![Review question page](docs/screenshots/review.png)
-
-### Word search
-
-![Word search results for dance](docs/screenshots/search.png)
+<table>
+<tr>
+<td width="50%"><a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="Dashboard" width="100%"></a><br><sub><b>Dashboard</b></sub></td>
+<td width="50%"><a href="docs/screenshots/kanji.png"><img src="docs/screenshots/kanji.png" alt="Kanji detail page" width="100%"></a><br><sub><b>Kanji detail</b></sub></td>
+</tr>
+<tr>
+<td width="50%"><a href="docs/screenshots/review.png"><img src="docs/screenshots/review.png" alt="Review question page" width="100%"></a><br><sub><b>Review</b></sub></td>
+<td width="50%"><a href="docs/screenshots/search.png"><img src="docs/screenshots/search.png" alt="Word search results for dance" width="100%"></a><br><sub><b>Word search</b></sub></td>
+</tr>
+</table>
 
 ## What you can do with it
 
