@@ -2,7 +2,7 @@ import { esc, html } from "../html";
 import { HISTORY_MAX } from "../history";
 import { masteryLevels } from "../mastery";
 import { requestContext } from "../prefs";
-import { setting, startScore, type SettingKey, WORD_RESULTS_MAX } from "../settings";
+import { setting, startScore, type SettingKey, WORD_RESULTS_MAX, PHRASE_RESULTS_MAX } from "../settings";
 import { layout } from "./layout";
 
 export const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = [
@@ -28,6 +28,9 @@ export function settingsPage(url: URL, errors: string[] = [], submitted?: Record
 <span class="hint">${f.hint}</span></label>`).join("");
   const historyLimit = submitted?.history_limit ?? String(setting("history_limit"));
   const wordPerPage = submitted?.word_results_per_page ?? String(setting("word_results_per_page"));
+  const phrasePerKanji = submitted?.phrase_results_per_kanji ?? String(setting("phrase_results_per_kanji"));
+  const phraseOptions = Array.from({ length: PHRASE_RESULTS_MAX }, (_, i) => i + 1)
+    .map((n) => `<option value="${n}"${String(n) === phrasePerKanji ? " selected" : ""}>${n}</option>`).join("");
   const body = `<div class="listhead"><div><h1>Settings</h1><p class="sub">Review scoring, mastery timing and other settings.</p></div></div>
 ${notice}
 <form class="setform" method="post" action="/settings">
@@ -43,11 +46,16 @@ ${notice}
     </div>
   </div>
   <div class="card setcard">
-    <div class="sethead"><h2>Other settings</h2><p class="sub">Search pagination and history limits.</p></div>
+    <div class="sethead"><h2>Other settings</h2><p class="sub">Search pagination, examples and history limits.</p></div>
     <div class="setfields">
       <label class="setfield"><span class="setflabel">Word results per page</span>
       <input class="setinput" type="number" step="1" min="1" max="${WORD_RESULTS_MAX}" name="word_results_per_page" value="${esc(wordPerPage)}" required>
       <span class="hint">How many word results are shown on each search page (default 20).</span></label>
+      <label class="setfield"><span class="setflabel">Phrases per kanji</span>
+      <select class="setinput" name="phrase_results_per_kanji">
+        ${phraseOptions}
+      </select>
+      <span class="hint">How many example phrases are shown initially on a kanji page (default 5).</span></label>
       <label class="setfield"><span class="setflabel">History limit</span>
       <input class="setinput" type="number" step="1" min="1" max="${HISTORY_MAX}" name="history_limit" value="${esc(historyLimit)}" required>
       <span class="hint">Entries shown in each History column: this many searches and this many kanji visits (default 50).</span></label>

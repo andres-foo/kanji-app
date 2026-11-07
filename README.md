@@ -2,7 +2,7 @@
 
 A personal project for studying kanji and managing mnemonics.
 
-It is a small, self-hosted, server-rendered web app that runs on top of your own SQLite kanji database. A small Bun server in `server.ts` serves the pages, with the logic and views in `src/` and the stylesheet, scripts and fonts in `public/` — no build step, no framework, no account, no cloud. Your list, scores, history and mnemonics live in `data/kanji.db`; the kanji pictures in `data/images/`.
+It is a small, self-hosted, server-rendered web app that runs on top of your own SQLite databases. A small Bun server in `server.ts` serves the pages, with the logic and views in `src/` and the stylesheet, scripts and fonts in `public/` — no build step, no framework, no account, no cloud. Your list, scores, history and mnemonics live in `data/user.db`; dictionary and kanji reference data live in `data/reference.db`; example phrases live in `data/phrases.db`; the kanji pictures live in `data/images/`.
 
 ## What you can do with it
 
@@ -17,9 +17,11 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 ## Quick start
 
     bun run start                                  # http://localhost:3000
-    DB_PATH=/path/to/kanji.db IMAGES_DIR=/path/to/images PORT=3000 bun run start
+    DB_PATH=/path/to/user.db REFERENCE_DB_PATH=/path/to/reference.db PHRASE_DB_PATH=/path/to/phrases.db IMAGES_DIR=/path/to/images PORT=3000 bun run start
 
-- `DB_PATH` (default `./data/kanji.db`): the SQLite database. It needs the `kanjis` and `examples` tables; the review pages also use the `score`, `last_reviewed` and `due_date` columns plus the `review_history`, `settings` and `mastery_levels` tables described below. The app writes to the database (adding kanji, saving edits, recording reviews), so point it at a copy if you only want to look around.
+- `DB_PATH` (default `./data/user.db`): the SQLite user database. It holds the study list, stories, scores, history, settings and word additions.
+- `REFERENCE_DB_PATH` (default `./data/reference.db`): the read-only core reference database. It holds the kanji dictionary data and the word tables. The app does not write to it.
+- `PHRASE_DB_PATH` (default `./data/phrases.db`): the read-only example phrase database. It holds the Tatoeba phrases and furigana. The app does not write to it.
 - `IMAGES_DIR` (default `./data/images`): one image per kanji, named after the character (`水.jpg` or `水.png`). Square images look best; they are picked up on the next page load.
 - No dependencies: `bun:sqlite` is built in.
 
@@ -32,7 +34,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 | `src/views/` | the HTML for each page: layout, home/dashboard, lists, kanji, review, settings and charts |
 | `src/routes/` | the POST handlers: kanji edit/toggle, images, theme/details, review answers, settings |
 | `public/` | the stylesheet, browser scripts and the Jigmo fonts |
-| `data/` | `kanji.db` and the kanji pictures |
+| `data/` | `user.db`, `reference.db`, `phrases.db` and the kanji pictures |
 
 Assumptions the app makes:
 - `frequency` and `freq_wiki` are ranks (1 = most common), so lower sorts first.
@@ -138,6 +140,7 @@ Values live in the `settings` table (`key`, `value`, stored as text). If a row i
 | `review_delta_neutral` | 0 | Score change for Neutral | Yes |
 | `review_delta_good` | 1 | Score change for Good | Yes |
 | `review_delta_easy` | 2 | Score change for Easy | Yes |
+| `phrase_results_per_kanji` | 5 | Example phrases shown initially on a kanji page | Yes |
 
 Also on the Settings page: the **mastery levels** (label and days for every score) and the red **Reset scores** button.
 
@@ -281,11 +284,11 @@ A kanji is reviewed at score *s* because it was scheduled with the interval of s
 ### 11. Things to know
 
 - **Dates use the server's local date.** Due dates and the queue use `date('now', 'localtime')`. If the app runs on a server set to another timezone (many hosts use UTC), reviews in the evening can land on the next day. Set the server's timezone (for example `TZ=America/Santiago`).
-- **Database columns.** Reviewing needs `kanjis.score`, `kanjis.last_reviewed` and `kanjis.due_date`, and the tables `review_history`, `settings` and `mastery_levels`. If a column is missing, review pages show an error naming it.
-- **`added_at` is not set by the app yet.** The dashboard stats chart counts a kanji from its `added_at` date when it has one. Without it, a kanji counts for the whole period.
+- **Database columns.** Reviewing needs `user_kanjis.score`, `user_kanjis.last_reviewed` and `user_kanjis.due_date`, and the tables `review_history`, `settings` and `mastery_levels` in `user.db`. If a column is missing, review pages show an error naming it.
+- **`added_at` is recorded when a kanji is added through the edit form.** Older rows may not have a timestamp; the dashboard stats chart then counts that kanji for the whole period.
 - **Old history.** Reviews saved before the 0-to-10 scale (and the four-button system) used different score meanings. They are still in `review_history` and will skew the dashboard stats for periods that reach back that far.
 - **The priority colours are separate.** The green / orange / red / grey backgrounds on JLPT and Kanken badges depend only on how many kanji are added, finished and not components. They have nothing to do with review scores.
-- **Backups.** The database file is the only copy of your scores and history. Copy it somewhere else regularly, and before using **Reset scores**.
+- **Backups.** `user.db` is the only copy of your scores, stories and history. Copy it somewhere else regularly, and before using **Reset scores**. Back up `reference.db` after adding custom component kanji. `phrases.db` is replaceable reference data.
 
 ---
 
@@ -295,7 +298,7 @@ Confirmed sources used by this app:
 
 ### Dictionary data
 
-Example word headwords, readings, meanings, parts of speech and alternative spellings are derived from **EDICT2/JMdict**, copyright © James William Breen and the Electronic Dictionary Research and Development Group (EDRDG).
+Word headwords, readings, meanings, parts of speech and alternative spellings are derived from **EDICT2/JMdict**, copyright © James William Breen and the Electronic Dictionary Research and Development Group (EDRDG).
 
 Kanji reference data is derived from [**KANJIDIC2**](https://www.edrdg.org/wiki/index.php/KANJIDIC_Project), also copyright © James William Breen and the EDRDG.
 
@@ -303,15 +306,23 @@ Both sets of data are stored here as modified SQLite transformations and are use
 
 ### JLPT kanji levels
 
-Kanji JLPT levels come from the [Nihongo-Pro Kanji Pal JLPT lists](https://www.nihongo-pro.com/kanji-pal/list/jlpt). These are unofficial study lists; the JLPT does not publish an official kanji list.
+Kanji JLPT levels for 2,220 kanji come from the [Nihongo-Pro Kanji Pal JLPT lists](https://www.nihongo-pro.com/kanji-pal/list/jlpt). These are unofficial study lists; the JLPT does not publish an official kanji list.
+
+### Kanken levels
+
+Kanken levels for 6,350 kanji come from [Kanjikana's Kanken level lists](https://kanjikana.com/en/kanji/kanken). These are third-party study lists; check the source page for its current terms and attribution requirements.
 
 ### Word JLPT levels
 
-Word JLPT levels come from the [Tanos JLPT vocabulary lists](https://www.tanos.co.uk/jlpt/) by Jonathan Waller, licensed under Creative Commons BY. The import uses the [Bluskyo CSV conversion](https://github.com/Bluskyo/JLPT_Vocabulary). These are unofficial study lists; the JLPT does not publish an official vocabulary list. Words added manually by the app owner are marked with `jlpt = -1` and are not from Tanos.
+Word JLPT levels come from the [Tanos JLPT vocabulary lists](https://www.tanos.co.uk/jlpt/) by Jonathan Waller, licensed under Creative Commons BY. The import uses the [Bluskyo CSV conversion](https://github.com/Bluskyo/JLPT_Vocabulary). These are unofficial study lists; the JLPT does not publish an official vocabulary list. Levels are stored separately in `word_jlpt`. Words that do not have a confident Tanos match, or that have conflicting Tanos levels, have no assigned JLPT level.
+
+### Example phrases
+
+Example sentences and English translations come from [Tatoeba](https://tatoeba.org/), released under [CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/). The import keeps the first English translation for each Japanese sentence. Furigana is generated at the token level with SudachiPy and stored with `furigana_checked = 0` until it is reviewed.
 
 ### Word frequency
 
-The `examples.freq_wiki` values come from the [Wiktionary Japanese 2022 frequency lists](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10000) ([1–10,000](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10000) and [10,001–20,000](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10001-20000)), based on Japanese Wikipedia data. This is Wikimedia content; see those pages for attribution and licence details.
+An earlier word-frequency enrichment used the [Wiktionary Japanese 2022 frequency lists](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10000) ([1–10,000](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10000) and [10,001–20,000](https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Japanese2022_10001-20000)), based on Japanese Wikipedia data. That data is not currently carried in the new reference word schema. This is Wikimedia content; see those pages for attribution and licence details.
 
 ### Fonts
 

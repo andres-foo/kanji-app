@@ -64,7 +64,7 @@ export function saveReview(literal: string, result: ReviewResult): boolean {
     const after = Math.min(hi, Math.max(lo, Math.round(before + setting(REVIEW_DELTA_KEYS[result]))));
     const days = result === "bad" ? 0 : masteryFor(after).interval_days;
     db.run(
-      `UPDATE kanjis SET score = ?, last_reviewed = date('now', 'localtime'), due_date = date('now', 'localtime', ?) WHERE literal = ?`,
+      `UPDATE user_kanjis SET score = ?, last_reviewed = date('now', 'localtime'), due_date = date('now', 'localtime', ?) WHERE literal = ?`,
       [after, `+${days} days`, literal],
     );
     db.run(`INSERT INTO review_history (kanji, date, "before", "after", type) VALUES (?, datetime('now', 'localtime'), ?, ?, ?)`, [literal, before, after, result]);

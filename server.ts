@@ -7,6 +7,8 @@ import { historyPage } from "./src/views/history";
 import { levelPage, myListPage } from "./src/views/lists";
 import { kanjiPage } from "./src/views/kanji";
 import { designKanjiPage } from "./src/views/design";
+import { componentsPage } from "./src/views/components";
+import { groupComponents } from "./src/routes/components";
 import { messagePage } from "./src/views/message";
 import { reviewNext, reviewPage } from "./src/views/review";
 import { settingsPage } from "./src/views/settings";
@@ -23,6 +25,7 @@ const STATIC_FILES: Record<string, [string, string]> = {
   "/js/story-editor.js": ["public/js/story-editor.js", "text/javascript; charset=utf-8"],
   "/js/review-keys.js": ["public/js/review-keys.js", "text/javascript; charset=utf-8"],
   "/js/stroke.js": ["public/js/stroke.js", "text/javascript; charset=utf-8"],
+  "/js/components.js": ["public/js/components.js", "text/javascript; charset=utf-8"],
 };
 
 Bun.serve({
@@ -84,6 +87,8 @@ Bun.serve({
       if (path === "/") return home(url);
       if (path === "/my-list") return myListPage(url);
       if (path === "/history") return historyPage();
+      if (path === "/components") return componentsPage();
+      if (path === "/components/group") return req.method === "POST" ? groupComponents(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/jlpt") return levelPage("jlpt", "JLPT", "jlpt", url);
       if (path === "/kanken") return levelPage("kanken", "KANKEN", "kanken", url);
       const designKanji = path.match(/^\/design\/kanji\/([^/]+)$/);

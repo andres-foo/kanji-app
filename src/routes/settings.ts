@@ -2,7 +2,7 @@ import { db } from "../db";
 import { HISTORY_MAX } from "../history";
 import { MAX_SCORE, MIN_SCORE, type Mastery } from "../mastery";
 import { sameOrigin } from "../prefs";
-import { startScore, type SettingKey, WORD_RESULTS_MAX } from "../settings";
+import { startScore, type SettingKey, WORD_RESULTS_MAX, PHRASE_RESULTS_MAX } from "../settings";
 import { DELTA_FIELDS, settingsPage } from "../views/settings";
 
 export async function saveSettings(req: Request, url: URL) {
@@ -31,6 +31,12 @@ export async function saveSettings(req: Request, url: URL) {
   if (wordText === "" || !Number.isInteger(wordResults) || wordResults < 1 || wordResults > WORD_RESULTS_MAX) {
     errors.push(`Word results per page must be a whole number from 1 to ${WORD_RESULTS_MAX}.`);
   }
+  const phraseText = String(form.get("phrase_results_per_kanji") ?? "").trim();
+  submitted.phrase_results_per_kanji = phraseText;
+  const phraseResults = Number(phraseText);
+  if (phraseText === "" || !Number.isInteger(phraseResults) || phraseResults < 1 || phraseResults > PHRASE_RESULTS_MAX) {
+    errors.push(`Phrases per kanji must be a whole number from 1 to ${PHRASE_RESULTS_MAX}.`);
+  }
   for (let score = MIN_SCORE; score <= MAX_SCORE; score++) {
     const label = String(form.get(`label_${score}`) ?? "").trim();
     const daysText = String(form.get(`days_${score}`) ?? "").trim();
@@ -50,6 +56,7 @@ export async function saveSettings(req: Request, url: URL) {
       }
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["history_limit", String(historyLimit)]);
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["word_results_per_page", String(wordResults)]);
+      db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["phrase_results_per_kanji", String(phraseResults)]);
       for (const m of levels) {
         db.run(
           `INSERT INTO mastery_levels (score, label, interval_days) VALUES (?, ?, ?)
@@ -69,7 +76,7 @@ export async function resetScores(req: Request) {
   if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
   const start = startScore();
   try {
-    const res = db.run(`UPDATE kanjis SET score = ?, due_date = NULL, last_reviewed = NULL WHERE COALESCE(added, 0) = 1`, [start]);
+    const res = db.run(`UPDATE user_kanjis SET score = ?, due_date = NULL, last_reviewed = NULL WHERE COALESCE(added, 0) = 1`, [start]);
     return new Response(null, { status: 303, headers: { location: `/settings?reset=${res.changes}&to=${start}` } });
   } catch (e) {
     return settingsPage(new URL(req.url), [`Could not reset the scores: ${(e as Error).message}. Is the database file writable, and do the last_reviewed and due_date columns exist?`], undefined, 500);

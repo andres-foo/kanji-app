@@ -40,24 +40,41 @@ const wordExact = (text: unknown, q: string) => {
 // strip trailing annotations such as "(P)", "(ateji)" or a combination of them
 const stripAnnotations = (s: string) => s.replace(/\s*(?:\([^)]*\))+\s*$/g, "").trim();
 const headword = (w: Word) => stripAnnotations(String(w.kanji ?? ""));
-const kanaFirst = (w: Word) => stripAnnotations(String(w.kana ?? "").split(";")[0]);
+const readingsOf = (w: Word) =>
+  String(w.kana ?? "")
+    .split(";")
+    .map((s) => stripAnnotations(s))
+    .filter(Boolean);
 const jlpt = (n: number | null | undefined) => Number(n ?? 0);
+const common = (w: Word) => Number(w.is_common ?? 0);
 const exactKeyword = (k: Kanji, qLower: string) =>
   String(k.keyword ?? "").split(";").map((s) => s.trim().toLowerCase()).includes(qLower);
 
 const senseStart = /^(?:\([^)]*\)\s*)*\((\d+)\)(?:\s|$)/;
-type DefinitionMatch = { sense: number; exact: boolean };
+type DefinitionMatch = { sense: number; exact: boolean; atStart: boolean; part: number; wordsInPart: number };
 // the first sense whose definition has the query at the start of an English word, plus whether
 // the whole word matches ("test" exact) or only its prefix ("testing")
 const definitionMatch = (meanings: unknown, q: string): DefinitionMatch | null => {
   let sense = 1;
-  for (const part of String(meanings ?? "").split(";")) {
-    const s = part.trim();
+  let part = 0;
+  for (const raw of String(meanings ?? "").split(";")) {
+    const s = raw.trim();
     if (!s) continue;
+    part++;
     const marker = senseStart.exec(s);
     if (marker) sense = Number(marker[1]);
     const exact = wordExact(s, q);
-    if (exact || wordStart(s, q)) return { sense, exact };
+    const starts = wordStart(s, q);
+    if (exact || starts) {
+      const normalized = cleanEnglish(s).replace(/^\s*to\s+/, "").trim().toLowerCase();
+      return {
+        sense,
+        exact,
+        atStart: normalized.startsWith(q.toLowerCase().trim()),
+        part,
+        wordsInPart: normalized.split(/\s+/).filter(Boolean).length,
+      };
+    }
   }
   return null;
 };
@@ -94,15 +111,14 @@ export function search(q: string) {
     }
     kanji = db.query(`SELECT * FROM kanjis WHERE ${kc.join(" OR ")}`).all(...kp) as Kanji[];
 
-    const wc = [`kanji LIKE ? ESCAPE '\\'`];
-    const wp = [pat(q)];
-    for (const v of kana) {
-      wc.push(`kana LIKE ? ESCAPE '\\'`);
-      wp.push(pat(v));
-    }
-    wc.push(`kanji_alternative LIKE ? ESCAPE '\\'`);
-    wp.push(pat(q));
-    words = db.query(`SELECT * FROM examples WHERE ${wc.join(" OR ")}`).all(...wp) as Word[];
+    const readingClauses = kana.map(() => "reading LIKE ? ESCAPE '\\'").join(" OR ");
+    words = db.query(`WITH matched(word_id) AS (
+        SELECT word_id FROM ref.word_forms WHERE form LIKE ? ESCAPE '\\'
+        UNION
+        SELECT word_id FROM ref.word_readings WHERE ${readingClauses}
+      )
+      SELECT w.*, EXISTS (SELECT 1 FROM user_word_added u WHERE u.word_id = w.id) AS added
+      FROM matched m JOIN ref.word_rows w ON w.id = m.word_id`).all(pat(q), ...kana.map(pat)) as Word[];
 
     const readingRank = (k: Kanji) => {
       const readings = `${k.onReadings ?? ""} ${k.kunReadings ?? ""}`.replace(/[.\-]/g, " ").split(/[\s、,;]+/).filter(Boolean).map(toHira);
@@ -120,20 +136,24 @@ export function search(q: string) {
 
     const wordRank = (w: Word) => {
       const h = headword(w);
-      const k = kanaFirst(w);
-      const kh = toHira(k);
-      if (h === q || (kh && kh === qHira)) return 0;
-      if (h.startsWith(q)) return 1;
-      if (kh && kh.startsWith(qHira)) return 2;
-      if (h.includes(q)) return 3;
-      if (kh && kh.includes(qHira)) return 4;
-      if (String(w.kanji_alternative ?? "").includes(q)) return 5;
-      return 6;
+      const alternatives = String(w.kanji_alternative ?? "").split(";").map((s) => s.trim()).filter(Boolean);
+      const kh = readingsOf(w).map(toHira);
+      if (h === q) return 0;
+      if (alternatives.includes(q)) return 1;
+      if (kh.includes(qHira)) return 2;
+      if (h.startsWith(q)) return 3;
+      if (alternatives.some((a) => a.startsWith(q))) return 4;
+      if (kh.some((r) => r.startsWith(qHira))) return 5;
+      if (h.includes(q)) return 6;
+      if (alternatives.some((a) => a.includes(q))) return 7;
+      if (kh.some((r) => r.includes(qHira))) return 8;
+      return 9;
     };
     words.sort((a, b) =>
       wordRank(a) - wordRank(b) ||
+      common(b) - common(a) ||
       jlpt(b.jlpt) - jlpt(a.jlpt) ||
-      nullsLast(a.freq_wiki, b.freq_wiki));
+      nullsLast(a.id, b.id));
   } else {
     // English queries match the start of a definition word; suffix matches such as latest/contest,
     // great/meat or detest/intestines are discarded. Earlier senses win over obscure later senses.
@@ -151,16 +171,36 @@ export function search(q: string) {
       nullsLast(a.k.frequency, b.k.frequency));
     kanji = khits.map((h) => h.k);
 
-    const wc = [`CAST(meanings AS TEXT) LIKE ? ESCAPE '\\'`];
-    const whits = (db.query(`SELECT * FROM examples WHERE ${wc.join(" OR ")}`).all(pat(q)) as Word[])
-      .map((w) => ({ w, match: definitionMatch(w.meanings, q) }))
-      .filter((h) => h.match !== null);
-    const wordScore = (h: { match: DefinitionMatch | null }) =>
-      h.match === null ? 999 : (h.match.exact ? 0 : 100) + h.match.sense;
+    type SenseWord = Word & { sense_no: number; gloss: string };
+    const senseRows = db.query(`SELECT w.*, EXISTS (SELECT 1 FROM user_word_added u WHERE u.word_id = w.id) AS added,
+        s.sense_no AS sense_no, s.gloss AS gloss
+      FROM ref.word_senses s
+      JOIN ref.word_rows w ON w.id = s.word_id
+      WHERE s.gloss LIKE ? ESCAPE '\\'`).all(pat(q)) as SenseWord[];
+    const bestByWord = new Map<number, { w: Word; match: DefinitionMatch; sense: number }>();
+    const wordScore = (h: { match: DefinitionMatch; sense: number }) =>
+      (h.match.exact ? 0 : 20) + (h.match.atStart ? 0 : 10) +
+      h.match.part / 100 + h.sense / 1000 + (h.match.wordsInPart - 1) * 0.5;
+    for (const row of senseRows) {
+      const match = definitionMatch(row.gloss, q);
+      if (!match) continue;
+      const candidate = { w: row as Word, match, sense: row.sense_no };
+      const previous = bestByWord.get(row.id);
+      if (!previous || wordScore(candidate) < wordScore(previous)) {
+        bestByWord.set(row.id, candidate);
+      }
+    }
+    const wordTier = (h: { match: DefinitionMatch }) =>
+      h.match.exact ? (h.match.atStart ? 0 : 1) : (h.match.atStart ? 2 : 3);
+    const wordFine = (h: { match: DefinitionMatch; sense: number }) =>
+      h.sense * 0.1 + h.match.part / 100 + (h.match.wordsInPart - 1) * 0.5;
+    const whits = [...bestByWord.values()];
     whits.sort((a, b) =>
-      wordScore(a) - wordScore(b) ||
+      wordTier(a) - wordTier(b) ||
+      common(b.w) - common(a.w) ||
+      wordFine(a) - wordFine(b) ||
       jlpt(b.w.jlpt) - jlpt(a.w.jlpt) ||
-      nullsLast(a.w.freq_wiki, b.w.freq_wiki));
+      nullsLast(a.w.id, b.w.id));
     words = whits.map((h) => h.w);
   }
 

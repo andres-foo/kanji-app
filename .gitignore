@@ -9,6 +9,9 @@ node_modules/
 .env.*
 !.env.example
 
+# Local reference source dumps
+sources/
+
 # SQLite runtime files
 *.db-wal
 *.db-shm

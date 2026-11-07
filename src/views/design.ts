@@ -2,6 +2,7 @@ import { db, totalKnown } from "../db";
 import { enc, esc, html, likeEsc } from "../html";
 import { findImage } from "../images";
 import { MAX_SCORE, MIN_SCORE, masteryFor } from "../mastery";
+import { phrasesPerKanji } from "../settings";
 import { requestContext } from "../prefs";
 import { storyHtml } from "../story";
 import type { Kanji, Word } from "../types";
@@ -54,6 +55,14 @@ export const levelBadge = (label: string, p: Priority) => {
   return `<span class="badge" title="Priority ${info.label}" aria-label="${esc(label)}, priority ${info.label}">${esc(label)}${info.icon ? ` <span class="prio">${info.icon}</span>` : ""}</span>`;
 };
 
+type Phrase = { id: number; english: string; japanese_furigana: string };
+
+const phraseListHtml = (phrases: Phrase[]) =>
+  phrases.map((p) => `<div class="phrase">
+          <div class="phrase-jp">${p.japanese_furigana}</div>
+          <div class="phrase-en">${esc(p.english)}</div>
+        </div>`).join("");
+
 export async function kanjiRedesignView(literal: string, base: string, q = "") {
   const k = db.query(`SELECT * FROM kanjis WHERE literal = ?`).get(literal) as Kanji | null;
   if (!k) return null;
@@ -71,10 +80,22 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
           .map((r) => [r.literal, keywordText(r.keyword).split(",")[0]])
       : [],
   );
-  const compFor = db.query(`SELECT literal, keyword, jlpt, added, unfinished FROM kanjis WHERE components LIKE ? ESCAPE '\\' AND literal != ? ORDER BY COALESCE(added,0) DESC, COALESCE(jlpt,0) DESC LIMIT 10`)
-    .all(`%${likeEsc(k.literal)}%`, k.literal) as Pick<Kanji, "literal" | "keyword" | "jlpt" | "added" | "unfinished">[];
-  const addedWords = db.query(`SELECT * FROM examples WHERE kanji LIKE ? ESCAPE '\\' AND COALESCE(added, 0) = 1 ORDER BY COALESCE(freq_wiki, 999999)`)
+  const compFor = (db.query(`SELECT literal, keyword, jlpt, added, unfinished, low_priority, components FROM kanjis WHERE components LIKE ? ESCAPE '\\' AND literal != ? ORDER BY COALESCE(added,0) DESC, COALESCE(jlpt,0) DESC`)
+    .all(`%${likeEsc(k.literal)}%`, k.literal) as (Pick<Kanji, "literal" | "keyword" | "jlpt" | "added" | "unfinished" | "low_priority"> & { components: string | null })[])
+    .filter((r) => String(r.components ?? "").split(/[;、,\s]+/).includes(k.literal));
+  const addedWords = db.query(`SELECT w.*, 1 AS added
+    FROM ref.word_rows w
+    JOIN user_word_added u ON u.word_id = w.id
+    WHERE w.kanji LIKE ? ESCAPE '\\'
+    ORDER BY w.is_common DESC, w.kanji`)
     .all(`%${likeEsc(k.literal)}%`) as Word[];
+  const phraseLimit = phrasesPerKanji();
+  const phrases = db.query(`SELECT id, english, japanese_furigana
+    FROM phr.phrases
+    WHERE japanese LIKE ? ESCAPE '\\' AND japanese_furigana IS NOT NULL
+    ORDER BY hardest_jlpt DESC, length(japanese), id
+    LIMIT ?`)
+    .all(`%${likeEsc(k.literal)}%`, phraseLimit) as Phrase[];
   const history = db.query(`SELECT date, "before" AS b, "after" AS a, type FROM review_history WHERE kanji = ? ORDER BY date DESC, id DESC`).all(k.literal) as { date: string; b: number; a: number; type: string }[];
 
   const shortMeanings = meaningsText(k.meanings).split(", ").slice(0, 3).join(", ");
@@ -101,7 +122,8 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
         const status = r.added === 1 ? (r.unfinished === 1 ? "Unfinished" : "In your study list") : "";
         const dot = state ? `<i class="cdot${state}" role="img" aria-label="${status}" title="${status}"></i>` : "";
         const kw = keywordText(r.keyword);
-        return `<a class="comp${state}" href="${base}/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}"><b>${esc(r.literal)}</b>${kw ? `<span>${esc(kw)}</span>` : ""}${dot}</a>`;
+        const low = r.low_priority === 1 ? " lowpriority" : "";
+        return `<a class="comp${state}${low}" href="${base}/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}"${low ? ` title="Low priority"` : ""}><b>${esc(r.literal)}</b>${kw ? `<span>${esc(kw)}</span>` : ""}${dot}</a>`;
       }).join("")
     : `<span class="sub">Nothing else uses it.</span>`;
 
@@ -191,6 +213,13 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     <div class="cardhead"><h3 class="h3">Examples in your list</h3><span class="badge">${addedWords.length} added</span></div>
     ${addedWords.length ? addedWords.map(exRow).join("") : `<div class="sub" style="padding:6px 0">No examples in your list yet.</div>`}
     <div class="exfoot"><a class="pill ghost sm" href="/?q=${enc(k.literal)}&type=words">Find more words</a></div>
+  </div>
+
+  <div class="card" style="grid-column:span 6">
+    <div class="cardhead"><h3 class="h3">Example phrases</h3><span class="badge">${phrases.length}</span></div>
+    ${phrases.length
+      ? `<div class="phrase-list" id="phrase-list">${phraseListHtml(phrases)}</div>`
+      : `<div class="sub" style="padding:6px 0">No example phrases yet.</div>`}
   </div>
 
   <div class="card" style="grid-column:span 6">

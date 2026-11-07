@@ -10,4 +10,5 @@ export type Kanji = {
 export type Word = {
   id: number; kanji: string | null; kana: string | null; meanings: string | null;
   freq_wiki: number | null; added: number | null; jlpt: number | null; kanji_alternative: string | null;
+  is_common: number | null;
 };

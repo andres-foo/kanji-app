@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { enc, esc, html, likeEsc, nullsLast } from "../html";
+import { enc, esc, html, likeEsc } from "../html";
 import { requestContext } from "../prefs";
 import { pickReviewKanji } from "../review";
 import type { Word } from "../types";
@@ -33,8 +33,25 @@ export function reviewPage(literal: string) {
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = `/review/${enc(literal)}`;
   if (!k) return messagePage("Kanji not found", `“${literal}” is not in the database.`, 404, { href: "/review", label: "Back to review" });
-  const words = db.query(`SELECT * FROM examples WHERE COALESCE(added, 0) = 1 AND kanji LIKE ? ESCAPE '\\'`).all(`%${likeEsc(literal)}%`) as Word[];
-  words.sort((a, b) => nullsLast(a.freq_wiki || null, b.freq_wiki || null) || (b.jlpt ?? 0) - (a.jlpt ?? 0));
+  const allWords = db.query(`SELECT w.*, 1 AS added
+    FROM ref.word_rows w
+    JOIN user_word_added u ON u.word_id = w.id
+    WHERE w.kanji LIKE ? ESCAPE '\\'`)
+    .all(`%${likeEsc(literal)}%`) as Word[];
+  // Show one chip per displayed kanji spelling, even when readings differ.
+  allWords.sort((a, b) => (b.is_common ?? 0) - (a.is_common ?? 0));
+  const seen = new Set<string>();
+  const words = allWords.filter((w) => {
+    const text = splitKanjiMarker(w.kanji ?? "").text;
+    if (!text || seen.has(text)) return false;
+    seen.add(text);
+    return true;
+  });
+  // Avoid making the order of examples predictable.
+  for (let i = words.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [words[i], words[j]] = [words[j], words[i]];
+  }
   const chips = words.map((w) => `<span class="qword">${esc(splitKanjiMarker(w.kanji ?? "").text)}</span>`).join("");
   const body = `<div class="qpage"><div class="qcard"><div class="qkanji">${esc(k.literal)}</div>${chips ? `<div class="qwords">${chips}</div>` : ""}</div></div>`;
   const bar = `<a class="reviewbtn reveal" href="/kanji/${enc(k.literal)}?review=1" aria-keyshortcuts="Space"><kbd class="kbd">Space</kbd><span class="pad">A</span>Show answer</a>`;
