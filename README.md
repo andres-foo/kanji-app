@@ -4,6 +4,24 @@ A personal project for studying kanji and managing mnemonics.
 
 It is a small, self-hosted, server-rendered web app that runs on top of your own SQLite databases. A small Bun server in `server.ts` serves the pages, with the logic and views in `src/` and the stylesheet, scripts and fonts in `public/` — no build step, no framework, no account, no cloud. Your list, scores, history and mnemonics live in `data/user.db`; dictionary and kanji reference data live in `data/reference.db`; example phrases live in `data/phrases.db`; the kanji pictures live in `data/images/`.
 
+## Screenshots
+
+### Dashboard
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Kanji detail
+
+![Kanji detail page](docs/screenshots/kanji.png)
+
+### Review
+
+![Review question page](docs/screenshots/review.png)
+
+### Word search
+
+![Word search results for dance](docs/screenshots/search.png)
+
 ## What you can do with it
 
 **Search and browse.** Look up kanji by character, keyword, meaning, reading or romaji, with readings, components, JLPT/Kanken levels, frequency and example words; words are searchable too. Text searches need two characters, but a single kanji or kana is enough for a direct lookup. **My List** groups what you are studying by date or score, and the JLPT and Kanken pages show every level as a grid.
@@ -35,6 +53,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 | `src/routes/` | the POST handlers: kanji edit/toggle, images, theme/details, review answers, settings |
 | `public/` | the stylesheet, browser scripts and the Jigmo fonts |
 | `data/` | `user.db`, `reference.db`, `phrases.db` and the kanji pictures |
+| `docs/` | screenshots used in this README |
 
 Assumptions the app makes:
 - `frequency` and `freq_wiki` are ranks (1 = most common), so lower sorts first.
