@@ -9,10 +9,14 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 <table>
 <tr>
 <td width="50%"><a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="Dashboard" width="100%"></a><br><sub><b>Dashboard</b></sub></td>
-<td width="50%"><a href="docs/screenshots/kanji.png"><img src="docs/screenshots/kanji.png" alt="Kanji detail page" width="100%"></a><br><sub><b>Kanji detail</b></sub></td>
+<td width="50%"><a href="docs/screenshots/kanji-page.png"><img src="docs/screenshots/kanji-page.png" alt="Kanji detail page" width="100%"></a><br><sub><b>Kanji detail</b></sub></td>
 </tr>
 <tr>
-<td width="50%"><a href="docs/screenshots/review.png"><img src="docs/screenshots/review.png" alt="Review question page" width="100%"></a><br><sub><b>Review</b></sub></td>
+<td width="50%"><a href="docs/screenshots/find-by-component.png"><img src="docs/screenshots/find-by-component.png" alt="Find kanji by components" width="100%"></a><br><sub><b>Find by components</b></sub></td>
+<td width="50%"><a href="docs/screenshots/jlpt-list.png"><img src="docs/screenshots/jlpt-list.png" alt="JLPT list" width="100%"></a><br><sub><b>JLPT list</b></sub></td>
+</tr>
+<tr>
+<td width="50%"><a href="docs/screenshots/my-list.png"><img src="docs/screenshots/my-list.png" alt="My list" width="100%"></a><br><sub><b>My list</b></sub></td>
 <td width="50%"><a href="docs/screenshots/search.png"><img src="docs/screenshots/search.png" alt="Word search results for dance" width="100%"></a><br><sub><b>Word search</b></sub></td>
 </tr>
 </table>
