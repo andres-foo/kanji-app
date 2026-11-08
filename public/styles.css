@@ -115,6 +115,10 @@ h1 .lite{color:var(--muted);font-weight:400}
 .phrase-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:22px;line-height:1.9;color:#2a2c31}
 .phrase-jp rt{font-family:var(--sans);font-size:.52em;color:#6f747d;letter-spacing:0}
 .phrase-en{font-size:14px;line-height:1.5;color:#636871;margin-top:3px}
+[data-theme="dark"] .phrase{border-color:#2f3237}
+[data-theme="dark"] .phrase-jp{color:#e7e8eb}
+[data-theme="dark"] .phrase-jp rt{color:#9aa0a9}
+[data-theme="dark"] .phrase-en{color:#b9bec7}
 
 /* ---------- search page ---------- */
 .tabs{display:flex;gap:5px}
@@ -240,7 +244,7 @@ a.comp:hover{background:#e9ecf1}
 [data-theme="dark"] .panel{background:#151618;box-shadow:0 32px 80px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.04) inset}
 [data-theme="dark"] .panel:before{background:linear-gradient(135deg,rgba(95,216,231,0),rgba(95,216,231,.18));filter:blur(34px)}
 [data-theme="dark"] .brand{border-color:#f1f2f4}
-[data-theme="dark"] .navlinks{background:#1e1f22}
+[data-theme="dark"] .navlinks{background:#26282c}
 [data-theme="dark"] .navlinks a{color:#b9bec7}
 [data-theme="dark"] .navlinks a.on{background:var(--cyan);color:#08181b}
 [data-theme="dark"] .iconbtn,[data-theme="dark"] .labtag{background:#232428;color:#e7e8eb}
@@ -255,6 +259,8 @@ a.comp:hover{background:#e9ecf1}
 [data-theme="dark"] .badge.cyan{background:var(--cyan);color:#08181b}
 [data-theme="dark"] .details .detail,[data-theme="dark"] .eqbox,[data-theme="dark"] .comp,[data-theme="dark"] .mini-note,[data-theme="dark"] .tile,[data-theme="dark"] .sugchip{background:#26282c}
 [data-theme="dark"] .story{background:linear-gradient(180deg,#202226,#1b1d20);color:#e7e8eb}
+[data-theme="dark"] .herostory .story{background:linear-gradient(180deg,#26282c,#202226);color:#f1f2f4}
+[data-theme="dark"] .story .story_keyword,[data-theme="dark"] .storyed .story_keyword{color:#08181b}
 [data-theme="dark"] .story .story_component{background:#2f3237}
 [data-theme="dark"] .story .story_note{color:#a9adb5;border-color:#4a4e55}
 [data-theme="dark"] .story .story_link{text-decoration-color:#5b6068}

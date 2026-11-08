@@ -5,7 +5,7 @@ import { keywordText } from "./shared";
 import { layout } from "./layout";
 
 type ComponentInfo = { literal: string; keyword: string | null; strokes: number | null; frequency: number | null };
-type ResultRow = { literal: string; components: string | null; strokes: number | null; frequency: number | null; added: number | null };
+type ResultRow = { literal: string; components: string | null; strokes: number | null; frequency: number | null; added: number | null; unfinished: number | null };
 
 const splitComponents = (value: string | null) => new Set(String(value ?? "").split(/[;、,\s]+/).filter(Boolean));
 
@@ -13,14 +13,16 @@ export function parseSelected(value: string | null): string[] {
   return [...new Set(String(value ?? "").split(",").map((s) => s.trim()).filter(Boolean))];
 }
 
-const tile = (literal: string) =>
-  `<a class="lkt" href="/kanji/${enc(literal)}" aria-label="Open ${esc(literal)}">${esc(literal)}</a>`;
+const tile = (row: ResultRow) => {
+  const state = row.added === 1 ? (row.unfinished === 1 ? " unf" : " in") : "";
+  return `<a class="lkt${state}" href="/kanji/${enc(row.literal)}" aria-label="Open ${esc(row.literal)}">${esc(row.literal)}</a>`;
+};
 
 export function componentResultsHtml(selected: string[], addedOnly: boolean): string {
   if (!selected.length) {
     return `<div class="card component-results-empty"><div class="sub">Choose a component keyword above to find kanji that contain it.</div></div>`;
   }
-  const rows = db.query(`SELECT literal, components, strokes, frequency, added FROM kanjis`).all() as ResultRow[];
+  const rows = db.query(`SELECT literal, components, strokes, frequency, added, unfinished FROM kanjis`).all() as ResultRow[];
   const selectedSet = new Set(selected);
   const matched = rows.filter((row) => {
     if (selectedSet.has(row.literal)) return false;
@@ -43,7 +45,7 @@ export function componentResultsHtml(selected: string[], addedOnly: boolean): st
     .sort(([a], [b]) => a === null ? 1 : b === null ? -1 : a - b)
     .map(([strokes, list]) => `<section class="listsection">
       <div class="levelhead"><div><h2>${strokes === null ? "Unknown strokes" : `${strokes} stroke${strokes === 1 ? "" : "s"}`}</h2><div class="sub">${list.length} kanji</div></div></div>
-      <div class="lgrid">${list.map((row) => tile(row.literal)).join("")}</div>
+      <div class="lgrid">${list.map((row) => tile(row)).join("")}</div>
     </section>`).join("");
   return `<div class="component-results-head"><h2>${matched.length} kanji</h2><span class="sub">${selected.length === 1 ? "containing this component" : "containing all selected components"}</span></div>
     ${resultGroups || `<div class="card component-results-empty"><div class="sub">No kanji contain all selected components.</div></div>`}`;
