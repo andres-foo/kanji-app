@@ -19,7 +19,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 ## What you can do with it
 
-**Search and browse.** Look up kanji by character, keyword, meaning, reading or romaji, with readings, components, JLPT/Kanken levels, frequency and example words; words are searchable too. Text searches need two characters, but a single kanji or kana is enough for a direct lookup. **My List** groups what you are studying by date or score, and the JLPT and Kanken pages show every level as a grid.
+**Search and browse.** Look up kanji by character, keyword, meaning, reading or romaji, with readings, components, JLPT/Kanken levels, frequency and example words; words are searchable too. Text searches need two characters, but a single kanji or kana is enough for a direct lookup. The **字** button opens a component search: type a component keyword, select matching components, and see every kanji that contains all of them. **My List** groups what you are studying by date or score, and the JLPT and Kanken pages show every level as a grid.
 
 **Write and edit.** Adding a kanji takes a click. Every entry has a story field for your mnemonic with simple formatting (`=keyword=`, `_component_`, `?note?`, `#link#`), rendered while you type with a code toggle for the raw markers, and the keyword, components, related forms, flags and image are edited on the same page.
 
