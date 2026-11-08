@@ -119,11 +119,9 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   const componentFor = compFor.length
     ? compFor.map((r) => {
         const state = r.added === 1 ? (r.unfinished === 1 ? " unf" : " in") : "";
-        const status = r.added === 1 ? (r.unfinished === 1 ? "Unfinished" : "In your study list") : "";
-        const dot = state ? `<i class="cdot${state}" role="img" aria-label="${status}" title="${status}"></i>` : "";
         const kw = keywordText(r.keyword);
         const low = r.low_priority === 1 ? " lowpriority" : "";
-        return `<a class="comp${state}${low}" href="${base}/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}"${low ? ` title="Low priority"` : ""}><b>${esc(r.literal)}</b>${kw ? `<span>${esc(kw)}</span>` : ""}${dot}</a>`;
+        return `<a class="comp${state}${low}" href="${base}/${enc(r.literal)}${q ? `?q=${enc(q)}` : ""}"${low ? ` title="Low priority"` : ""}><b>${esc(r.literal)}</b>${kw ? `<span>${esc(kw)}</span>` : ""}</a>`;
       }).join("")
     : `<span class="sub">Nothing else uses it.</span>`;
 

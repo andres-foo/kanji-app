@@ -76,7 +76,7 @@ export function dashboardView(days = 30) {
   </div>`;
 
   const progress = `<div class="card dashprogress" style="grid-column:span 5">
-    <div class="stathead"><div><h2>Progress</h2><p class="sub">Kanjis added</p></div><div class="progresslegend"><span><i class="fin"></i>Finished</span><span><i class="unf"></i>Unfinished</span><span><i class="rest"></i>Not added</span></div></div>
+    <div class="stathead"><div><h2>Progress</h2><p class="sub">Kanjis added</p></div><div class="progresslegend"><span class="fin">Finished</span><span class="unf">Unfinished</span><span class="rest">Not added</span></div></div>
     ${progressRow("JLPT", "/jlpt", jlpt.finished, jlpt.unfinished, jlpt.total)}
     ${progressRow("Kanken", "/kanken", kanken.finished, kanken.unfinished, kanken.total)}
   </div>`;
@@ -84,10 +84,10 @@ export function dashboardView(days = 30) {
   const addedTiles = recentAdded.map((k) => {
     const state = k.unfinished === 1 ? "unf" : "in";
     const label = state === "unf" ? "Unfinished" : "Finished";
-    return `<a href="/kanji/${enc(k.literal)}"><span class="dashk">${esc(k.literal)}</span><span class="dashkw">${esc(keywordText(k.keyword)) || "—"}</span><i class="sdot ${state}" role="img" aria-label="${label}" title="${label}"></i></a>`;
+    return `<a class="dashk-${state}" href="/kanji/${enc(k.literal)}" aria-label="${esc(k.literal)} — ${label}"><span class="dashk">${esc(k.literal)}</span><span class="dashkw">${esc(keywordText(k.keyword)) || "—"}</span></a>`;
   }).join("");
   const recent = `<div class="card" style="grid-column:span 7">
-    <div class="stathead"><div><h2>Recently added</h2><p class="sub">Latest additions to your list</p></div><a class="pill ghost sm" href="/my-list">My List</a></div>
+    <div class="stathead"><div><h2>Recently added</h2><p class="sub">Latest additions to your list</p></div></div>
     <div class="dashkanji">${addedTiles || `<div class="sub">No added kanji yet.</div>`}</div>
   </div>`;
 

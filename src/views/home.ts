@@ -11,28 +11,17 @@ import { recordHistory } from "../history";
 import { layout } from "./layout";
 import { jlptPriority, kankenPriority, keywordText, meaningGroups, meaningsText, readingList, splitKanjiMarker } from "./shared";
 
-const statusDot = (k: Kanji) => {
-  if (k.added !== 1) return "";
-  const label = k.unfinished === 1 ? "Unfinished" : "In your study list";
-  return `<i class="sdot ${k.unfinished === 1 ? "unf" : "in"}" role="img" aria-label="${label}" title="${label}"></i>`;
-};
-
-const KANJI_CHAR = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{2FA1F}々〇]/u;
-const hasKanji = (text: string) => KANJI_CHAR.test(text);
-
-// the whole displayed word is one search link, not separate clickable kanji runs
-const wordMarkup = (text: string, q: string) => highlight(text, q);
-
 const kanjiRow = (k: Kanji, q: string, known: number) => {
   const readings = [readingList(k.onReadings), readingList(k.kunReadings)].filter(Boolean).join(" · ");
   const low = k.low_priority === 1;
+  const state = k.added === 1 ? (k.unfinished === 1 ? " unf" : " in") : "";
   const badges = [
     k.jlpt ? levelBadge(`JLPT N${k.jlpt}`, jlptPriority(Number(k.jlpt), known)) : "",
     k.kanken ? levelBadge(`Kanken ${k.kanken}`, kankenPriority(Number(k.kanken), known)) : "",
     low ? `<span class="badge low">Low priority</span>` : "",
   ].join("");
   return `<div class="resultrow kanjirow${low ? " lowpriority" : ""}">
-    <a class="rtile ktile" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">${esc(k.literal)}${statusDot(k)}</a>
+    <a class="rtile ktile${state}" href="/kanji/${enc(k.literal)}?q=${enc(q)}" aria-label="Open ${esc(k.literal)}">${esc(k.literal)}</a>
     <div class="rmain">
       ${k.keyword ? `<div class="rkw">${highlight(keywordText(k.keyword), q)}</div>` : ""}
       <div class="rmean">${highlight(meaningsText(k.meanings), q)}</div>
@@ -41,6 +30,13 @@ const kanjiRow = (k: Kanji, q: string, known: number) => {
     <div class="rright">${badges}</div>
   </div>`;
 };
+
+const KANJI_CHAR = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{2FA1F}々〇]/u;
+const hasKanji = (text: string) => KANJI_CHAR.test(text);
+
+// the whole displayed word is one search link, not separate clickable kanji runs
+const wordMarkup = (text: string, q: string) => highlight(text, q);
+
 
 const wordRow = (w: Word, back: string, q: string) => {
   const inList = w.added === 1;

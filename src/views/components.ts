@@ -12,11 +12,6 @@ type ComponentRow = Pick<Kanji, "literal" | "added" | "unfinished" | "is_compone
 type ComponentUses = { priority: number; other: number };
 
 const tile = (row: ComponentRow, use: ComponentUses) => {
-  const state = row.added === 1 ? (row.unfinished === 1 ? "unf" : "in") : "";
-  const status = state === "unf" ? "Unfinished" : state === "in" ? "Finished" : "Not added";
-  const dot = state
-    ? `<i class="sdot ${state}" role="img" aria-label="${status}" title="${status}"></i>`
-    : "";
   const keyword = keywordText(row.keyword);
   const total = use.priority + use.other;
   const label = use.other > 0 ? `${use.priority}+${use.other}` : String(use.priority);
@@ -24,7 +19,7 @@ const tile = (row: ComponentRow, use: ComponentUses) => {
   return `<div class="ctile">
     <div class="ctop">
       <input class="cbox" type="checkbox" name="literal" value="${esc(row.literal)}" form="component-group-form" aria-label="Select ${esc(row.literal)}">
-      <a class="ckanji" href="/kanji/${enc(row.literal)}" aria-label="Open ${esc(row.literal)}">${esc(row.literal)}${dot}</a>
+      <a class="ckanji" href="/kanji/${enc(row.literal)}" aria-label="Open ${esc(row.literal)}">${esc(row.literal)}</a>
       <span class="cuses" title="${title}">${label}</span>
     </div>
     ${keyword ? `<span class="ckw" title="${esc(keyword)}">${esc(keyword)}</span>` : ""}

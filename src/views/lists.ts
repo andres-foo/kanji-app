@@ -10,10 +10,7 @@ type ListRow = TileRow & { frequency: number | null; score: number | null; added
 const kanjiTile = (r: TileRow) => {
   const state = r.added === 1 ? (r.unfinished === 1 ? "unf" : "in") : "";
   const status = state === "unf" ? " (unfinished)" : state === "in" ? " (finished)" : " (not added)";
-  const dot = state
-    ? `<i class="sdot ${state}" role="img" aria-label="${state === "unf" ? "Unfinished" : "Finished"}" title="${state === "unf" ? "Unfinished" : "Finished"}"></i>`
-    : "";
-  return `<a class="lkt${state ? "" : " notadded"}" href="/kanji/${enc(r.literal)}" aria-label="Open ${esc(r.literal)}${status}">${esc(r.literal)}${dot}</a>`;
+  return `<a class="lkt${state ? ` ${state}` : " notadded"}" href="/kanji/${enc(r.literal)}" aria-label="Open ${esc(r.literal)}${status}">${esc(r.literal)}</a>`;
 };
 
 const section = (heading: string, list: TileRow[]) =>

@@ -20,10 +20,7 @@ export function historyPage() {
     const kanjiTiles = kanji.length
       ? `<div class="lgrid">${kanji.map((k) => {
           const state = k.added === 1 ? (k.unfinished === 1 ? "unf" : "in") : "";
-          const dot = state
-            ? `<i class="sdot ${state}" role="img" aria-label="${state === "unf" ? "Unfinished" : "Finished"}" title="${state === "unf" ? "Unfinished" : "Finished"}"></i>`
-            : "";
-          return `<a class="lkt${state ? "" : " notadded"}" href="/kanji/${enc(k.literal)}" aria-label="Open ${esc(k.literal)}">${esc(k.literal)}${dot}</a>`;
+          return `<a class="lkt${state ? ` ${state}` : " notadded"}" href="/kanji/${enc(k.literal)}" aria-label="Open ${esc(k.literal)}">${esc(k.literal)}</a>`;
         }).join("")}</div>`
       : `<p class="sub historyempty">No kanji visits yet.</p>`;
 
