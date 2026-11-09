@@ -70,11 +70,28 @@ const scriptAlt = (q: string, type: string) => {
   return links.length ? ` (search for ${links.join(" / ")} instead)` : "";
 };
 
+const searchTips = () => `<details class="search-tips">
+  <summary>Search tips</summary>
+  <div class="search-tips-panel">
+    <div class="search-tips-title">Search tips</div>
+    <div class="search-tips-group">
+      <b>Word wildcards</b>
+      <p><code>*</code> matches zero or more characters: <code>*日</code> ends with 日, <code>日*</code> starts with 日, <code>*日*</code> contains 日.</p>
+      <p><code>+</code> matches one or more characters: <code>+日</code> needs at least one character before 日, and <code>日+</code> needs at least one after it.</p>
+    </div>
+    <div class="search-tips-group">
+      <b>Keyboard</b>
+      <p><kbd>Tab</kbd> cycles romaji ↔ hiragana in the main search bar. The next form is previewed below the field.</p>
+    </div>
+  </div>
+</details>`;
+
 const hero = (message = "") => `<div class="searchhero">
   <div class="crumb">Search</div>
   <h1>Find a kanji</h1>
   <p class="sub">Use the search bar above to search by character, keyword, meaning, reading or romaji.</p>
   ${message ? `<p class="sub" style="margin-top:14px">${message}</p>` : ""}
+  ${searchTips()}
 </div>`;
 
 export function home(url: URL) {
@@ -112,7 +129,7 @@ export function home(url: URL) {
   const tab = (id: string, label: string, count: number) =>
     `<a class="tab${type === id ? " on" : ""}" href="/?q=${enc(q)}&type=${id}">${label} ${count}</a>`;
   const alt = scriptAlt(q, type);
-  const resultHead = `<div class="resulthead"><h2>Results for “${esc(q)}”${alt ? `<span class="alt">${alt}</span>` : ""}</h2><div class="tabs">${tab("all", "All", kanji.length + wordTotal)}${tab("kanji", "Kanji", kanji.length)}${tab("words", "Words", wordTotal)}</div></div>`;
+  const resultHead = `<div class="resulthead"><h2>Results for “${esc(q)}”${alt ? `<span class="alt">${alt}</span>` : ""}</h2><div class="resulthead-row"><div class="tabs">${tab("all", "All", kanji.length + wordTotal)}${tab("kanji", "Kanji", kanji.length)}${tab("words", "Words", wordTotal)}</div>${searchTips()}</div></div>`;
 
   const pageControls = (top = false) => {
     if (pageCount <= 1) return "";

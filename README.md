@@ -31,6 +31,29 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 **Make it yours.** Light and dark themes, editable review deltas and mastery-level names, and a reset that returns every added kanji to the starting score.
 
+### Search tips
+
+Word searches support positional wildcards:
+
+| Pattern | Meaning |
+|---|---|
+| `*日` | words ending in 日 |
+| `日*` | words starting with 日 |
+| `*日*` | words containing 日 |
+| `+日` | at least one character before 日 |
+| `日+` | at least one character after 日 |
+| `+日+` | at least one character on both sides |
+
+`*` matches zero or more characters and `+` matches one or more. Wildcards apply to Japanese word spellings and readings.
+
+In the main search bar, press **Tab** to cycle between romaji and hiragana:
+
+```text
+taberu → たべる → taberu → たべる
+```
+
+The next form is previewed below the search field. Pressing **Tab** again keeps cycling without moving focus.
+
 ## Quick start
 
     bun run start                                  # http://localhost:3000

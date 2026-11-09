@@ -129,6 +129,29 @@ h1 .lite{color:var(--muted);font-weight:400}
 .resulthead h2 .alt{font-size:14px;font-weight:600;color:var(--muted);letter-spacing:0}
 .resulthead h2 .alt a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .resulthead h2 .alt a:hover{color:var(--cyan)}
+.resulthead-row{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;flex-wrap:wrap}
+.search-tips{position:relative;display:inline-block}
+.search-tips summary{list-style:none;cursor:pointer;font-size:10.5px;font-weight:800;color:#7c818a;text-decoration:underline;text-underline-offset:3px}
+.search-tips summary::-webkit-details-marker{display:none}
+.search-tips summary:hover,.search-tips[open] summary{color:var(--ink)}
+.search-tips-panel{position:absolute;right:0;top:calc(100% + 8px);z-index:45;width:330px;padding:15px 17px;border:1px solid #e4e7ec;border-radius:15px;background:#fff;color:var(--ink);box-shadow:0 14px 36px rgba(15,20,30,.16);text-align:left}
+.search-tips-title{font-size:12px;font-weight:800;margin-bottom:9px}
+.search-tips-group + .search-tips-group{margin-top:12px;padding-top:11px;border-top:1px solid #eef0f4}
+.search-tips-group b{display:block;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7c818a;margin-bottom:5px}
+.search-tips-group p{margin:0;font-size:11.5px;line-height:1.55;color:#636871}
+.search-tips-group p + p{margin-top:5px}
+.search-tips code{padding:1px 4px;border-radius:4px;background:#f0f2f5;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10.5px;color:#151619}
+.search-tips kbd{padding:1px 5px;border:1px solid #d7dbe1;border-bottom-width:2px;border-radius:4px;background:#f8f9fb;font-family:inherit;font-size:9.5px;font-weight:800;color:#4b5058}
+.searchhero .search-tips{margin-top:16px}
+.searchhero .search-tips-panel{left:50%;right:auto;transform:translateX(-50%)}
+[data-theme="dark"] .search-tips-panel{background:#26282c;border-color:#3a3d44;box-shadow:0 14px 36px rgba(0,0,0,.4)}
+[data-theme="dark"] .search-tips-group + .search-tips-group{border-color:#34373d}
+[data-theme="dark"] .search-tips code{background:#34373d;color:#e7e8eb}
+[data-theme="dark"] .search-tips kbd{background:#2f3237;border-color:#4a4e55;color:#d8dbe1}
+@media(max-width:520px){
+  .search-tips-panel{width:min(330px,calc(100vw - 36px))}
+  .resulthead-row{align-items:flex-start}
+}
 .resultrow{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid #f0f1f4}
 .resultrow:last-child{border-bottom:0}
 .rtile{width:44px;height:44px;border-radius:12px;background:#f5f6f8;display:grid;place-items:center;font-family:"Noto Serif JP",serif;font-size:23px;flex:none}
