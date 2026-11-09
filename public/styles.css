@@ -112,8 +112,8 @@ h1 .lite{color:var(--muted);font-weight:400}
 .phrase-list{display:flex;flex-direction:column;margin-top:8px}
 .phrase{padding:10px 0;border-bottom:1px solid #f0f1f4}
 .phrase:last-child{border-bottom:0;padding-bottom:0}
-.phrase-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:22px;line-height:1.9;color:#2a2c31}
-.phrase-jp rt{font-family:var(--sans);font-size:.52em;color:#6f747d;letter-spacing:0}
+.phrase-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:24px;line-height:1.9;color:#2a2c31}
+.phrase-jp rt{font-family:var(--sans);font-size:.56em;color:#6f747d;letter-spacing:0}
 .phrase-en{font-size:14px;line-height:1.5;color:#636871;margin-top:3px}
 [data-theme="dark"] .phrase{border-color:#2f3237}
 [data-theme="dark"] .phrase-jp{color:#e7e8eb}
@@ -721,7 +721,7 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
   .exword{min-width:80px;font-size:20px}
   .exkana{min-width:0}
   .exmean{font-size:13px}
-  .phrase-jp{font-size:20px}
+  .phrase-jp{font-size:22px}
   .phrase-en{font-size:13px}
   .comp b{font-size:22px}
   .comp span{font-size:12px}
