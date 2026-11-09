@@ -56,10 +56,11 @@ const wordRow = (w: Word, back: string, q: string) => {
   const wordDisplay = hasKanji(word)
     ? `<a class="wordlink" href="/?q=${enc(word)}" aria-label="Search for ${esc(word)}">${wordMarkup(word, hq)}</a>${alternativeForms.length ? `; ${alternativeForms.map((form) => highlight(form, hq)).join("; ")}` : ""}`
     : wordMarkup(word, hq);
-  const readingText = readings.map((r) => highlight(r, hq)).join("; ");
+  const readingText = (kana === word ? readings.slice(1) : readings).map((r) => highlight(r, hq)).join("; ");
+  const shownReadings = kana === word ? readings.slice(1) : readings;
   return `<div class="resultrow wordrow" id="w${w.id}">
     <div class="rmain">
-      <div class="rkw">${wordDisplay}${kana && kana !== word ? ` <span class="rread">（${readingText}）</span>` : ""}</div>
+      <div class="rkw">${wordDisplay}${shownReadings.length ? ` <span class="rread">（${readingText}）</span>` : ""}</div>
       ${matchedHidden.length ? `<div class="rrare">matched rare form: ${matchedHidden.map((form) => highlight(form, hq)).join("; ")}</div>` : ""}
       ${matchedHiddenReadings.length ? `<div class="rrare">matched search-only reading: ${matchedHiddenReadings.map((reading) => highlight(reading, hq)).join("; ")}</div>` : ""}
       <div class="rmean">${meaningGroups(w.meanings).map((m) => `<span class="sense">${highlight(m, hq)}</span>`).join("")}</div>
