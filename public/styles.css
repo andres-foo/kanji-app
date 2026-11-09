@@ -466,7 +466,17 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 [data-theme="dark"] .navcomp{background:#2f3237;color:#c7cbd2}
 [data-theme="dark"] .navcomp.on{background:var(--cyan);color:#08181b}
 [data-theme="dark"] .navcomp.on:hover{background:var(--cyan);color:#08181b}
-.navsearch{width:238px}
+.navsearch{width:238px;position:relative}
+.search-romaji-hint{position:absolute;top:calc(100% + 8px);left:0;z-index:40;display:flex;align-items:center;gap:6px;padding:6px 9px;border-radius:10px;background:#fff;color:#151619;border:1px solid #e4e7ec;font-size:11px;font-weight:700;line-height:1;white-space:nowrap;box-shadow:0 8px 24px rgba(15,20,30,.12);pointer-events:none}
+.search-romaji-hint[hidden]{display:none}
+.tab-key{display:inline-flex;align-items:center;gap:4px;padding:3px 6px;border:1px solid #c6cbd3;border-radius:5px;font-size:9px;letter-spacing:.02em;color:#636871}
+.tab-icon{font-size:12px;line-height:1}
+.tab-arrow{color:#8b909a}
+.tab-target{font-family:"Noto Serif JP",Jigmo,serif;font-size:15px;color:#087f8c}
+[data-theme="dark"] .search-romaji-hint{background:#2a2c31;color:#fff;border-color:#3a3d44;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+[data-theme="dark"] .tab-key{border-color:#5b6068;color:#d8dbe1}
+[data-theme="dark"] .tab-arrow{color:#8f959e}
+[data-theme="dark"] .tab-target{color:var(--cyan)}
 
 /* ---------- component keyword search ---------- */
 .component-search-card{padding:18px 20px}

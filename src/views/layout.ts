@@ -23,10 +23,11 @@ export const layout = (title: string, body: string, { theme, back, lab = false, 
   <div class="navlinks">
     <a class="${active === "my-list" ? "on" : ""}" href="/my-list">My List</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a><a class="${active === "kanken" ? "on" : ""}" href="/kanken">Kanken</a><a class="${active === "components" ? "on" : ""}" href="/components">Components</a><a class="${active === "history" ? "on" : ""}" href="/history">History</a>
   </div>
-  <form class="navsearch" action="/" method="get" role="search">
+  <form class="navsearch" action="/" method="get" role="search" autocomplete="off">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-    <input name="q" value="${esc(searchValue)}" placeholder="Search" aria-label="Search">
+    <input name="q" value="${esc(searchValue)}" placeholder="Search" aria-label="Search" autocomplete="off" autocapitalize="off" spellcheck="false">
     <a class="navcomp${active === "components-search" ? " on" : ""}" href="/components/search" aria-label="Find kanji by components" title="Find by components">字</a>
+    <div id="search-romaji-hint" class="search-romaji-hint" role="status" aria-live="polite" hidden></div>
   </form>
   <div class="navright">
     <a class="pill dark" href="/review" aria-label="Review: ${total} due (${d.fresh} new, ${d.today} due today, ${d.overdue} overdue)">Review <span class="rnums"><span class="rn-fresh">${d.fresh}</span><span class="rn-dot">·</span><span class="rn-today">${d.today}</span><span class="rn-dot">·</span><span class="rn-overdue">${d.overdue}</span></span></a>
@@ -42,6 +43,7 @@ ${bar ? `<div class="reviewbar${barClass ? ` ${barClass}` : ""}">${bar}</div>` :
 ${body}
 </div>
 ${bar ? `<script src="/js/review-keys.js" defer></script>` : ""}
+<script src="/js/search-romaji.js" defer></script>
 <script src="/js/layout.js" defer></script>
 </body></html>`;
 };
