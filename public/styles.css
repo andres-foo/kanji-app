@@ -165,6 +165,9 @@ h1 .lite{color:var(--muted);font-weight:400}
 .rkw{font-size:12.5px;font-weight:800}
 .rmean{font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rread{font-size:9.5px;color:#7c818a;margin-top:2px}
+.rrare{font-size:12px;color:#8a6d3b;margin-top:4px;font-weight:700}
+[data-theme="dark"] .rrare{color:#d6b36a}
+.rrare mark{background:var(--cyan2);color:inherit;border-radius:3px;padding:0 2px}
 .rright{display:flex;align-items:center;gap:5px}
 .section-label{display:flex;align-items:center;justify-content:space-between;margin:14px 0 2px}
 .section-label h3{font-size:12px;font-weight:800;margin:0}

@@ -18,6 +18,7 @@ CREATE TABLE word_forms (
   form TEXT NOT NULL,
   priority INTEGER NOT NULL DEFAULT 0 CHECK (priority IN (0, 1)),
   info TEXT,
+  position INTEGER NOT NULL,
   PRIMARY KEY (word_id, form)
 );
 
@@ -28,6 +29,7 @@ CREATE TABLE word_readings (
   info TEXT,
   no_kanji INTEGER NOT NULL DEFAULT 0 CHECK (no_kanji IN (0, 1)),
   restriction TEXT,
+  position INTEGER NOT NULL,
   PRIMARY KEY (word_id, reading)
 );
 
@@ -52,22 +54,56 @@ CREATE VIEW word_rows AS
 SELECT
   w.id,
   COALESCE(
-    (SELECT f.form FROM word_forms f WHERE f.word_id = w.id ORDER BY f.priority DESC, f.form LIMIT 1),
-    (SELECT r.reading FROM word_readings r WHERE r.word_id = w.id ORDER BY r.priority DESC, r.reading LIMIT 1)
+    (SELECT f.form FROM word_forms f WHERE f.word_id = w.id ORDER BY f.position LIMIT 1),
+    (SELECT r.reading FROM word_readings r WHERE r.word_id = w.id ORDER BY r.position LIMIT 1)
   ) AS kanji,
   (SELECT group_concat(reading, '; ')
-     FROM (SELECT reading FROM word_readings WHERE word_id = w.id ORDER BY priority DESC, reading)) AS kana,
+     FROM (SELECT reading FROM word_readings WHERE word_id = w.id ORDER BY position)) AS kana,
+  (SELECT group_concat(reading, '; ')
+     FROM (SELECT reading FROM word_readings
+            WHERE word_id = w.id
+              AND COALESCE(info, '') NOT LIKE '%search-only kana form%'
+            ORDER BY position)) AS kana_visible,
+  (SELECT group_concat(reading, '; ')
+     FROM (SELECT reading FROM word_readings
+            WHERE word_id = w.id
+              AND COALESCE(info, '') LIKE '%search-only kana form%'
+            ORDER BY position)) AS kana_hidden,
   (SELECT group_concat(gloss, '; ')
      FROM (SELECT gloss FROM word_senses WHERE word_id = w.id ORDER BY sense_no)) AS meanings,
   NULL AS freq_wiki,
   (SELECT jlpt FROM word_jlpt WHERE word_id = w.id) AS jlpt,
   (SELECT group_concat(form, '; ')
-     FROM word_forms f
-    WHERE f.word_id = w.id
-      AND f.form != COALESCE(
-        (SELECT f2.form FROM word_forms f2 WHERE f2.word_id = w.id ORDER BY f2.priority DESC, f2.form LIMIT 1),
-        ''
-      )) AS kanji_alternative,
+     FROM (SELECT f.form
+             FROM word_forms f
+            WHERE f.word_id = w.id
+              AND f.form != COALESCE(
+                (SELECT f2.form FROM word_forms f2 WHERE f2.word_id = w.id ORDER BY f2.position LIMIT 1),
+                ''
+              )
+            ORDER BY f.position)) AS kanji_alternative,
+  (SELECT group_concat(form, '; ')
+     FROM (SELECT f.form
+             FROM word_forms f
+            WHERE f.word_id = w.id
+              AND f.form != COALESCE(
+                (SELECT f2.form FROM word_forms f2 WHERE f2.word_id = w.id ORDER BY f2.position LIMIT 1),
+                ''
+              )
+              AND COALESCE(f.info, '') NOT LIKE '%search-only kanji form%'
+              AND COALESCE(f.info, '') NOT LIKE '%rarely used kanji form%'
+            ORDER BY f.position)) AS kanji_visible_alternative,
+  (SELECT group_concat(form, '; ')
+     FROM (SELECT f.form
+             FROM word_forms f
+            WHERE f.word_id = w.id
+              AND f.form != COALESCE(
+                (SELECT f2.form FROM word_forms f2 WHERE f2.word_id = w.id ORDER BY f2.position LIMIT 1),
+                ''
+              )
+              AND (COALESCE(f.info, '') LIKE '%search-only kanji form%'
+                OR COALESCE(f.info, '') LIKE '%rarely used kanji form%')
+            ORDER BY f.position)) AS kanji_hidden,
   CASE WHEN EXISTS (SELECT 1 FROM word_forms f WHERE f.word_id = w.id) THEN 0 ELSE 1 END AS is_kana_only,
   CASE
     WHEN EXISTS (SELECT 1 FROM word_forms f WHERE f.word_id = w.id AND f.priority = 1)

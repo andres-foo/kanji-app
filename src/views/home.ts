@@ -42,10 +42,17 @@ const wordRow = (w: Word, back: string, q: string) => {
   const inList = w.added === 1;
   const hq = q.replace(/[*+]/g, "");
   const raw = w.kanji ? splitKanjiMarker(w.kanji) : { text: "", marker: "" };
-  const readings = String(w.kana ?? "").split(";").map((r) => r.trim()).filter(Boolean);
+  const visibleKana = w.kana_visible !== undefined ? w.kana_visible : w.kana;
+  const readings = String(visibleKana ?? "").split(";").map((r) => r.trim()).filter(Boolean);
+  const hiddenReadings = String(w.kana_hidden ?? "").split(";").map((r) => r.trim()).filter(Boolean);
   const kana = readings[0] ?? "";
   const word = raw.text || kana;
-  const alternativeForms = String(w.kanji_alternative ?? "").split(";").map((s) => s.trim()).filter((s) => s && s !== word);
+  const visibleAlternative = w.kanji_visible_alternative !== undefined ? w.kanji_visible_alternative : w.kanji_alternative;
+  const alternativeForms = String(visibleAlternative ?? "").split(";").map((s) => s.trim()).filter((s) => s && s !== word);
+  const hiddenForms = String(w.kanji_hidden ?? "").split(";").map((s) => s.trim()).filter(Boolean);
+  const hiddenQuery = q.replace(/[*+]/g, "").trim();
+  const matchedHidden = hiddenQuery ? hiddenForms.filter((form) => form.includes(hiddenQuery)) : [];
+  const matchedHiddenReadings = hiddenQuery ? hiddenReadings.filter((reading) => reading.includes(hiddenQuery)) : [];
   const wordDisplay = hasKanji(word)
     ? `<a class="wordlink" href="/?q=${enc(word)}" aria-label="Search for ${esc(word)}">${wordMarkup(word, hq)}</a>${alternativeForms.length ? `; ${alternativeForms.map((form) => highlight(form, hq)).join("; ")}` : ""}`
     : wordMarkup(word, hq);
@@ -53,6 +60,8 @@ const wordRow = (w: Word, back: string, q: string) => {
   return `<div class="resultrow wordrow" id="w${w.id}">
     <div class="rmain">
       <div class="rkw">${wordDisplay}${kana && kana !== word ? ` <span class="rread">（${readingText}）</span>` : ""}</div>
+      ${matchedHidden.length ? `<div class="rrare">matched rare form: ${matchedHidden.map((form) => highlight(form, hq)).join("; ")}</div>` : ""}
+      ${matchedHiddenReadings.length ? `<div class="rrare">matched search-only reading: ${matchedHiddenReadings.map((reading) => highlight(reading, hq)).join("; ")}</div>` : ""}
       <div class="rmean">${meaningGroups(w.meanings).map((m) => `<span class="sense">${highlight(m, hq)}</span>`).join("")}</div>
     </div>
     <div class="rright">

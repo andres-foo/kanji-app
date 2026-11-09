@@ -22,6 +22,10 @@ USER = ROOT / "data" / "user.db"
 WORD_SCHEMA = ROOT / "scripts" / "schema-words.sql"
 USER_SCHEMA = ROOT / "scripts" / "schema-user-words.sql"
 
+# JMdict (P) entries: news1, ichi1, spec1/spec2 and gai1. news2, ichi2,
+# gai2 and nfxx are frequency markers but are not part of the (P) subset.
+COMMON_PRIORITY = {"news1", "ichi1", "spec1", "spec2", "gai1"}
+
 
 def main() -> None:
     if not JMDICT.exists():
@@ -63,7 +67,7 @@ def main() -> None:
 
             ke_pri = [p.text for k in k_elems for p in k.findall("ke_pri")]
             re_pri = [p.text for r in r_elems for p in r.findall("re_pri")]
-            is_common = 1 if ke_pri or re_pri else 0
+            is_common = 1 if any(tag in COMMON_PRIORITY for tag in ke_pri + re_pri) else 0
             is_kana_only = 1 if not k_elems else 0
 
             ref.execute(
@@ -71,32 +75,33 @@ def main() -> None:
                 (seq,),
             )
 
-            for k in k_elems:
+            for position, k in enumerate(k_elems, start=1):
                 form = (k.findtext("keb") or "").strip()
                 if not form:
                     continue
                 infos = [x.text.strip() for x in k.findall("ke_inf") if x.text]
                 ref.execute(
-                    "INSERT OR IGNORE INTO word_forms (word_id, form, priority, info) VALUES (?, ?, ?, ?)",
-                    (seq, form, 1 if k.findall("ke_pri") else 0, "; ".join(infos) or None),
+                    "INSERT OR IGNORE INTO word_forms (word_id, form, priority, info, position) VALUES (?, ?, ?, ?, ?)",
+                    (seq, form, 1 if any(p.text in COMMON_PRIORITY for p in k.findall("ke_pri")) else 0, "; ".join(infos) or None, position),
                 )
                 forms += 1
 
-            for r in r_elems:
+            for position, r in enumerate(r_elems, start=1):
                 reading = (r.findtext("reb") or "").strip()
                 if not reading:
                     continue
                 infos = [x.text.strip() for x in r.findall("re_inf") if x.text]
                 restrictions = [x.text.strip() for x in r.findall("re_restr") if x.text]
                 ref.execute(
-                    "INSERT OR IGNORE INTO word_readings (word_id, reading, priority, info, no_kanji, restriction) VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT OR IGNORE INTO word_readings (word_id, reading, priority, info, no_kanji, restriction, position) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
                         seq,
                         reading,
-                        1 if r.findall("re_pri") else 0,
+                        1 if any(p.text in COMMON_PRIORITY for p in r.findall("re_pri")) else 0,
                         "; ".join(infos) or None,
                         1 if r.find("re_nokanji") is not None else 0,
                         "; ".join(restrictions) or None,
+                        position,
                     ),
                 )
                 readings += 1
