@@ -24,7 +24,7 @@ export const layout = (title: string, body: string, { theme, back, lab = false, 
     <a class="${active === "my-list" ? "on" : ""}" href="/my-list">My List</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a><a class="${active === "kanken" ? "on" : ""}" href="/kanken">Kanken</a><a class="${active === "components" ? "on" : ""}" href="/components">Components</a><a class="${active === "history" ? "on" : ""}" href="/history">History</a>
   </div>
   <form class="navsearch" action="/" method="get" role="search">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
     <input name="q" value="${esc(searchValue)}" placeholder="Search" aria-label="Search">
     <a class="navcomp${active === "components-search" ? " on" : ""}" href="/components/search" aria-label="Find kanji by components" title="Find by components">字</a>
   </form>
