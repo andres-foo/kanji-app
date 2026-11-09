@@ -40,18 +40,19 @@ const wordMarkup = (text: string, q: string) => highlight(text, q);
 
 const wordRow = (w: Word, back: string, q: string) => {
   const inList = w.added === 1;
+  const hq = q.replace(/[*+]/g, "");
   const raw = w.kanji ? splitKanjiMarker(w.kanji) : { text: "", marker: "" };
   const readings = String(w.kana ?? "").split(";").map((r) => r.trim()).filter(Boolean);
   const kana = readings[0] ?? "";
   const extraReadings = readings.slice(1);
   const word = raw.text || kana;
   const wordDisplay = hasKanji(word)
-    ? `<a class="wordlink" href="/?q=${enc(word)}" aria-label="Search for ${esc(word)}">${wordMarkup(word, q)}</a>`
-    : wordMarkup(word, q);
+    ? `<a class="wordlink" href="/?q=${enc(word)}" aria-label="Search for ${esc(word)}">${wordMarkup(word, hq)}</a>`
+    : wordMarkup(word, hq);
   return `<div class="resultrow wordrow" id="w${w.id}">
     <div class="rmain">
-      <div class="rkw">${wordDisplay}${kana && kana !== word ? ` <span class="rread">（${highlight(kana, q)}）</span>` : ""}${extraReadings.length ? ` <span class="rread rread-extra">（${extraReadings.map((r) => highlight(r, q)).join("; ")}）</span>` : ""}</div>
-      <div class="rmean">${meaningGroups(w.meanings).map((m) => `<span class="sense">${highlight(m, q)}</span>`).join("")}</div>
+      <div class="rkw">${wordDisplay}${kana && kana !== word ? ` <span class="rread">（${highlight(kana, hq)}）</span>` : ""}${extraReadings.length ? ` <span class="rread rread-extra">（${extraReadings.map((r) => highlight(r, hq)).join("; ")}）</span>` : ""}</div>
+      <div class="rmean">${meaningGroups(w.meanings).map((m) => `<span class="sense">${highlight(m, hq)}</span>`).join("")}</div>
     </div>
     <div class="rright">
       ${w.jlpt ? `<span class="badge">N${esc(w.jlpt)}</span>` : ""}

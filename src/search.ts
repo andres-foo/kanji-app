@@ -88,6 +88,13 @@ export function search(q: string) {
   const hasKana = /[\u3041-\u30ff]/.test(q);
   const lits = [...new Set(q.match(/\p{Script=Han}/gu) ?? [])].slice(0, 12);
   const pat = (s: string) => `%${likeEsc(s)}%`;
+  // `*` matches zero or more characters and `+` matches one or more.
+  // Without either wildcard, keep the existing substring behaviour.
+  const wordPat = (s: string) => {
+    const escaped = likeEsc(s);
+    if (!/[*+]/.test(escaped)) return `%${escaped}%`;
+    return escaped.replace(/\+/g, "_%").replace(/\*/g, "%");
+  };
   const qLower = q.toLowerCase();
   const qHira = toHira(q);
 
@@ -118,7 +125,7 @@ export function search(q: string) {
         SELECT word_id FROM ref.word_readings WHERE ${readingClauses}
       )
       SELECT w.*, EXISTS (SELECT 1 FROM user_word_added u WHERE u.word_id = w.id) AS added
-      FROM matched m JOIN ref.word_rows w ON w.id = m.word_id`).all(pat(q), ...kana.map(pat)) as Word[];
+      FROM matched m JOIN ref.word_rows w ON w.id = m.word_id`).all(wordPat(q), ...kana.map(wordPat)) as Word[];
 
     const readingRank = (k: Kanji) => {
       const readings = `${k.onReadings ?? ""} ${k.kunReadings ?? ""}`.replace(/[.\-]/g, " ").split(/[\s、,;]+/).filter(Boolean).map(toHira);
