@@ -9,6 +9,20 @@ let selected = Array.isArray(state.selected) ? state.selected : [];
 let suggestionAbort = null;
 let resultsAbort = null;
 let suggestTimer = 0;
+let activeSuggestion = -1;
+
+const suggestionButtons = () => suggestions ? [...suggestions.querySelectorAll(".component-suggestion")] : [];
+
+const setActiveSuggestion = (index) => {
+  const buttons = suggestionButtons();
+  if (!buttons.length) {
+    activeSuggestion = -1;
+    return;
+  }
+  activeSuggestion = (index + buttons.length) % buttons.length;
+  buttons.forEach((button, i) => button.classList.toggle("active", i === activeSuggestion));
+  buttons[activeSuggestion]?.scrollIntoView({ block: "nearest" });
+};
 
 const queryString = () => {
   const params = new URLSearchParams();
@@ -54,6 +68,7 @@ const addComponent = (literal, keyword) => {
   selected.push({ literal, keyword });
   if (input) input.value = "";
   if (suggestions) suggestions.innerHTML = "";
+  activeSuggestion = -1;
   renderSelected();
   updateUrl();
   refreshResults();
@@ -72,6 +87,7 @@ input?.addEventListener("input", () => {
   const q = input.value.trim();
   if (q.length < 3) {
     if (suggestions) suggestions.innerHTML = "";
+    activeSuggestion = -1;
     return;
   }
   suggestTimer = window.setTimeout(async () => {
@@ -84,10 +100,28 @@ input?.addEventListener("input", () => {
       const response = await fetch(`/components/search/suggest?${params}`, { signal: controller.signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       if (suggestions) suggestions.innerHTML = await response.text();
+      activeSuggestion = -1;
     } catch (error) {
       if (error.name !== "AbortError" && suggestions) suggestions.innerHTML = `<div class="sub component-suggestion-empty">Could not load suggestions.</div>`;
     }
   }, 120);
+});
+
+input?.addEventListener("keydown", (event) => {
+  const buttons = suggestionButtons();
+  if (!buttons.length) return;
+  if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+    event.preventDefault();
+    if (activeSuggestion < 0) setActiveSuggestion(event.key === "ArrowRight" ? 0 : buttons.length - 1);
+    else setActiveSuggestion(activeSuggestion + (event.key === "ArrowRight" ? 1 : -1));
+    return;
+  }
+  if (event.key === "Enter") {
+    event.preventDefault();
+    const index = activeSuggestion >= 0 ? activeSuggestion : 0;
+    const button = buttons[index];
+    if (button) addComponent(button.dataset.literal || "", button.dataset.keyword || "");
+  }
 });
 
 suggestions?.addEventListener("click", (event) => {
