@@ -2,7 +2,7 @@ import { db, totalKnown } from "../db";
 import { enc, esc, html, likeEsc } from "../html";
 import { findImage } from "../images";
 import { MAX_SCORE, MIN_SCORE, masteryFor } from "../mastery";
-import { phrasesPerKanji } from "../settings";
+import { phrasesPerKanji, phraseMorePerClick } from "../settings";
 import { requestContext } from "../prefs";
 import { storyHtml } from "../story";
 import type { Kanji, Word } from "../types";
@@ -55,13 +55,13 @@ export const levelBadge = (label: string, p: Priority) => {
   return `<span class="badge" title="Priority ${info.label}" aria-label="${esc(label)}, priority ${info.label}">${esc(label)}${info.icon ? ` <span class="prio">${info.icon}</span>` : ""}</span>`;
 };
 
-type Phrase = { id: number; english: string; japanese_furigana: string };
+export type Phrase = { id: number; japanese: string; english: string; japanese_furigana: string };
 
-const phraseListHtml = (phrases: Phrase[]) =>
-  phrases.map((p) => `<div class="phrase">
+export const phraseListHtml = (phrases: Phrase[]) =>
+  phrases.map((p) => `<a class="phrase" href="/?q=${enc(p.japanese)}" aria-label="Search for ${esc(p.japanese)}">
           <div class="phrase-jp">${p.japanese_furigana}</div>
           <div class="phrase-en">${esc(p.english)}</div>
-        </div>`).join("");
+        </a>`).join("");
 
 export async function kanjiRedesignView(literal: string, base: string, q = "") {
   const k = db.query(`SELECT * FROM kanjis WHERE literal = ?`).get(literal) as Kanji | null;
@@ -93,12 +93,21 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     .get(`%${likeEsc(k.literal)}%`) as { n: number };
   const hasWords = wordCount.n > 0;
   const phraseLimit = phrasesPerKanji();
-  const phrases = db.query(`SELECT id, english, japanese_furigana
+  const phraseMore = phraseMorePerClick();
+  const phrases = db.query(`SELECT id, japanese, english, japanese_furigana
     FROM phr.phrases
     WHERE japanese LIKE ? ESCAPE '\\' AND japanese_furigana IS NOT NULL
     ORDER BY hardest_jlpt DESC, length(japanese), id
     LIMIT ?`)
     .all(`%${likeEsc(k.literal)}%`, phraseLimit) as Phrase[];
+  const phraseTotal = (db.query(`SELECT COUNT(*) AS n
+    FROM phr.phrases
+    WHERE japanese LIKE ? ESCAPE '\\' AND japanese_furigana IS NOT NULL`)
+    .get(`%${likeEsc(k.literal)}%`) as { n: number }).n;
+  const remainingPhrases = Math.max(0, phraseTotal - phrases.length);
+  const phraseMoreHtml = remainingPhrases > 0
+    ? `<div class="phrase-more"><button class="pill ghost sm" type="button" data-phrase-more data-literal="${esc(k.literal)}" data-offset="${phrases.length}" data-batch="${phraseMore}" data-total="${phraseTotal}">${remainingPhrases > phraseMore ? `Show ${phraseMore} more` : `Show last ${remainingPhrases}`}</button></div>`
+    : "";
   const history = db.query(`SELECT date, "before" AS b, "after" AS a, type FROM review_history WHERE kanji = ? ORDER BY date DESC, id DESC`).all(k.literal) as { date: string; b: number; a: number; type: string }[];
 
   const shortMeanings = meaningsText(k.meanings).split(", ").slice(0, 3).join(", ");
@@ -217,9 +226,9 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   </div>
 
   <div class="card" style="grid-column:span 6">
-    <div class="cardhead"><h3 class="h3">Example phrases</h3><span class="badge">${phrases.length}</span></div>
+    <div class="cardhead"><h3 class="h3">Example phrases</h3><span class="badge" id="phrase-count">${phrases.length}${phraseTotal > phrases.length ? ` of ${phraseTotal}` : ""}</span></div>
     ${phrases.length
-      ? `<div class="phrase-list" id="phrase-list">${phraseListHtml(phrases)}</div>`
+      ? `<div class="phrase-list" id="phrase-list">${phraseListHtml(phrases)}</div>${phraseMoreHtml}`
       : `<div class="sub" style="padding:6px 0">No example phrases yet.</div>`}
   </div>
 
@@ -228,7 +237,8 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     <div class="comps" style="margin-top:12px">${componentFor}</div>
   </div>
 </div>
-${strokeSvg ? `<script src="/js/stroke.js" defer></script>` : ""}`;
+${strokeSvg ? `<script src="/js/stroke.js" defer></script>` : ""}
+${phraseMoreHtml ? `<script src="/js/phrase-more.js" defer></script>` : ""}`;
 
   return { title: `${k.literal} — Kanji`, body };
 }

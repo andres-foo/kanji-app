@@ -2,7 +2,7 @@ import { db } from "../db";
 import { HISTORY_MAX } from "../history";
 import { MAX_SCORE, MIN_SCORE, type Mastery } from "../mastery";
 import { sameOrigin } from "../prefs";
-import { startScore, type SettingKey, WORD_RESULTS_MAX, PHRASE_RESULTS_MAX } from "../settings";
+import { startScore, type SettingKey, WORD_RESULTS_MAX, PHRASE_RESULTS_MAX, PHRASE_MORE_MAX } from "../settings";
 import { DELTA_FIELDS, settingsPage } from "../views/settings";
 
 export async function saveSettings(req: Request, url: URL) {
@@ -37,6 +37,12 @@ export async function saveSettings(req: Request, url: URL) {
   if (phraseText === "" || !Number.isInteger(phraseResults) || phraseResults < 1 || phraseResults > PHRASE_RESULTS_MAX) {
     errors.push(`Phrases per kanji must be a whole number from 1 to ${PHRASE_RESULTS_MAX}.`);
   }
+  const phraseMoreText = String(form.get("phrase_more_per_click") ?? "").trim();
+  submitted.phrase_more_per_click = phraseMoreText;
+  const phraseMore = Number(phraseMoreText);
+  if (phraseMoreText === "" || !Number.isInteger(phraseMore) || phraseMore < 1 || phraseMore > PHRASE_MORE_MAX) {
+    errors.push(`More phrases per click must be a whole number from 1 to ${PHRASE_MORE_MAX}.`);
+  }
   for (let score = MIN_SCORE; score <= MAX_SCORE; score++) {
     const label = String(form.get(`label_${score}`) ?? "").trim();
     const daysText = String(form.get(`days_${score}`) ?? "").trim();
@@ -57,6 +63,7 @@ export async function saveSettings(req: Request, url: URL) {
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["history_limit", String(historyLimit)]);
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["word_results_per_page", String(wordResults)]);
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["phrase_results_per_kanji", String(phraseResults)]);
+      db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["phrase_more_per_click", String(phraseMore)]);
       for (const m of levels) {
         db.run(
           `INSERT INTO mastery_levels (score, label, interval_days) VALUES (?, ?, ?)

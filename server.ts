@@ -16,6 +16,7 @@ import { reviewNext, reviewPage } from "./src/views/review";
 import { settingsPage } from "./src/views/settings";
 import { toggleWord, toggleKanji, updateKanji } from "./src/routes/kanji";
 import { uploadImage, deleteImage } from "./src/routes/images";
+import { kanjiPhrases } from "./src/routes/phrases";
 import { setTheme, toggleDetails } from "./src/routes/prefs";
 import { reviewResult } from "./src/routes/review";
 import { saveSettings, resetScores } from "./src/routes/settings";
@@ -30,6 +31,7 @@ const STATIC_FILES: Record<string, [string, string]> = {
   "/js/stroke.js": ["public/js/stroke.js", "text/javascript; charset=utf-8"],
   "/js/components.js": ["public/js/components.js", "text/javascript; charset=utf-8"],
   "/js/component-search.js": ["public/js/component-search.js", "text/javascript; charset=utf-8"],
+  "/js/phrase-more.js": ["public/js/phrase-more.js", "text/javascript; charset=utf-8"],
 };
 
 Bun.serve({
@@ -83,6 +85,10 @@ Bun.serve({
       const kanjiEdit = path.match(/^\/kanji\/([^/]+)\/edit$/);
       if (kanjiEdit) {
         return req.method === "POST" ? updateKanji(req, kanjiEdit[1]) : new Response("Method not allowed", { status: 405 });
+      }
+      const kanjiPhraseList = path.match(/^\/kanji\/([^/]+)\/phrases$/);
+      if (kanjiPhraseList) {
+        return req.method === "GET" ? kanjiPhrases(kanjiPhraseList[1], url) : new Response("Method not allowed", { status: 405 });
       }
       const toggle = path.match(/^\/words\/(\d+)\/toggle$/);
       if (toggle) {

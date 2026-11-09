@@ -13,10 +13,12 @@ const SETTING_DEFAULTS = {
   history_limit: 50, // entries shown in each History column
   word_results_per_page: 20, // word results shown per search page
   phrase_results_per_kanji: 5, // example phrases shown initially per kanji page
+  phrase_more_per_click: 5, // additional example phrases revealed by each Show more click
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 export const WORD_RESULTS_MAX = 200;
 export const PHRASE_RESULTS_MAX = 10;
+export const PHRASE_MORE_MAX = 20;
 
 export function setting(key: SettingKey): number {
   try {
@@ -31,6 +33,7 @@ export function setting(key: SettingKey): number {
 
 export const wordResultsPerPage = () => Math.max(1, Math.min(WORD_RESULTS_MAX, Math.round(setting("word_results_per_page"))));
 export const phrasesPerKanji = () => Math.max(1, Math.min(PHRASE_RESULTS_MAX, Math.round(setting("phrase_results_per_kanji"))));
+export const phraseMorePerClick = () => Math.max(1, Math.min(PHRASE_MORE_MAX, Math.round(setting("phrase_more_per_click"))));
 
 // lowest and highest score allowed: the settings, but never outside the -3 to 10 scale
 export function scoreBounds(): [number, number] {  const a = setting("review_score_floor");

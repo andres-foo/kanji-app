@@ -110,12 +110,18 @@ h1 .lite{color:var(--muted);font-weight:400}
 .exkana{font-size:9.5px;color:var(--muted);min-width:66px}
 .exmean{flex:1;font-size:9.5px;color:#636871;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .phrase-list{display:flex;flex-direction:column;margin-top:8px}
-.phrase{padding:10px 0;border-bottom:1px solid #f0f1f4}
+.phrase{display:block;padding:10px 0;border-bottom:1px solid #f0f1f4;color:inherit;text-decoration:none}
+.phrase:hover{background:#f8f9fb;border-radius:10px;padding-left:8px;padding-right:8px;margin-left:-8px;margin-right:-8px}
+.phrase:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:10px}
 .phrase:last-child{border-bottom:0;padding-bottom:0}
 .phrase-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:24px;line-height:1.9;color:#2a2c31}
 .phrase-jp rt{font-family:var(--sans);font-size:.56em;color:#6f747d;letter-spacing:0}
 .phrase-en{font-size:14px;line-height:1.5;color:#636871;margin-top:3px}
+.phrase-more{display:flex;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid #f0f1f4}
+.phrase-more .sub{font-size:11px}
+[data-theme="dark"] .phrase-more{border-color:#2f3237}
 [data-theme="dark"] .phrase{border-color:#2f3237}
+[data-theme="dark"] .phrase:hover{background:#26282c}
 [data-theme="dark"] .phrase-jp{color:#e7e8eb}
 [data-theme="dark"] .phrase-jp rt{color:#9aa0a9}
 [data-theme="dark"] .phrase-en{color:#b9bec7}
