@@ -210,7 +210,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   <div class="card" style="grid-column:span 6;display:flex;flex-direction:column">
     <div class="cardhead"><h3 class="h3">Examples in your list</h3><span class="badge">${addedWords.length} added</span></div>
     ${addedWords.length ? addedWords.map(exRow).join("") : `<div class="sub" style="padding:6px 0">No examples in your list yet.</div>`}
-    <div class="exfoot"><a class="pill ghost sm" href="/?q=${enc(k.literal)}&type=words">Find more words</a></div>
+    <div class="exfoot"><a class="pill ghost sm" href="/?q=${enc(k.literal)}&type=words&record=1">Find more words</a></div>
   </div>
 
   <div class="card" style="grid-column:span 6">

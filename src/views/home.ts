@@ -109,7 +109,7 @@ export function home(url: URL) {
     return page(dash.title, dash.body);
   }
   if (shortQuery(q)) return page("Search – Kanji", hero("Enter at least two characters to search."));
-  if (!url.searchParams.has("type")) recordHistory("search", q);
+  if (!url.searchParams.has("type") || url.searchParams.get("record") === "1") recordHistory("search", q);
 
   const found = search(q);
   const kanji = found.kanji;
