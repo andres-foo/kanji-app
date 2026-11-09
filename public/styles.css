@@ -157,7 +157,7 @@ h1 .lite{color:var(--muted);font-weight:400}
 
 /* nav search + theme switch */
 .navsearch{display:flex;align-items:center;gap:8px;background:#fff;border-radius:999px;padding:7px 12px;width:200px}
-.navsearch input{border:0;outline:0;background:transparent;font-family:inherit;font-size:11px;font-weight:700;width:100%;color:var(--ink)}
+.navsearch input{border:0;outline:0;background:transparent;font-family:inherit;font-size:14px;font-weight:700;width:100%;color:var(--ink)}
 .navsearch input::placeholder{color:#a2a7b0}
 .navsearch{height:38px;padding:0 12px}
 .nav .pill{height:38px;padding:0 17px}
