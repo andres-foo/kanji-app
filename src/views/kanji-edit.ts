@@ -16,6 +16,11 @@ export async function kanjiRedesignEditView(literal: string, q = "") {
 
   const field = (name: string, label: string, value: string | null) =>
     `<label class="efield"><span>${label}</span><input type="text" name="${name}" value="${esc(value)}" autocomplete="off"></label>`;
+  const componentField = `<div class="efield component-field">
+<span>Components</span>
+<input id="component-field" type="text" name="components" value="${esc(k.components)}" autocomplete="off">
+<div id="component-field-suggestions" class="component-field-suggestions" role="listbox" hidden></div>
+</div>`;
   const check = (name: string, label: string, on: boolean) =>
     `<label class="echeck"><input type="checkbox" name="${name}" value="1"${on ? " checked" : ""}><span>${label}</span></label>`;
 
@@ -64,7 +69,7 @@ export async function kanjiRedesignEditView(literal: string, q = "") {
     <input type="hidden" name="back" value="${esc(viewHref)}">
     <div class="efields">
       ${field("keyword", "Keyword", k.keyword)}
-      ${field("components", "Components", k.components)}
+      ${componentField}
       ${field("related", "Related", k.related)}
     </div>
     <div class="echecks">${check("added", "Added", added)}${check("unfinished", "Unfinished", unfinished)}${check("is_component", "Is component", k.is_component === 1)}</div>
@@ -75,7 +80,8 @@ export async function kanjiRedesignEditView(literal: string, q = "") {
   <a class="pill ghost" href="${viewHref}">Cancel</a>
   <button class="pill dark" type="submit" form="editform">Save</button>
 </div>
-<script src="/js/story-editor.js" defer></script>`;
+<script src="/js/story-editor.js" defer></script>
+<script src="/js/component-field.js" defer></script>`;
 
   return { title: `Edit ${k.literal} — Kanji`, body };
 }

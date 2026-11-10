@@ -377,6 +377,14 @@ a.comp:hover{background:#e9ecf1}
 .nav .pill{font-size:12px}
 .efield span{font-size:10px}
 .efield input{font-size:14px;padding:12px 13px}
+.efield input[name="components"],.efield input[name="related"]{font-size:16px;line-height:1.4}
+.component-field{position:relative}
+.component-field-suggestions{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:35;padding:5px;border:1px solid #e4e7ec;border-radius:12px;background:#fff;box-shadow:0 12px 30px rgba(15,20,30,.16);max-height:220px;overflow:auto}
+.component-field-suggestions[hidden]{display:none}
+.component-field-suggestions .component-suggestion{width:100%;box-sizing:border-box}
+.component-field-suggestions .component-suggestion.active{border-color:var(--cyan);background:#eafcfe;box-shadow:0 0 0 2px rgba(95,216,231,.2)}
+[data-theme="dark"] .component-field-suggestions{background:#26282c;border-color:#3a3d44;box-shadow:0 12px 30px rgba(0,0,0,.4)}
+[data-theme="dark"] .component-field-suggestions .component-suggestion.active{background:#173a40}
 .echeck{font-size:12.5px}
 .echeck input{width:16px;height:16px}
 .tool{font-size:11.5px}

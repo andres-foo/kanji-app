@@ -31,6 +31,7 @@ const STATIC_FILES: Record<string, [string, string]> = {
   "/js/stroke.js": ["public/js/stroke.js", "text/javascript; charset=utf-8"],
   "/js/components.js": ["public/js/components.js", "text/javascript; charset=utf-8"],
   "/js/component-search.js": ["public/js/component-search.js", "text/javascript; charset=utf-8"],
+  "/js/component-field.js": ["public/js/component-field.js", "text/javascript; charset=utf-8"],
   "/js/phrase-more.js": ["public/js/phrase-more.js", "text/javascript; charset=utf-8"],
 };
 

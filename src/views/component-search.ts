@@ -4,7 +4,7 @@ import { requestContext } from "../prefs";
 import { keywordText } from "./shared";
 import { layout } from "./layout";
 
-type ComponentInfo = { literal: string; keyword: string | null; strokes: number | null; frequency: number | null };
+type ComponentInfo = { literal: string; keyword: string | null; strokes: number | null; frequency: number | null; is_component?: number | null };
 type ResultRow = { literal: string; components: string | null; strokes: number | null; frequency: number | null; added: number | null; unfinished: number | null };
 
 const splitComponents = (value: string | null) => new Set(String(value ?? "").split(/[;、,\s]+/).filter(Boolean));
@@ -55,10 +55,10 @@ export function suggestionHtml(query: string, selected: string[]): string {
   const q = query.trim();
   if (q.length < 3) return "";
   const placeholders = selected.map(() => "?").join(",");
-  const rows = db.query(`SELECT literal, keyword, strokes, frequency
+  const rows = db.query(`SELECT literal, keyword, strokes, frequency, is_component
     FROM kanjis
     WHERE keyword LIKE ? ESCAPE '\\'${selected.length ? ` AND literal NOT IN (${placeholders})` : ""}
-    ORDER BY frequency IS NULL, frequency, literal`)
+    ORDER BY COALESCE(is_component, 0) DESC, frequency IS NULL, frequency, literal`)
     .all(`%${likeEsc(q)}%`, ...selected) as ComponentInfo[];
   if (!rows.length) return `<div class="sub component-suggestion-empty">No keywords match “${esc(q)}”.</div>`;
   return rows.map((row) => `<button class="component-suggestion" type="button" data-literal="${esc(row.literal)}" data-keyword="${esc(keywordText(row.keyword))}">
