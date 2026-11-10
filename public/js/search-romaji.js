@@ -1,4 +1,5 @@
 // Tab in the main search bar toggles between romaji and hiragana.
+(() => {
 const KANA = {};
 `a あ i い u う e え o お ka か ki き ku く ke け ko こ sa さ shi し si し su す se せ so そ
 ta た chi ち ti ち tsu つ tu つ te て to と na な ni に nu ぬ ne ね no の ha は hi ひ fu ふ hu ふ he へ ho ほ
@@ -149,3 +150,4 @@ if (input) {
 
   if (document.activeElement === input) updateHint();
 }
+})();
