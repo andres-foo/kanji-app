@@ -110,7 +110,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     : "";
   const history = db.query(`SELECT date, "before" AS b, "after" AS a, type FROM review_history WHERE kanji = ? ORDER BY date DESC, id DESC`).all(k.literal) as { date: string; b: number; a: number; type: string }[];
 
-  const shortMeanings = meaningsText(k.meanings).split(", ").slice(0, 3).join(", ");
+  const meaningLine = meaningsText(k.meanings);
   const added = k.added === 1;
   const unfinished = k.unfinished === 1;
   const heroState = added ? (unfinished ? " hero-unfinished" : " hero-added") : "";
@@ -185,7 +185,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
         </div>
         <div class="heroinfo">
           <div class="kw">${esc(keywordText(k.keyword)) || "No keyword yet"}</div>
-          <div class="kmean">${esc(shortMeanings)}</div>
+          <div class="kmean">${esc(meaningLine)}</div>
           ${compChips ? `<div class="comps">${compChips}</div>` : ""}
         </div>
       </div>
