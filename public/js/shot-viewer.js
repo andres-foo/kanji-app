@@ -7,7 +7,6 @@
   try { data = JSON.parse(dataNode.textContent || "{}"); } catch { return; }
   const id = Number(data.id);
   const back = String(data.back || "/screenshot");
-  const editButton = document.getElementById("shot-viewer-edit");
   const deleteButton = document.getElementById("shot-viewer-delete");
   const saveButton = document.getElementById("shot-edit-save");
   const cancelButton = document.getElementById("shot-edit-cancel");
@@ -17,7 +16,10 @@
   const overlay = document.getElementById("shot-viewer-overlay");
   const overlayJp = document.getElementById("shot-viewer-jp");
   const overlayEn = document.getElementById("shot-viewer-en");
+  const summary = document.getElementById("shot-viewer-summary");
   const error = document.getElementById("shot-edit-error");
+  const savedToast = document.getElementById("shot-viewer-saved");
+  let savedTimer = 0;
   let saved = {
     japanese: overlayJp?.textContent || "",
     english: overlayEn?.textContent || "",
@@ -28,6 +30,18 @@
     if (!error) return;
     error.textContent = message;
     error.hidden = !message;
+  };
+
+  const showSaved = () => {
+    if (!savedToast) return;
+    savedToast.hidden = false;
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => { savedToast.hidden = true; }, 4000);
+  };
+
+  const hideSaved = () => {
+    clearTimeout(savedTimer);
+    if (savedToast) savedToast.hidden = true;
   };
 
   const renderOverlay = () => {
@@ -42,30 +56,24 @@
     overlayEn.hidden = !english.trim();
   };
 
-  const openEditor = () => {
-    if (!jp || !en || !position) return;
-    jp.value = saved.japanese;
-    en.value = saved.english;
-    position.value = String(saved.position);
-    form.hidden = false;
-    showError("");
-    renderOverlay();
-    jp.focus();
-  };
-
-  const closeEditor = () => {
-    form.hidden = true;
-    showError("");
+  // Put the fields back to the last saved values (Cancel, or after a save).
+  const applySaved = () => {
     if (jp) jp.value = saved.japanese;
     if (en) en.value = saved.english;
     if (position) position.value = String(saved.position);
     renderOverlay();
+    showError("");
   };
 
-  editButton?.addEventListener("click", openEditor);
-  cancelButton?.addEventListener("click", closeEditor);
-  [jp, en, position].forEach((control) => control?.addEventListener("input", renderOverlay));
-  [position].forEach((control) => control?.addEventListener("change", renderOverlay));
+  cancelButton?.addEventListener("click", () => {
+    applySaved();
+    hideSaved();
+  });
+  [jp, en, position].forEach((control) => control?.addEventListener("input", () => {
+    hideSaved();
+    renderOverlay();
+  }));
+  position?.addEventListener("change", renderOverlay);
 
   saveButton?.addEventListener("click", async () => {
     const japanese = jp?.value.trim() ?? "";
@@ -87,12 +95,15 @@
         showError(result.error === "japanese required" ? "Japanese is required." : "Could not save changes.");
         return;
       }
+      // Stay on this screen: keep the editor open and confirm with a toast.
       saved = {
         japanese,
         english: en?.value.trim() ?? "",
         position: Number(position?.value) === 1 ? 1 : 0,
       };
-      closeEditor();
+      applySaved();
+      if (summary) summary.textContent = saved.japanese || "No Japanese text";
+      showSaved();
     } catch {
       showError("Could not save changes.");
     } finally {
@@ -118,5 +129,5 @@
     }
   });
 
-  if (new URLSearchParams(location.search).get("edit") === "1") openEditor();
+  renderOverlay();
 })();

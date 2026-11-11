@@ -84,36 +84,39 @@ export function screenshotViewerPage(id: number, back: string) {
   if (!row) return null;
   const theme = requestContext.getStore()?.theme ?? "light";
   const position = row.position === 1 ? "top" : "bottom";
-  const body = `<div class="listhead"><div><h1>Screenshot</h1><p class="sub">${esc(row.japanese) || "No Japanese text"}</p></div><div class="shot-viewer-actions"><a class="pill ghost sm" href="${esc(back)}">Back</a><button class="pill dark sm" id="shot-viewer-edit" type="button">Edit</button><button class="pill ghost rem sm" id="shot-viewer-delete" type="button">Delete</button></div></div>
-    <div class="shot-viewer-frame">
-      <img src="${shotUrl(row.id, row.hash)}" alt="Screenshot #${row.id}">
-      <div class="shot-viewer-overlay ${position}" id="shot-viewer-overlay"${row.japanese ? "" : " hidden"}>
-        <div class="shot-viewer-jp" id="shot-viewer-jp">${esc(row.japanese)}</div>
-        <div class="shot-viewer-en" id="shot-viewer-en"${row.english ? "" : " hidden"}>${esc(row.english)}</div>
+  const body = `<div class="listhead"><div><h1>Screenshot</h1><p class="sub" id="shot-viewer-summary">${esc(row.japanese) || "No Japanese text"}</p></div><div class="shot-viewer-actions"><a class="pill ghost sm" href="${esc(back)}">Back</a><button class="pill ghost rem sm" id="shot-viewer-delete" type="button">Delete</button></div></div>
+    <div class="shot-viewer-layout" id="shot-viewer-layout">
+      <div class="shot-viewer-frame">
+        <img src="${shotUrl(row.id, row.hash)}" alt="Screenshot #${row.id}">
+        <div class="shot-viewer-overlay ${position}" id="shot-viewer-overlay"${row.japanese ? "" : " hidden"}>
+          <div class="shot-viewer-jp" id="shot-viewer-jp">${esc(row.japanese)}</div>
+          <div class="shot-viewer-en" id="shot-viewer-en"${row.english ? "" : " hidden"}>${esc(row.english)}</div>
+        </div>
       </div>
+      <form class="card shot-edit-card" id="shot-edit-form">
+        <div class="cardhead"><h2 class="h3">Edit screenshot</h2></div>
+        <div class="shot-edit-fields">
+          <label class="shot-label">Japanese
+            <textarea id="shot-edit-jp" rows="5" spellcheck="false">${esc(row.japanese)}</textarea>
+          </label>
+          <label class="shot-label">English
+            <textarea id="shot-edit-en" rows="3" spellcheck="false">${esc(row.english)}</textarea>
+          </label>
+          <label class="shot-position">Show text
+            <select class="shot-position-select" id="shot-edit-position">
+              <option value="0"${row.position === 1 ? "" : " selected"}>At the bottom</option>
+              <option value="1"${row.position === 1 ? " selected" : ""}>At the top</option>
+            </select>
+          </label>
+        </div>
+        <div class="shot-edit-actions">
+          <button class="pill dark sm" type="button" id="shot-edit-save">Save changes</button>
+          <button class="pill ghost sm" type="button" id="shot-edit-cancel">Cancel</button>
+        </div>
+        <div class="shot-error" id="shot-edit-error" role="alert" hidden></div>
+      </form>
     </div>
-    <form class="card shot-edit-card" id="shot-edit-form" hidden>
-      <div class="cardhead"><h2 class="h3">Edit screenshot</h2></div>
-      <div class="shot-edit-fields">
-        <label class="shot-label">Japanese
-          <textarea id="shot-edit-jp" rows="4" spellcheck="false">${esc(row.japanese)}</textarea>
-        </label>
-        <label class="shot-label">English
-          <textarea id="shot-edit-en" rows="3" spellcheck="false">${esc(row.english)}</textarea>
-        </label>
-        <label class="shot-position">Show text
-          <select class="shot-position-select" id="shot-edit-position">
-            <option value="0"${row.position === 1 ? "" : " selected"}>At the bottom</option>
-            <option value="1"${row.position === 1 ? " selected" : ""}>At the top</option>
-          </select>
-        </label>
-      </div>
-      <div class="shot-edit-actions">
-        <button class="pill dark sm" type="button" id="shot-edit-save">Save changes</button>
-        <button class="pill ghost sm" type="button" id="shot-edit-cancel">Cancel</button>
-      </div>
-      <div class="shot-error" id="shot-edit-error" role="alert" hidden></div>
-    </form>
+    <div class="shot-toast" id="shot-viewer-saved" role="status" hidden>Changes saved.</div>
     <script type="application/json" id="shot-viewer-data">${JSON.stringify({ id: row.id, back }).replace(/</g, "\\u003c")}</script>
     <script src="/js/shot-viewer.js" defer></script>`;
   return html(layout("Screenshot – Kanji", body, { theme, back, active: "screenshots" }));
