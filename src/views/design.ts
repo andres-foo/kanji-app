@@ -217,7 +217,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
       <div class="herostory">
         <div class="story"><span class="story-label">Story</span>${k.story ? storyHtml(k.story).replace(/\n/g, "<br>") : "No story yet."}</div>
       </div>
-      <div class="herofoot"><a class="pill ghost sm" href="${editHref}">Edit</a></div>
+      <div class="herofoot">${base === "/kanji" ? `<form method="post" action="/kanji/${enc(k.literal)}/toggle"><input type="hidden" name="back" value="${esc(pageHref)}"><button class="pill ${added ? "ghost rem" : "dark"} sm" type="submit">${added ? "Remove" : "Add"}</button></form>` : ""}<a class="pill ghost sm" href="${editHref}">Edit</a></div>
     </div>
   </div>
 
