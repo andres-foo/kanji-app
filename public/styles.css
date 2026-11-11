@@ -952,13 +952,13 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-viewer-en{font-size:12px;line-height:1.45;color:#d6d9de;margin-top:6px;white-space:pre-line}
 body.shot-carousel-open{overflow:hidden}
 .shot-carousel{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:22px;background:rgba(10,12,15,.78);backdrop-filter:blur(4px)}
-.shot-carousel-stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;width:min(1100px,100%);max-height:calc(100vh - 44px);padding:18px;border-radius:18px;background:var(--card);box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.shot-carousel-stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;width:min(1400px,100%);max-height:calc(100vh - 44px);padding:14px;border-radius:18px;background:var(--card);box-shadow:0 24px 70px rgba(0,0,0,.35)}
 .shot-carousel-close{position:absolute;top:8px;right:8px;z-index:2;width:32px;height:32px;border:0;border-radius:50%;background:var(--dark);color:var(--card);font-size:22px;line-height:1;cursor:pointer}
 .shot-carousel-nav{position:absolute;top:50%;z-index:2;width:38px;height:56px;transform:translateY(-50%);border:0;border-radius:10px;background:rgba(10,12,15,.55);color:#fff;font-size:32px;line-height:1;cursor:pointer}
 .shot-carousel-nav.prev{left:8px}
 .shot-carousel-nav.next{right:8px}
-.shot-carousel-image-wrap{position:relative;display:flex;align-items:center;justify-content:center;max-width:100%;max-height:calc(100vh - 170px);overflow:hidden;border-radius:10px;background:#0b0d10}
-.shot-carousel-image{display:block;max-width:100%;max-height:calc(100vh - 170px);width:auto;height:auto;object-fit:contain}
+.shot-carousel-image-wrap{position:relative;display:flex;align-items:center;justify-content:center;max-width:100%;max-height:calc(100vh - 150px);overflow:hidden;border-radius:10px;background:#0b0d10}
+.shot-carousel-image{display:block;max-width:100%;max-height:calc(100vh - 150px);width:auto;height:auto;object-fit:contain}
 .shot-carousel-text{position:absolute;left:0;right:0;padding:14px 18px;background:rgba(10,12,15,.78);color:#fff;text-align:center;backdrop-filter:blur(3px)}
 .shot-carousel-text.top{top:0}
 .shot-carousel-text.bottom{bottom:0}

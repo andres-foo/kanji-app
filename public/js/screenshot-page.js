@@ -103,6 +103,9 @@
   const autofillCard = async (card, force = false) => {
     const field = jp(card);
     if (!field) return false;
+    // An empty visible field may still have a stored value from a previous
+    // autofill, so force OCR instead of letting the server skip it.
+    force = force || !field.value.trim();
     if (field.value.trim() && !force) {
       if (!confirm("Replace the Japanese text with the OCR result?")) return false;
       force = true;
