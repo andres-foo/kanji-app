@@ -12,6 +12,9 @@ node_modules/
 # Local reference source dumps
 sources/
 
+# Local git worktrees
+.worktrees/
+
 # SQLite runtime files
 *.db-wal
 *.db-shm
