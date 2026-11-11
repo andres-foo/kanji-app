@@ -1018,6 +1018,10 @@ body.shot-carousel-open{overflow:hidden}
 .shot-kanji-text{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:12px}
 .shot-more{display:flex;justify-content:flex-end;margin-top:10px}
 .shot-more .pill{font-size:10px}
+.suggested-words{margin-top:13px;padding-top:11px;border-top:1px solid var(--line)}
+.suggest-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:2px}
+.suggest-head h4{font-size:11px;font-weight:800;margin:0}
+.suggest-head .sub{font-size:10px}
 [data-theme="dark"] .shot-drop,[data-theme="dark"] .shot-label textarea{background:#26282c}
 [data-theme="dark"] .shot-card,[data-theme="dark"] .shot-gallery-card{background:#1e1f22}
 [data-theme="dark"] .shot-error{background:#3f1d1d;color:#fca5a5}

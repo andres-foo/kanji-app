@@ -91,6 +91,18 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     WHERE w.kanji LIKE ? ESCAPE '\\'
     ORDER BY w.is_common DESC, w.kanji`)
     .all(`%${likeEsc(k.literal)}%`) as Word[];
+  const suggestedWords = addedWords.length < 3
+    ? db.query(`SELECT w.*, 0 AS added
+        FROM ref.word_rows w
+        WHERE w.kanji LIKE ? ESCAPE '\\'
+          AND w.kanji != ?
+          AND NOT EXISTS (SELECT 1 FROM user_word_added u WHERE u.word_id = w.id)
+          AND (w.is_common = 1 OR (w.jlpt BETWEEN 4 AND 5))
+          AND (w.jlpt IS NULL OR w.jlpt >= 4)
+        ORDER BY w.is_common DESC, w.jlpt DESC, length(w.kanji), w.freq_wiki IS NULL, w.freq_wiki, w.kanji
+        LIMIT 5`)
+        .all(`%${likeEsc(k.literal)}%`, k.literal) as Word[]
+    : [];
   const shotCount = kanjiScreenshotCount(k.literal);
   const shots = shotCount ? kanjiScreenshots(k.literal, shotCount) : [];
   const visibleShots = shots.slice(0, 6);
@@ -247,6 +259,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   <div class="card" style="grid-column:span 6;display:flex;flex-direction:column">
     <div class="cardhead"><h3 class="h3">Examples in your list</h3><span class="badge">${addedWords.length} added</span></div>
     ${addedWords.length ? addedWords.map(exRow).join("") : `<div class="sub" style="padding:6px 0">No examples in your list yet.</div>`}
+    ${suggestedWords.length ? `<div class="suggested-words"><div class="suggest-head"><h4>Suggested words</h4><span class="sub">Up to 5</span></div>${suggestedWords.map(exRow).join("")}</div>` : ""}
     <div class="exfoot">${hasWords ? `<a class="pill ghost sm" href="/?q=${enc(k.literal)}&type=words&record=1">${addedWords.length ? "Find more words" : "Find words"}</a>` : `<span class="sub">There are no examples for this character.</span>`}</div>
   </div>
 
