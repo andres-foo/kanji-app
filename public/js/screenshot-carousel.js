@@ -40,7 +40,7 @@
     if (!modal) return;
     const item = items[current];
     const image = modal.querySelector(".shot-carousel-image");
-    image.src = `/shot/${item.id}`;
+    image.src = `/shot/${item.id}?v=${encodeURIComponent(item.hash)}`;
     image.alt = item.japanese || `Screenshot #${item.id}`;
     const text = modal.querySelector(".shot-carousel-text");
     text.className = `shot-carousel-text ${item.position === 1 ? "top" : "bottom"}`;
@@ -60,7 +60,7 @@
       button.className = `shot-carousel-thumb${index === current ? " active" : ""}`;
       button.setAttribute("aria-label", `Screenshot ${index + 1}`);
       const thumb = document.createElement("img");
-      thumb.src = `/shot/${entry.id}/thumb`;
+      thumb.src = `/shot/${entry.id}/thumb?v=${encodeURIComponent(entry.hash)}`;
       thumb.alt = "";
       thumb.loading = "lazy";
       button.append(thumb);
@@ -72,7 +72,7 @@
       const neighbor = items[current + offset];
       if (neighbor) {
         const preload = new Image();
-        preload.src = `/shot/${neighbor.id}`;
+        preload.src = `/shot/${neighbor.id}?v=${encodeURIComponent(neighbor.hash)}`;
       }
     }
   };

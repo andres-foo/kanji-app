@@ -97,6 +97,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   const shotBack = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
   const carouselData = JSON.stringify(shots.map((shot) => ({
     id: shot.id,
+    hash: shot.hash,
     japanese: shot.japanese,
     english: shot.english,
     position: shot.position,
@@ -105,7 +106,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     <div class="cardhead"><h3 class="h3">Screenshots</h3><span class="badge">${shotCount}</span></div>
     <div class="shot-kanji-list">
       ${visibleShots.map((shot) => `<a class="shot-kanji-item" data-shot-id="${shot.id}" href="${shotViewerUrl(shot.id, shotBack)}" target="_blank" rel="noopener noreferrer">
-        <img src="${shotThumbUrl(shot.id)}" alt="Screenshot #${shot.id}" loading="lazy">
+        <img src="${shotThumbUrl(shot.id, shot.hash)}" alt="Screenshot #${shot.id}" loading="lazy">
         <span class="shot-kanji-text"><span class="shot-jp">${esc(shot.japanese)}</span>${shot.english ? `<span class="shot-en">${esc(shot.english)}</span>` : ""}</span>
       </a>`).join("")}
     </div>

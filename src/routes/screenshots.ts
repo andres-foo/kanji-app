@@ -11,8 +11,7 @@ import {
   serializedOcr,
   setJapanese,
   shotPath,
-  shotThumbPath,
-  shotUrl,
+  shotThumbPath
 } from "../screenshots";
 
 const json = (body: unknown, status = 200) =>
@@ -134,5 +133,3 @@ export async function serveScreenshotThumb(rawId: string | undefined) {
 export async function ocrStatusResponse() {
   return json(await ocrStatus());
 }
-
-export { shotUrl };

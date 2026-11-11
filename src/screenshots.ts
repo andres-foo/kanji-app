@@ -24,8 +24,8 @@ export type Screenshot = {
 export const shotPath = (file: string) => join(SCREENSHOTS_DIR, file);
 export const shotThumbPath = (file: string) => join(THUMBS_DIR, file);
 export const hashBytes = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
-export const shotUrl = (id: number) => `/shot/${id}`;
-export const shotThumbUrl = (id: number) => `/shot/${id}/thumb`;
+export const shotUrl = (id: number, hash: string) => `/shot/${id}?v=${encodeURIComponent(hash)}`;
+export const shotThumbUrl = (id: number, hash: string) => `/shot/${id}/thumb?v=${encodeURIComponent(hash)}`;
 
 export const getScreenshot = (id: number) =>
   shots.query(`SELECT * FROM screenshots WHERE id = ?`).get(id) as Screenshot | null;
