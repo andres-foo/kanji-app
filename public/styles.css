@@ -907,6 +907,7 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-counter{margin:14px 2px 0;font-size:12px;color:var(--muted);font-weight:700}
 .shot-counter a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
 .shot-queue-section{margin-top:16px}
+.shot-saved-section{margin-top:26px}
 .shot-queue-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 10px}
 .shot-queue-head h2{font-size:22px;font-weight:600;margin:0;letter-spacing:-.02em}
 .shot-ocr-line{display:flex;align-items:center;gap:7px;margin:0 2px 12px;font-size:11px;font-weight:700;color:var(--muted)}

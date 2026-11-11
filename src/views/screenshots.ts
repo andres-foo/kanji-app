@@ -1,7 +1,7 @@
 import { enc, esc, html } from "../html";
 import { requestContext } from "../prefs";
 import { layout } from "./layout";
-import { getScreenshot, listAllQueue, listForKanji, shotThumbUrl, shotUrl, type Screenshot } from "../screenshots";
+import { getScreenshot, listAllQueue, listForKanji, listSaved, shotThumbUrl, shotUrl, type Screenshot } from "../screenshots";
 
 export const shotViewerUrl = (id: number, back?: string) =>
   `/shot/${id}/view${back ? `?back=${enc(back)}` : ""}`;
@@ -84,6 +84,16 @@ const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
   </div>
 </article>`;
 
+// Saved screenshots are browsed in the editor, not as raw images, so the
+// thumbnail links to the screenshot page and the Back link returns here.
+const savedCard = (row: Screenshot, back: string) => `<article class="shot-gallery-card">
+  <a class="shot-gallery-thumb" href="${shotViewerUrl(row.id, back)}" title="Edit screenshot #${row.id}"><img src="${shotThumbUrl(row.id, row.hash)}" alt="Screenshot #${row.id}" loading="lazy"></a>
+  <div class="shot-gallery-text">
+    <div class="shot-jp">${esc(row.japanese) || `<span class="sub">No Japanese text</span>`}</div>
+    ${row.english ? `<div class="shot-en">${esc(row.english)}</div>` : ""}
+  </div>
+</article>`;
+
 export function screenshotViewerPage(id: number, back: string) {
   const row = getScreenshot(id);
   if (!row) return null;
@@ -148,6 +158,7 @@ export function screenshotsPage(url: URL) {
 
   const rows = listAllQueue();
   const count = rows.length;
+  const saved = listSaved(1);
   const uploadNotice = (() => {
     const uploaded = Number(url.searchParams.get("uploaded") ?? 0);
     const duplicates = Number(url.searchParams.get("duplicates") ?? 0);
@@ -181,7 +192,23 @@ export function screenshotsPage(url: URL) {
       <div class="card listempty" id="shot-empty"${count ? " hidden" : ""}><h2>No pending screenshots</h2><p class="sub">Upload one above.</p></div>
       <script type="application/json" id="shot-editor-data">${queueData(rows)}</script>
     </section>
+    ${saved.total ? `<section class="shot-saved-section">
+      <div class="shot-queue-head"><h2>Saved</h2><a class="pill ghost sm" href="/screenshot/all">View all ${saved.total}</a></div>
+      <div class="shot-gallery">${saved.rows.map((row) => savedCard(row, "/screenshot")).join("")}</div>
+    </section>` : ""}
     <script src="/js/screenshot-page.js" defer type="module"></script>`;
 
   return html(layout("Screenshots – Kanji", body, { theme, back, active: "screenshots" }));
+}
+
+export function savedScreenshotsPage(url: URL) {
+  const theme = requestContext.getStore()?.theme ?? "light";
+  const back = requestContext.getStore()?.back ?? "/screenshot";
+  const requested = pageOf(url);
+  const result = listSaved(requested);
+  const here = `/screenshot/all${result.page > 1 ? `?page=${result.page}` : ""}`;
+  const body = `<div class="listhead"><div><h1>Saved screenshots</h1><p class="sub">${result.total} screenshot${result.total === 1 ? "" : "s"}</p></div><a class="pill ghost sm" href="/screenshot">Back to screenshots</a></div>
+    ${result.rows.length ? `<div class="shot-gallery">${result.rows.map((row) => savedCard(row, here)).join("")}</div>` : `<div class="card listempty"><h2>Nothing saved yet</h2><p class="sub">Saving a screenshot from the queue puts it here.</p></div>`}
+    ${pager(result.page, result.pages, (n) => `/screenshot/all${n > 1 ? `?page=${n}` : ""}`)}`;
+  return html(layout("Saved screenshots – Kanji", body, { theme, back, active: "screenshots" }));
 }

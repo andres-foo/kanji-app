@@ -85,6 +85,19 @@ export function listForKanji(literal: string, page: number) {
   return { rows, total, pages, page: current };
 }
 
+// Saved screenshots, newest first, for the gallery on the screenshots page and
+// its "all saved" page.
+export function listSaved(page: number) {
+  const total = (shots.query(`SELECT COUNT(*) AS n FROM screenshots WHERE done = 1`).get() as { n: number }).n;
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const current = Math.min(pages, Math.max(1, page));
+  const rows = shots.query(`SELECT * FROM screenshots
+    WHERE done = 1
+    ORDER BY added_at DESC, id DESC LIMIT ? OFFSET ?`)
+    .all(PER_PAGE, (current - 1) * PER_PAGE) as Screenshot[];
+  return { rows, total, pages, page: current };
+}
+
 export function saveScreenshot(id: number, japanese: string, english: string, position = 0) {
   shots.run(`UPDATE screenshots SET japanese = ?, english = ?, position = ?, done = 1 WHERE id = ?`, [japanese, english, position, id]);
   return getScreenshot(id);

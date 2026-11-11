@@ -9,7 +9,7 @@ import { kanjiPage } from "./src/views/kanji";
 import { designKanjiPage } from "./src/views/design";
 import { componentsPage } from "./src/views/components";
 import { componentSearchPage } from "./src/views/component-search";
-import { screenshotsPage } from "./src/views/screenshots";
+import { screenshotsPage, savedScreenshotsPage } from "./src/views/screenshots";
 import { screenshotViewerPage } from "./src/views/screenshots";
 import { groupComponents } from "./src/routes/components";
 import { componentResults, componentSuggestions } from "./src/routes/component-search";
@@ -107,6 +107,7 @@ Bun.serve({
       if (path === "/api/ocr") return req.method === "GET" ? ocrStatusResponse() : new Response("Method not allowed", { status: 405 });
       if (path === "/api/translate") return req.method === "POST" ? translateScreenshotText(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot") return req.method === "GET" ? screenshotsPage(url) : new Response("Method not allowed", { status: 405 });
+      if (path === "/screenshot/all") return req.method === "GET" ? savedScreenshotsPage(url) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot/upload") return req.method === "POST" ? uploadScreenshots(req) : new Response("Method not allowed", { status: 405 });
       const shotAutofill = path.match(/^\/screenshot\/(\d+)\/autofill$/);
       if (shotAutofill) return req.method === "POST" ? autofillScreenshot(req, shotAutofill[1]) : new Response("Method not allowed", { status: 405 });
