@@ -115,6 +115,7 @@ export function screenshotViewerPage(id: number, back: string) {
             <label class="shot-label">Japanese
               <textarea id="shot-edit-jp" rows="5" spellcheck="false">${esc(row.japanese)}</textarea>
             </label>
+            <button class="pill ghost sm" type="button" id="shot-edit-autofill">Autofill</button>
           </div>
           <div class="shot-field">
             <label class="shot-label">English

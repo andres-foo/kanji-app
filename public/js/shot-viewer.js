@@ -11,6 +11,7 @@
   const saveButton = document.getElementById("shot-edit-save");
   const cancelButton = document.getElementById("shot-edit-cancel");
   const translateButton = document.getElementById("shot-edit-translate");
+  const autofillButton = document.getElementById("shot-edit-autofill");
   const jp = document.getElementById("shot-edit-jp");
   const en = document.getElementById("shot-edit-en");
   const position = document.getElementById("shot-edit-position");
@@ -96,6 +97,40 @@
       translateButton.disabled = false;
     }
   });
+
+  autofillButton?.addEventListener("click", async () => {
+    if ((jp?.value.trim() ?? "") && !confirm("Replace the Japanese text with the OCR result?")) return;
+    autofillButton.disabled = true;
+    showError("");
+    try {
+      const response = await fetch(`/screenshot/${id}/autofill`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.ok === false) {
+        showError(result.error === "offline" ? "OCR service is offline." : "Autofill failed.");
+        return;
+      }
+      if (typeof result.text === "string" && result.text) {
+        // The autofill route stores the recognized text as the screenshot's
+        // Japanese, so it becomes the value Cancel falls back to.
+        saved.japanese = result.text;
+        if (jp) jp.value = result.text;
+        if (summary) summary.textContent = result.text;
+        hideSaved();
+        renderOverlay();
+      } else if (typeof result.text === "string") {
+        showError("No text was recognized in the screenshot.");
+      }
+    } catch {
+      showError("Autofill failed.");
+    } finally {
+      autofillButton.disabled = false;
+    }
+  });
+
   [jp, en, position].forEach((control) => control?.addEventListener("input", () => {
     hideSaved();
     renderOverlay();
