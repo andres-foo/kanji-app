@@ -16,6 +16,9 @@ sources/
 *.db-wal
 *.db-shm
 *.db-journal
+data/screenshots.db
+data/screenshots.db-*
+data/screenshots/
 
 # Logs and temporary files
 *.log

@@ -21,7 +21,7 @@ export const layout = (title: string, body: string, { theme, back, lab = false, 
   <a class="brand" href="/">DASHBOARD</a>
   ${lab ? `<span class="labtag">design lab</span>` : ""}
   <div class="navlinks">
-    <a class="${active === "my-list" ? "on" : ""}" href="/my-list">My List</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a><a class="${active === "kanken" ? "on" : ""}" href="/kanken">Kanken</a><a class="${active === "components" ? "on" : ""}" href="/components">Components</a><a class="${active === "history" ? "on" : ""}" href="/history">History</a>
+    <a class="${active === "my-list" ? "on" : ""}" href="/my-list">My List</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a><a class="${active === "kanken" ? "on" : ""}" href="/kanken">Kanken</a><a class="${active === "components" ? "on" : ""}" href="/components">Components</a><a class="${active === "screenshots" ? "on" : ""}" href="/screenshot">Screenshots</a><a class="${active === "history" ? "on" : ""}" href="/history">History</a>
   </div>
   <form class="navsearch" action="/" method="get" role="search" autocomplete="off">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>

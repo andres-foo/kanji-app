@@ -9,6 +9,7 @@ import { kanjiPage } from "./src/views/kanji";
 import { designKanjiPage } from "./src/views/design";
 import { componentsPage } from "./src/views/components";
 import { componentSearchPage } from "./src/views/component-search";
+import { screenshotsPage } from "./src/views/screenshots";
 import { groupComponents } from "./src/routes/components";
 import { componentResults, componentSuggestions } from "./src/routes/component-search";
 import { messagePage } from "./src/views/message";
@@ -20,6 +21,7 @@ import { kanjiPhrases } from "./src/routes/phrases";
 import { setTheme, toggleDetails } from "./src/routes/prefs";
 import { reviewResult } from "./src/routes/review";
 import { saveSettings, resetScores } from "./src/routes/settings";
+import { uploadScreenshots, autofillScreenshot, saveScreenshotRoute, deleteScreenshotRoute, serveScreenshot, ocrStatusResponse } from "./src/routes/screenshots";
 
 // ---------- server ----------
 const STATIC_FILES: Record<string, [string, string]> = {
@@ -32,6 +34,7 @@ const STATIC_FILES: Record<string, [string, string]> = {
   "/js/components.js": ["public/js/components.js", "text/javascript; charset=utf-8"],
   "/js/component-search.js": ["public/js/component-search.js", "text/javascript; charset=utf-8"],
   "/js/component-field.js": ["public/js/component-field.js", "text/javascript; charset=utf-8"],
+  "/js/screenshot-page.js": ["public/js/screenshot-page.js", "text/javascript; charset=utf-8"],
   "/js/phrase-more.js": ["public/js/phrase-more.js", "text/javascript; charset=utf-8"],
 };
 
@@ -98,6 +101,17 @@ Bun.serve({
       if (path === "/") return home(url);
       if (path === "/my-list") return myListPage(url);
       if (path === "/history") return historyPage();
+      if (path === "/api/ocr") return req.method === "GET" ? ocrStatusResponse() : new Response("Method not allowed", { status: 405 });
+      if (path === "/screenshot") return req.method === "GET" ? screenshotsPage(url) : new Response("Method not allowed", { status: 405 });
+      if (path === "/screenshot/upload") return req.method === "POST" ? uploadScreenshots(req) : new Response("Method not allowed", { status: 405 });
+      const shotAutofill = path.match(/^\/screenshot\/(\d+)\/autofill$/);
+      if (shotAutofill) return req.method === "POST" ? autofillScreenshot(req, shotAutofill[1]) : new Response("Method not allowed", { status: 405 });
+      const shotSave = path.match(/^\/screenshot\/(\d+)\/save$/);
+      if (shotSave) return req.method === "POST" ? saveScreenshotRoute(req, shotSave[1]) : new Response("Method not allowed", { status: 405 });
+      const shotDelete = path.match(/^\/screenshot\/(\d+)\/delete$/);
+      if (shotDelete) return req.method === "POST" ? deleteScreenshotRoute(req, shotDelete[1]) : new Response("Method not allowed", { status: 405 });
+      const shotFile = path.match(/^\/shot\/(\d+)$/);
+      if (shotFile) return req.method === "GET" ? serveScreenshot(shotFile[1]) : new Response("Method not allowed", { status: 405 });
       if (path === "/components/search") return componentSearchPage(url);
       if (path === "/components/search/suggest") return componentSuggestions(url);
       if (path === "/components/search/results") return componentResults(url);
