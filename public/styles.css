@@ -932,6 +932,9 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-editor-overlay-en{font-size:11px;line-height:1.4;color:#d6d9de;margin-top:4px;white-space:pre-line;overflow-wrap:anywhere}
 .shot-editor-fields{display:flex;flex-direction:column;gap:10px;min-width:0;overflow-y:auto;padding-right:2px}
 .shot-editor-fields .shot-label textarea{font-size:14px}
+/* The queue's Japanese field is read at a glance while editing; only it gets
+   the larger face, the English field and the viewer editor stay as they are. */
+#shot-editor-jp{font-size:18px;line-height:1.5}
 .shot-editor-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px;justify-content:flex-end}
 .shot-field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .shot-field>.pill{align-self:flex-start}
