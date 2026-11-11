@@ -23,7 +23,7 @@ const pager = (page: number, pages: number, make: (n: number) => string) => {
 const thumb = (row: Screenshot, className = "shot-thumb") =>
   `<a class="${className}" href="${shotUrl(row.id, row.hash)}" target="_blank" rel="noopener noreferrer"><img src="${shotThumbUrl(row.id, row.hash)}" alt="Screenshot #${row.id}" loading="lazy"></a>`;
 
-const queueCard = (row: Screenshot) => `<article class="shot-card" data-id="${row.id}">
+const queueCard = (row: Screenshot) => `<article class="shot-card" data-id="${row.id}" data-hash="${esc(row.hash)}">
   ${thumb(row)}
   <div class="shot-fields">
     <label class="shot-label">Japanese
@@ -44,6 +44,7 @@ const queueCard = (row: Screenshot) => `<article class="shot-card" data-id="${ro
           <option value="1"${row.position === 1 ? " selected" : ""}>At the top</option>
         </select>
       </label>
+      <button class="pill ghost sm" type="button" data-shot-edit>Edit</button>
       <button class="pill ghost sm" type="button" data-shot-autofill>Autofill</button>
       <button class="pill dark sm" type="button" data-shot-save>Save</button>
       <button class="pill ghost rem sm" type="button" data-shot-delete>Delete</button>

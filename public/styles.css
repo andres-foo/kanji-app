@@ -944,6 +944,29 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-carousel-foot{display:flex;align-items:center;justify-content:center;gap:14px}
 .shot-carousel-edit{font-size:10px;font-weight:800;color:var(--muted);text-decoration:underline;text-underline-offset:2px}
 .shot-carousel-edit:hover{color:var(--ink)}
+body.shot-modal-open{overflow:hidden}
+.shot-modal{position:fixed;inset:0;z-index:210;display:grid;place-items:center;padding:22px;background:rgba(10,12,15,.78);backdrop-filter:blur(4px)}
+.shot-modal-card{display:flex;flex-direction:column;width:min(1400px,100%);max-height:calc(100vh - 44px);padding:16px;border-radius:18px;background:var(--card);box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.shot-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.shot-modal-head h2{font-size:22px;font-weight:600;letter-spacing:-.02em;margin:0}
+.shot-modal-head .sub{display:block;margin-top:2px;font-size:11px}
+.shot-modal-close{width:30px;height:30px;border:0;border-radius:50%;background:var(--dark);color:var(--card);font-size:20px;line-height:1;cursor:pointer;flex:none}
+.shot-modal-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:16px;min-height:0;overflow:hidden}
+.shot-modal-preview{display:flex;align-items:center;justify-content:center;min-height:240px;max-height:calc(100vh - 180px);overflow:hidden;border-radius:12px;background:#0b0d10}
+.shot-modal-preview img{display:block;max-width:100%;max-height:calc(100vh - 180px);width:auto;height:auto;object-fit:contain}
+.shot-modal-fields{display:flex;flex-direction:column;gap:9px;min-width:0;overflow-y:auto;padding-right:2px}
+.shot-modal-fields .shot-label textarea{font-size:14px}
+.shot-modal-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.shot-modal-nav{display:flex;justify-content:space-between;gap:10px;margin-top:12px}
+[data-theme="dark"] .shot-modal-card{background:#1e1f22}
+@media(max-width:800px){
+  .shot-modal{padding:8px}
+  .shot-modal-card{max-height:calc(100vh - 16px);padding:10px}
+  .shot-modal-body{grid-template-columns:1fr;overflow-y:auto}
+  .shot-modal-preview{min-height:180px;max-height:42vh}
+  .shot-modal-preview img{max-height:42vh}
+  .shot-modal-fields{overflow:visible}
+}
 .shot-viewer-frame img{display:block;max-width:100%;height:auto}
 .shot-viewer-overlay{position:absolute;left:0;right:0;padding:16px 20px;background:rgba(10,12,15,.76);color:#fff;backdrop-filter:blur(3px);text-align:center}
 .shot-viewer-overlay.top{top:0}

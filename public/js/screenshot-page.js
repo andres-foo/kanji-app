@@ -171,6 +171,188 @@
     }
   };
 
+  // Large split editor for comparing the image and its transcription.
+  let editModal = null;
+  let editCards = [];
+  let editIndex = -1;
+  let editCard = null;
+  let editInitial = null;
+
+  const modalValues = () => ({
+    japanese: $("#shot-modal-jp")?.value ?? "",
+    english: $("#shot-modal-en")?.value ?? "",
+    position: Number($("#shot-modal-position")?.value) === 1 ? 1 : 0,
+  });
+
+  const modalDirty = () => {
+    if (!editInitial) return false;
+    const now = modalValues();
+    return now.japanese !== editInitial.japanese ||
+      now.english !== editInitial.english ||
+      now.position !== editInitial.position;
+  };
+
+  const modalError = (message) => {
+    const box = $("#shot-modal-error");
+    if (!box) return;
+    box.textContent = message;
+    box.hidden = !message;
+  };
+
+  const loadModal = (card, index) => {
+    editCard = card;
+    editIndex = index;
+    editInitial = {
+      japanese: jp(card)?.value ?? "",
+      english: en(card)?.value ?? "",
+      position: Number($(".shot-position-select", card)?.value) === 1 ? 1 : 0,
+    };
+    $("#shot-modal-jp").value = editInitial.japanese;
+    $("#shot-modal-en").value = editInitial.english;
+    $("#shot-modal-position").value = String(editInitial.position);
+    const image = $("#shot-modal-image");
+    image.src = `/shot/${card.dataset.id}?v=${encodeURIComponent(card.dataset.hash || "")}`;
+    image.alt = `Screenshot ${index + 1}`;
+    $("#shot-modal-count").textContent = `${index + 1} / ${editCards.length}`;
+    modalError("");
+  };
+
+  const buildModal = () => {
+    const root = document.createElement("div");
+    root.className = "shot-modal";
+    root.innerHTML = `<div class="shot-modal-card" role="dialog" aria-modal="true" aria-label="Edit screenshot">
+      <div class="shot-modal-head"><div><h2>Edit screenshot</h2><span class="sub" id="shot-modal-count"></span></div><button type="button" class="shot-modal-close" aria-label="Close">×</button></div>
+      <div class="shot-modal-body">
+        <div class="shot-modal-preview"><img id="shot-modal-image" alt=""></div>
+        <div class="shot-modal-fields">
+          <label class="shot-label">Japanese<textarea id="shot-modal-jp" rows="5" spellcheck="false"></textarea></label>
+          <label class="shot-label">English<textarea id="shot-modal-en" rows="3" spellcheck="false"></textarea></label>
+          <label class="shot-position">Show text<select id="shot-modal-position" class="shot-position-select"><option value="0">At the bottom</option><option value="1">At the top</option></select></label>
+          <div class="shot-error" id="shot-modal-error" role="alert" hidden></div>
+          <div class="shot-modal-actions">
+            <button class="pill ghost sm" type="button" id="shot-modal-autofill"${ocrState === "ready" ? "" : " disabled"}>Autofill</button>
+            <button class="pill dark sm" type="button" id="shot-modal-save">Save</button>
+            <button class="pill ghost rem sm" type="button" id="shot-modal-delete">Delete</button>
+          </div>
+        </div>
+      </div>
+      <div class="shot-modal-nav"><button class="pill ghost sm" type="button" id="shot-modal-prev">← Previous</button><button class="pill ghost sm" type="button" id="shot-modal-next">Next →</button></div>
+    </div>`;
+    root.addEventListener("click", (event) => { if (event.target === root) closeModal(); });
+    root.querySelector(".shot-modal-close").addEventListener("click", () => closeModal());
+    root.querySelector("#shot-modal-prev").addEventListener("click", () => moveModal(-1));
+    root.querySelector("#shot-modal-next").addEventListener("click", () => moveModal(1));
+    root.querySelector("#shot-modal-autofill").addEventListener("click", autofillModal);
+    root.querySelector("#shot-modal-save").addEventListener("click", saveModal);
+    root.querySelector("#shot-modal-delete").addEventListener("click", deleteModal);
+    document.addEventListener("keydown", modalKey);
+    document.body.append(root);
+    document.body.classList.add("shot-modal-open");
+    return root;
+  };
+
+  const openModal = (card) => {
+    editCards = cards();
+    const index = editCards.indexOf(card);
+    if (index < 0) return;
+    editModal = buildModal();
+    loadModal(card, index);
+    $("#shot-modal-jp")?.focus();
+  };
+
+  const closeModal = (force = false) => {
+    if (!editModal) return;
+    if (!force && modalDirty() && !confirm("Discard unsaved changes?")) return;
+    document.removeEventListener("keydown", modalKey);
+    editModal.remove();
+    document.body.classList.remove("shot-modal-open");
+    editModal = null;
+    editCard = null;
+    editInitial = null;
+  };
+
+  const moveModal = (delta) => {
+    if (!editModal || !editCards.length) return;
+    if (modalDirty() && !confirm("Discard unsaved changes?")) return;
+    editIndex = (editIndex + delta + editCards.length) % editCards.length;
+    loadModal(editCards[editIndex], editIndex);
+  };
+
+  function modalKey(event) {
+    if (event.key === "Escape") { event.preventDefault(); closeModal(); }
+  }
+
+  async function autofillModal() {
+    if (!editCard) return;
+    const field = $("#shot-modal-jp");
+    if (!field) return;
+    let force = !field.value.trim();
+    if (field.value.trim() && !confirm("Replace the Japanese text with the OCR result?")) return;
+    force = true;
+    $("#shot-modal-autofill").disabled = true;
+    modalError("");
+    try {
+      const result = await postJson(`/screenshot/${editCard.dataset.id}/autofill`, { force });
+      if (!result.ok) {
+        if (result.data.error === "offline") setStatus("offline");
+        modalError(result.data.error === "offline" ? "OCR service is offline." : "Autofill failed.");
+        return;
+      }
+      if (typeof result.data.text === "string" && !result.data.skipped) field.value = result.data.text;
+    } catch {
+      modalError("Autofill failed.");
+    } finally {
+      $("#shot-modal-autofill").disabled = ocrState !== "ready";
+    }
+  }
+
+  async function saveModal() {
+    if (!editCard) return;
+    const values = modalValues();
+    if (!values.japanese.trim()) { modalError("Japanese is required."); return; }
+    $("#shot-modal-save").disabled = true;
+    modalError("");
+    try {
+      const result = await postJson(`/screenshot/${editCard.dataset.id}/save`, {
+        japanese: values.japanese.trim(),
+        english: values.english.trim(),
+        position: values.position,
+      });
+      if (!result.ok) {
+        modalError(result.data.error === "japanese required" ? "Japanese is required." : "Save failed.");
+        return;
+      }
+      if (jp(editCard)) jp(editCard).value = values.japanese.trim();
+      if (en(editCard)) en(editCard).value = values.english.trim();
+      const select = $(".shot-position-select", editCard);
+      if (select) select.value = String(values.position);
+      const card = editCard;
+      closeModal(true);
+      removeCard(card);
+    } catch {
+      modalError("Save failed.");
+    } finally {
+      if ($("#shot-modal-save")) $("#shot-modal-save").disabled = false;
+    }
+  }
+
+  async function deleteModal() {
+    if (!editCard || !confirm("Delete this screenshot?")) return;
+    $("#shot-modal-delete").disabled = true;
+    modalError("");
+    try {
+      const result = await postJson(`/screenshot/${editCard.dataset.id}/delete`);
+      if (!result.ok) { modalError("Delete failed."); return; }
+      const card = editCard;
+      closeModal(true);
+      removeCard(card);
+    } catch {
+      modalError("Delete failed.");
+    } finally {
+      if ($("#shot-modal-delete")) $("#shot-modal-delete").disabled = false;
+    }
+  }
+
   queue.addEventListener("input", (event) => {
     if (!event.target.matches(".shot-jp, .shot-en")) return;
     const card = event.target.closest(".shot-card");
@@ -181,7 +363,8 @@
   queue.addEventListener("click", (event) => {
     const card = event.target.closest(".shot-card");
     if (!card) return;
-    if (event.target.closest("[data-shot-autofill]")) void autofillCard(card);
+    if (event.target.closest("[data-shot-edit]")) openModal(card);
+    else if (event.target.closest("[data-shot-autofill]")) void autofillCard(card);
     else if (event.target.closest("[data-shot-save]")) void saveCard(card);
     else if (event.target.closest("[data-shot-delete]")) void deleteCard(card);
   });
