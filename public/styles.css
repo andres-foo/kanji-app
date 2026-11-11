@@ -930,9 +930,11 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-editor-overlay.bottom{bottom:0}
 .shot-editor-overlay-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:clamp(12px,1.6vw,20px);line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
 .shot-editor-overlay-en{font-size:11px;line-height:1.4;color:#d6d9de;margin-top:4px;white-space:pre-line;overflow-wrap:anywhere}
-.shot-editor-fields{display:flex;flex-direction:column;gap:9px;min-width:0;overflow-y:auto;padding-right:2px}
+.shot-editor-fields{display:flex;flex-direction:column;gap:10px;min-width:0;overflow-y:auto;padding-right:2px}
 .shot-editor-fields .shot-label textarea{font-size:14px}
-.shot-editor-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.shot-editor-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px;justify-content:flex-end}
+.shot-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.shot-field>.pill{align-self:flex-start}
 .shot-label{display:flex;flex-direction:column;gap:4px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}
 .shot-label textarea{width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--line);border-radius:10px;background:var(--soft);padding:8px 10px;font:inherit;font-size:13px;line-height:1.4;color:var(--ink);outline:none}
 .shot-label textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(95,216,231,.18)}
@@ -948,9 +950,9 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-toast[hidden]{display:none}
 [data-theme="dark"] .shot-toast{background:#102a1e;color:#86efac;border-color:#14532d}
 .shot-edit-card{padding:16px;border-radius:18px}
-.shot-edit-fields{display:grid;grid-template-columns:1fr;gap:9px;margin-top:12px}
+.shot-edit-fields{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
 .shot-edit-fields .shot-position{justify-self:start}
-.shot-edit-actions{display:flex;gap:7px;margin-top:12px}
+.shot-edit-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:12px}
 .shot-edit-actions .pill{font-size:11px}
 .shot-carousel-foot{display:flex;align-items:center;justify-content:center;gap:14px}
 .shot-carousel-edit{font-size:10px;font-weight:800;color:var(--muted);text-decoration:underline;text-underline-offset:2px}

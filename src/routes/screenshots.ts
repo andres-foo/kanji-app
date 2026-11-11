@@ -1,5 +1,6 @@
 import { sniffImage, MAX_IMAGE_BYTES } from "../images";
 import { sameOrigin } from "../prefs";
+import { translateToEnglish } from "../translate";
 import {
   addScreenshot,
   deleteScreenshot,
@@ -132,4 +133,17 @@ export async function serveScreenshotThumb(rawId: string | undefined) {
 
 export async function ocrStatusResponse() {
   return json(await ocrStatus());
+}
+
+// Japanese → English for the screenshot editors. The text is the only thing
+// sent to Google; images and database rows stay local.
+export async function translateScreenshotText(req: Request) {
+  if (!sameOrigin(req)) return json({ ok: false, error: "forbidden" }, 403);
+  let body: { text?: unknown };
+  try { body = await req.json() as typeof body; } catch { return json({ ok: false, error: "invalid json" }, 400); }
+  const text = String(body.text ?? "").trim();
+  if (!text) return json({ ok: false, error: "empty" }, 400);
+  const result = await translateToEnglish(text.slice(0, 4000));
+  if (!result.ok) return json({ ok: false, error: result.error }, 502);
+  return json({ ok: true, text: result.text });
 }

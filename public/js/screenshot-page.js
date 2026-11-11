@@ -21,6 +21,7 @@
   const countLabel = $("#shot-editor-count");
   const errorBox = $("#shot-editor-error");
   const autofillButton = $("#shot-editor-autofill");
+  const translateButton = $("#shot-editor-translate");
   const saveButton = $("#shot-editor-save");
   const deleteButton = $("#shot-editor-delete");
   const prevButton = $("#shot-editor-prev");
@@ -94,6 +95,7 @@
     nextButton.disabled = !canMove;
     saveButton.disabled = busy || !hasItem;
     deleteButton.disabled = busy || !hasItem;
+    translateButton.disabled = busy || !hasItem;
     autofillButton.disabled = busy || !hasItem || ocrState !== "ready";
   };
 
@@ -156,6 +158,31 @@
     let data = {};
     try { data = await response.json(); } catch { /* keep the status code */ }
     return { ok: response.ok && data.ok !== false, data };
+  };
+
+  const translate = async () => {
+    const item = items[index];
+    if (!item) return;
+    const text = jp.value.trim();
+    if (!text) { showError("Add Japanese text first."); return; }
+    if (en.value.trim() && !confirm("Replace the English text with the translation?")) return;
+    setBusy(true);
+    showError("");
+    try {
+      const result = await postJson("/api/translate", { text });
+      if (!result.ok || typeof result.data.text !== "string") {
+        showError("Translation failed. Check that this machine can reach Google.");
+        return;
+      }
+      // Leave item.english untouched so an unsaved translation still counts
+      // as a change when navigating away.
+      en.value = result.data.text;
+      syncOverlay();
+    } catch {
+      showError("Translation failed. Check that this machine can reach Google.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const autofill = async () => {
@@ -254,6 +281,7 @@
   saveButton.addEventListener("click", () => void save());
   deleteButton.addEventListener("click", () => void remove());
   autofillButton.addEventListener("click", () => void autofill());
+  translateButton.addEventListener("click", () => void translate());
   prevButton.addEventListener("click", () => move(-1));
   nextButton.addEventListener("click", () => move(1));
   jp.addEventListener("input", syncOverlay);

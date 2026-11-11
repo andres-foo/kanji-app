@@ -40,12 +40,18 @@ const queueEditor = (row: Screenshot | undefined, total: number) => `<div class=
       </div>
     </div>
     <div class="shot-editor-fields">
-      <label class="shot-label">Japanese
-        <textarea id="shot-editor-jp" rows="5" spellcheck="false" placeholder="Japanese text">${row ? esc(row.japanese) : ""}</textarea>
-      </label>
-      <label class="shot-label">English
-        <textarea id="shot-editor-en" rows="3" spellcheck="false" placeholder="English (optional)">${row ? esc(row.english) : ""}</textarea>
-      </label>
+      <div class="shot-field">
+        <label class="shot-label">Japanese
+          <textarea id="shot-editor-jp" rows="5" spellcheck="false" placeholder="Japanese text">${row ? esc(row.japanese) : ""}</textarea>
+        </label>
+        <button class="pill ghost sm" type="button" id="shot-editor-autofill" disabled>Autofill</button>
+      </div>
+      <div class="shot-field">
+        <label class="shot-label">English
+          <textarea id="shot-editor-en" rows="3" spellcheck="false" placeholder="English (optional)">${row ? esc(row.english) : ""}</textarea>
+        </label>
+        <button class="pill ghost sm" type="button" id="shot-editor-translate"${row ? "" : " disabled"}>Translate</button>
+      </div>
       <label class="shot-position">Show text
         <select id="shot-editor-position" class="shot-position-select" aria-label="Text position">
           <option value="0"${row?.position === 1 ? "" : " selected"}>At the bottom</option>
@@ -54,7 +60,6 @@ const queueEditor = (row: Screenshot | undefined, total: number) => `<div class=
       </label>
       <div class="shot-error" id="shot-editor-error" role="alert" hidden></div>
       <div class="shot-editor-actions">
-        <button class="pill ghost sm" type="button" id="shot-editor-autofill" disabled>Autofill</button>
         <button class="pill dark sm" type="button" id="shot-editor-save"${row ? "" : " disabled"}>Save</button>
         <button class="pill ghost rem sm" type="button" id="shot-editor-delete"${row ? "" : " disabled"}>Delete</button>
       </div>
@@ -96,12 +101,17 @@ export function screenshotViewerPage(id: number, back: string) {
       <form class="card shot-edit-card" id="shot-edit-form">
         <div class="cardhead"><h2 class="h3">Edit screenshot</h2></div>
         <div class="shot-edit-fields">
-          <label class="shot-label">Japanese
-            <textarea id="shot-edit-jp" rows="5" spellcheck="false">${esc(row.japanese)}</textarea>
-          </label>
-          <label class="shot-label">English
-            <textarea id="shot-edit-en" rows="3" spellcheck="false">${esc(row.english)}</textarea>
-          </label>
+          <div class="shot-field">
+            <label class="shot-label">Japanese
+              <textarea id="shot-edit-jp" rows="5" spellcheck="false">${esc(row.japanese)}</textarea>
+            </label>
+          </div>
+          <div class="shot-field">
+            <label class="shot-label">English
+              <textarea id="shot-edit-en" rows="3" spellcheck="false">${esc(row.english)}</textarea>
+            </label>
+            <button class="pill ghost sm" type="button" id="shot-edit-translate">Translate</button>
+          </div>
           <label class="shot-position">Show text
             <select class="shot-position-select" id="shot-edit-position">
               <option value="0"${row.position === 1 ? "" : " selected"}>At the bottom</option>

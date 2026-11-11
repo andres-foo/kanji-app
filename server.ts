@@ -22,7 +22,7 @@ import { kanjiPhrases } from "./src/routes/phrases";
 import { setTheme, toggleDetails } from "./src/routes/prefs";
 import { reviewResult } from "./src/routes/review";
 import { saveSettings, resetScores } from "./src/routes/settings";
-import { uploadScreenshots, autofillScreenshot, saveScreenshotRoute, deleteScreenshotRoute, serveScreenshot, serveScreenshotThumb, ocrStatusResponse } from "./src/routes/screenshots";
+import { uploadScreenshots, autofillScreenshot, saveScreenshotRoute, deleteScreenshotRoute, serveScreenshot, serveScreenshotThumb, ocrStatusResponse, translateScreenshotText } from "./src/routes/screenshots";
 
 // ---------- server ----------
 const STATIC_FILES: Record<string, [string, string]> = {
@@ -105,6 +105,7 @@ Bun.serve({
       if (path === "/my-list") return myListPage(url);
       if (path === "/history") return historyPage();
       if (path === "/api/ocr") return req.method === "GET" ? ocrStatusResponse() : new Response("Method not allowed", { status: 405 });
+      if (path === "/api/translate") return req.method === "POST" ? translateScreenshotText(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot") return req.method === "GET" ? screenshotsPage(url) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot/upload") return req.method === "POST" ? uploadScreenshots(req) : new Response("Method not allowed", { status: 405 });
       const shotAutofill = path.match(/^\/screenshot\/(\d+)\/autofill$/);

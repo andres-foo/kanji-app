@@ -10,6 +10,7 @@
   const deleteButton = document.getElementById("shot-viewer-delete");
   const saveButton = document.getElementById("shot-edit-save");
   const cancelButton = document.getElementById("shot-edit-cancel");
+  const translateButton = document.getElementById("shot-edit-translate");
   const jp = document.getElementById("shot-edit-jp");
   const en = document.getElementById("shot-edit-en");
   const position = document.getElementById("shot-edit-position");
@@ -68,6 +69,32 @@
   cancelButton?.addEventListener("click", () => {
     applySaved();
     hideSaved();
+  });
+
+  translateButton?.addEventListener("click", async () => {
+    const text = jp?.value.trim() ?? "";
+    if (!text) { showError("Add Japanese text first."); return; }
+    if ((en?.value.trim() ?? "") && !confirm("Replace the English text with the translation?")) return;
+    translateButton.disabled = true;
+    showError("");
+    try {
+      const response = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.ok === false || typeof result.text !== "string") {
+        showError("Translation failed. Check that this machine can reach Google.");
+        return;
+      }
+      if (en) en.value = result.text;
+      renderOverlay();
+    } catch {
+      showError("Translation failed. Check that this machine can reach Google.");
+    } finally {
+      translateButton.disabled = false;
+    }
   });
   [jp, en, position].forEach((control) => control?.addEventListener("input", () => {
     hideSaved();
