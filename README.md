@@ -29,6 +29,8 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 **Review and measure.** A simple spaced-repetition system moves each kanji's score and uses it to pick the next interval; the queue is split into new, due today and overdue. Answer with the buttons, the keyboard (`Space` to reveal, `A S D F` to answer) or a controller (`A` to reveal, `LT LB RB RT` to answer), and watch the dashboard stats for the list size, the due queue, the level trend and the answer mix.
 
+**Screenshots.** Upload screenshots of Japanese text; each one appears on the page of every kanji it contains, with the Japanese and optional English text available as an overlay or carousel. Autofill can use the optional [KanjiApp OCR](https://github.com/andres-foo/kanji-app-ocr) companion service: a standalone local PaddleOCR backend that accepts raw JPEG bytes and returns recognized Japanese lines with confidence scores and bounding boxes. It has no UI, translation, database or image storage, and the app works without it.
+
 **Make it yours.** Light and dark themes, editable review deltas and mastery-level names, and a reset that returns every added kanji to the starting score.
 
 ### Search tips
@@ -62,6 +64,9 @@ The next form is previewed below the search field. Pressing **Tab** again keeps 
 - `DB_PATH` (default `./data/user.db`): the SQLite user database. It holds the study list, stories, scores, history, settings and word additions.
 - `REFERENCE_DB_PATH` (default `./data/reference.db`): the read-only core reference database. It holds the kanji dictionary data and the word tables. The app does not write to it.
 - `PHRASE_DB_PATH` (default `./data/phrases.db`): the read-only example phrase database. It holds the Tatoeba phrases and furigana. The app does not write to it.
+- `SCREENSHOTS_DB_PATH` (default `./data/screenshots.db`): the separate screenshot library database.
+- `SCREENSHOTS_DIR` (default `./data/screenshots`): full screenshots and their `thumbs/` thumbnails.
+- `OCR_URL` (default `http://127.0.0.1:8765`): optional KanjiApp OCR service; the app remains usable when it is offline.
 - `IMAGES_DIR` (default `./data/images`): one image per kanji, named after the character (`水.jpg` or `水.png`). Square images look best; they are picked up on the next page load.
 - No dependencies: `bun:sqlite` is built in.
 
@@ -74,7 +79,7 @@ The next form is previewed below the search field. Pressing **Tab** again keeps 
 | `src/views/` | the HTML for each page: layout, home/dashboard, lists, kanji, review, settings and charts |
 | `src/routes/` | the POST handlers: kanji edit/toggle, images, theme/details, review answers, settings |
 | `public/` | the stylesheet, browser scripts and the Jigmo fonts |
-| `data/` | `user.db`, `reference.db`, `phrases.db` and the kanji pictures |
+| `data/` | `user.db`, `reference.db`, `phrases.db`, `screenshots.db`, kanji pictures and screenshots |
 | `docs/` | screenshots used in this README |
 
 Assumptions the app makes:
