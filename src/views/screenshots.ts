@@ -1,7 +1,7 @@
 import { enc, esc, html } from "../html";
 import { requestContext } from "../prefs";
 import { layout } from "./layout";
-import { getScreenshot, listForKanji, listQueue, shotThumbUrl, shotUrl, unfinishedCount, type Screenshot } from "../screenshots";
+import { getScreenshot, listAllQueue, listForKanji, shotThumbUrl, shotUrl, type Screenshot } from "../screenshots";
 
 export const shotViewerUrl = (id: number, back?: string) =>
   `/shot/${id}/view${back ? `?back=${enc(back)}` : ""}`;
@@ -20,38 +20,49 @@ const pager = (page: number, pages: number, make: (n: number) => string) => {
   </div>`;
 };
 
-const thumb = (row: Screenshot, className = "shot-thumb") =>
+const thumb = (row: Screenshot, className: string) =>
   `<a class="${className}" href="${shotUrl(row.id, row.hash)}" target="_blank" rel="noopener noreferrer"><img src="${shotThumbUrl(row.id, row.hash)}" alt="Screenshot #${row.id}" loading="lazy"></a>`;
 
-const queueCard = (row: Screenshot) => `<article class="shot-card" data-id="${row.id}" data-hash="${esc(row.hash)}">
-  ${thumb(row)}
-  <div class="shot-fields">
-    <label class="shot-label">Japanese
-      <textarea class="shot-jp" rows="3" spellcheck="false" placeholder="Japanese text">${esc(row.japanese)}</textarea>
-    </label>
-    <label class="shot-label">English
-      <textarea class="shot-en" rows="2" spellcheck="false" placeholder="English (optional)">${esc(row.english)}</textarea>
-    </label>
-    <div class="shot-badges">
-      <span class="badge shot-no-jp"${row.japanese ? " hidden" : ""}>no text</span>
-      <span class="badge shot-no-en"${row.english ? " hidden" : ""}>no english</span>
-      <span class="badge shot-done">saved</span>
+const queueEditor = (row: Screenshot | undefined, total: number) => `<div class="shot-editor" id="shot-editor"${row ? "" : " hidden"}>
+  <div class="shot-editor-head">
+    <div><h2 class="h3">Edit screenshot</h2><span class="sub" id="shot-editor-count" aria-live="polite">${row ? `1 / ${total}` : ""}</span></div>
+    <div class="shot-editor-nav">
+      <button class="pill ghost sm" type="button" id="shot-editor-prev"${row && total > 1 ? "" : " disabled"}>← Previous</button>
+      <button class="pill ghost sm" type="button" id="shot-editor-next"${row && total > 1 ? "" : " disabled"}>Next →</button>
     </div>
-    <div class="shot-actions">
+  </div>
+  <div class="shot-editor-body">
+    <div class="shot-editor-preview"><img id="shot-editor-image" src="${row ? shotUrl(row.id, row.hash) : ""}" alt="${row ? `Screenshot #${row.id}` : ""}"></div>
+    <div class="shot-editor-fields">
+      <label class="shot-label">Japanese
+        <textarea id="shot-editor-jp" rows="5" spellcheck="false" placeholder="Japanese text">${row ? esc(row.japanese) : ""}</textarea>
+      </label>
+      <label class="shot-label">English
+        <textarea id="shot-editor-en" rows="3" spellcheck="false" placeholder="English (optional)">${row ? esc(row.english) : ""}</textarea>
+      </label>
       <label class="shot-position">Show text
-        <select class="shot-position-select" aria-label="Text position">
-          <option value="0"${row.position === 1 ? "" : " selected"}>At the bottom</option>
-          <option value="1"${row.position === 1 ? " selected" : ""}>At the top</option>
+        <select id="shot-editor-position" class="shot-position-select" aria-label="Text position">
+          <option value="0"${row?.position === 1 ? "" : " selected"}>At the bottom</option>
+          <option value="1"${row?.position === 1 ? " selected" : ""}>At the top</option>
         </select>
       </label>
-      <button class="pill ghost sm" type="button" data-shot-edit>Edit</button>
-      <button class="pill ghost sm" type="button" data-shot-autofill>Autofill</button>
-      <button class="pill dark sm" type="button" data-shot-save>Save</button>
-      <button class="pill ghost rem sm" type="button" data-shot-delete>Delete</button>
+      <div class="shot-error" id="shot-editor-error" role="alert" hidden></div>
+      <div class="shot-editor-actions">
+        <button class="pill ghost sm" type="button" id="shot-editor-autofill" disabled>Autofill</button>
+        <button class="pill dark sm" type="button" id="shot-editor-save"${row ? "" : " disabled"}>Save</button>
+        <button class="pill ghost rem sm" type="button" id="shot-editor-delete"${row ? "" : " disabled"}>Delete</button>
+      </div>
     </div>
-    <div class="shot-error" role="alert" hidden></div>
   </div>
-</article>`;
+</div>`;
+
+const queueData = (rows: Screenshot[]) => JSON.stringify(rows.map((row) => ({
+  id: row.id,
+  hash: row.hash,
+  japanese: row.japanese,
+  english: row.english,
+  position: row.position,
+}))).replace(/</g, "\\u003c");
 
 const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
   ${thumb(row, "shot-gallery-thumb")}
@@ -116,8 +127,8 @@ export function screenshotsPage(url: URL) {
     return html(layout(`Screenshots containing ${kanji} – Kanji`, body, { theme, back, active: "screenshots" }));
   }
 
-  const result = listQueue(requested);
-  const count = unfinishedCount();
+  const rows = listAllQueue();
+  const count = rows.length;
   const uploadNotice = (() => {
     const uploaded = Number(url.searchParams.get("uploaded") ?? 0);
     const duplicates = Number(url.searchParams.get("duplicates") ?? 0);
@@ -142,19 +153,16 @@ export function screenshotsPage(url: URL) {
     </section>
     ${count ? `<p class="shot-counter" id="shot-counter" data-count="${count}"><a href="#queue"><span id="shot-counter-n">${count}</span> screenshot${count === 1 ? "" : "s"} unfinished</a></p>` : ""}
     <section id="queue" class="shot-queue-section">
-      <div class="shot-queue-head"><h2>Queue</h2><div class="shot-queue-actions"><button class="pill ghost sm" id="autofill-empty" type="button" disabled>Autofill 0 empty</button><button class="pill dark sm" id="save-all" type="button">Save all</button></div></div>
+      <div class="shot-queue-head"><h2>Queue</h2></div>
       <div class="shot-ocr-line" id="shot-ocr-line">
         <span class="shot-ocr-dot checking"></span><span id="shot-ocr-text">Checking OCR…</span>
         <button class="pill ghost sm" id="shot-ocr-recheck" type="button">Recheck</button>
       </div>
-      <div class="shot-queue" id="shot-queue">
-        ${result.rows.length ? result.rows.map(queueCard).join("") : `<div class="card listempty"><h2>No pending screenshots</h2><p class="sub">Upload one above.</p></div>`}
-      </div>
-      ${pager(result.page, result.pages, (n) => `/screenshot?page=${n}`)}
+      ${queueEditor(rows[0], count)}
+      <div class="card listempty" id="shot-empty"${count ? " hidden" : ""}><h2>No pending screenshots</h2><p class="sub">Upload one above.</p></div>
+      <script type="application/json" id="shot-editor-data">${queueData(rows)}</script>
     </section>
     <script src="/js/screenshot-page.js" defer type="module"></script>`;
 
-  // Empty state sits outside the queue container so actions can remove cards
-  // without removing the empty-state message.
   return html(layout("Screenshots – Kanji", body, { theme, back, active: "screenshots" }));
 }

@@ -57,17 +57,10 @@ export async function addScreenshot(bytes: Uint8Array, thumbBytes?: Uint8Array) 
   }
 }
 
-export const unfinishedCount = () =>
-  (shots.query(`SELECT COUNT(*) AS n FROM screenshots WHERE done = 0`).get() as { n: number }).n;
-
-export function listQueue(page: number) {
-  const total = unfinishedCount();
-  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
-  const current = Math.min(pages, Math.max(1, page));
-  const rows = shots.query(`SELECT * FROM screenshots WHERE done = 0 ORDER BY id DESC LIMIT ? OFFSET ?`)
-    .all(PER_PAGE, (current - 1) * PER_PAGE) as Screenshot[];
-  return { rows, total, pages, page: current };
-}
+// The queue edits one screenshot at a time, so every pending row is loaded;
+// previous/next wraps around the whole pending set rather than one page.
+export const listAllQueue = () =>
+  shots.query(`SELECT * FROM screenshots WHERE done = 0 ORDER BY id DESC`).all() as Screenshot[];
 
 export const kanjiScreenshotCount = (literal: string) =>
   (shots.query(`SELECT COUNT(*) AS n FROM screenshots WHERE done = 1 AND japanese LIKE ? ESCAPE '\\'`)

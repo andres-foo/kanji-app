@@ -1,56 +1,204 @@
 (() => {
-  const queue = document.getElementById("shot-queue");
-  if (!queue) return;
+  const editor = document.getElementById("shot-editor");
+  const dataNode = document.getElementById("shot-editor-data");
+  const emptyCard = document.getElementById("shot-empty");
+  if (!editor || !dataNode || !emptyCard) return;
 
   const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const statusDot = $("#shot-ocr-line .shot-ocr-dot");
   const statusText = $("#shot-ocr-text");
   const recheck = $("#shot-ocr-recheck");
-  const autofillEmpty = $("#autofill-empty");
-  const saveAll = $("#save-all");
   const counter = $("#shot-counter");
   const counterN = $("#shot-counter-n");
+  const jp = $("#shot-editor-jp");
+  const en = $("#shot-editor-en");
+  const position = $("#shot-editor-position");
+  const image = $("#shot-editor-image");
+  const countLabel = $("#shot-editor-count");
+  const errorBox = $("#shot-editor-error");
+  const autofillButton = $("#shot-editor-autofill");
+  const saveButton = $("#shot-editor-save");
+  const deleteButton = $("#shot-editor-delete");
+  const prevButton = $("#shot-editor-prev");
+  const nextButton = $("#shot-editor-next");
+
+  let items = [];
+  try {
+    const parsed = JSON.parse(dataNode.textContent || "[]");
+    if (Array.isArray(parsed)) items = parsed;
+  } catch { /* keep the empty queue */ }
+  let index = 0;
   let ocrState = "checking";
+  let busy = false;
 
-  const cards = () => $$(".shot-card", queue);
-  const jp = (card) => $(".shot-jp", card);
-  const en = (card) => $(".shot-en", card);
+  const values = () => ({
+    japanese: jp.value,
+    english: en.value,
+    position: Number(position.value) === 1 ? 1 : 0,
+  });
 
-  const showError = (card, message) => {
-    const box = $(".shot-error", card);
-    if (!box) return;
-    box.textContent = message;
-    box.hidden = !message;
+  const dirty = () => {
+    const item = items[index];
+    if (!item) return false;
+    const now = values();
+    return now.japanese !== item.japanese ||
+      now.english !== item.english ||
+      now.position !== item.position;
   };
 
-  const setBusy = (card, busy) => {
-    $$("button", card).forEach((button) => { button.disabled = busy || (button.hasAttribute("data-shot-autofill") && ocrState !== "ready"); });
+  const showError = (message) => {
+    errorBox.textContent = message;
+    errorBox.hidden = !message;
   };
 
-  const updateBadges = (card) => {
-    const noJp = $(".shot-no-jp", card);
-    const noEn = $(".shot-no-en", card);
-    if (noJp) noJp.hidden = !!jp(card)?.value.trim();
-    if (noEn) noEn.hidden = !!en(card)?.value.trim();
+  // Keep every control in sync with the current item, navigation and OCR
+  // state; a single place means busy/empty states can't re-enable buttons.
+  const refreshButtons = () => {
+    const hasItem = Boolean(items[index]);
+    const canMove = !busy && items.length > 1;
+    prevButton.disabled = !canMove;
+    nextButton.disabled = !canMove;
+    saveButton.disabled = busy || !hasItem;
+    deleteButton.disabled = busy || !hasItem;
+    autofillButton.disabled = busy || !hasItem || ocrState !== "ready";
   };
 
-  const updateAutofill = () => {
-    const empty = cards().filter((card) => !jp(card)?.value.trim()).length;
-    autofillEmpty.textContent = `Autofill ${empty} empty`;
-    autofillEmpty.disabled = ocrState !== "ready" || empty === 0;
-    saveAll.disabled = !cards().some((card) => !!jp(card)?.value.trim());
+  const setBusy = (value) => {
+    busy = value;
+    refreshButtons();
+  };
+
+  const updateCounter = (delta) => {
+    if (!counter) return;
+    const next = Math.max(0, Number(counter.dataset.count || 0) + delta);
+    counter.dataset.count = String(next);
+    if (!next) counter.remove();
+    else if (counterN) counterN.textContent = String(next);
+  };
+
+  const render = () => {
+    const item = items[index];
+    if (!item) return;
+    jp.value = item.japanese;
+    en.value = item.english;
+    position.value = String(item.position === 1 ? 1 : 0);
+    image.src = `/shot/${item.id}?v=${encodeURIComponent(item.hash || "")}`;
+    image.alt = `Screenshot #${item.id}`;
+    countLabel.textContent = `${index + 1} / ${items.length}`;
+    showError("");
+    refreshButtons();
+  };
+
+  const showEmpty = () => {
+    editor.hidden = true;
+    emptyCard.hidden = false;
+    refreshButtons();
+  };
+
+  const removeCurrent = () => {
+    items.splice(index, 1);
+    updateCounter(-1);
+    if (!items.length) { showEmpty(); return; }
+    // Stay on the nearest remaining row instead of jumping to the newest one
+    // when the last row of the set is saved or deleted.
+    if (index >= items.length) index = items.length - 1;
+    render();
+  };
+
+  const move = (delta) => {
+    if (items.length < 2) return;
+    if (dirty() && !confirm("Discard unsaved changes?")) return;
+    index = (index + delta + items.length) % items.length;
+    render();
+  };
+
+  const postJson = async (url, body = {}) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    let data = {};
+    try { data = await response.json(); } catch { /* keep the status code */ }
+    return { ok: response.ok && data.ok !== false, data };
+  };
+
+  const autofill = async () => {
+    const item = items[index];
+    if (!item) return;
+    if (jp.value.trim() && !confirm("Replace the Japanese text with the OCR result?")) return;
+    setBusy(true);
+    showError("");
+    try {
+      // An empty visible field may still have a stored value from a previous
+      // autofill, so force OCR instead of letting the server skip it.
+      const result = await postJson(`/screenshot/${item.id}/autofill`, { force: true });
+      if (!result.ok) {
+        if (result.data.error === "offline") setStatus("offline");
+        showError(result.data.error === "offline" ? "OCR service is offline." : "Autofill failed.");
+        return;
+      }
+      if (typeof result.data.text === "string" && !result.data.skipped) {
+        jp.value = result.data.text;
+        item.japanese = result.data.text;
+      }
+    } catch {
+      showError("Autofill failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const save = async () => {
+    const item = items[index];
+    if (!item) return;
+    const now = values();
+    if (!now.japanese.trim()) { showError("Japanese is required."); return; }
+    setBusy(true);
+    showError("");
+    try {
+      const result = await postJson(`/screenshot/${item.id}/save`, {
+        japanese: now.japanese.trim(),
+        english: now.english.trim(),
+        position: now.position,
+      });
+      if (!result.ok) {
+        showError(result.data.error === "japanese required" ? "Japanese is required." : "Save failed.");
+        return;
+      }
+      removeCurrent();
+    } catch {
+      showError("Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    const item = items[index];
+    if (!item || !confirm("Delete this screenshot?")) return;
+    setBusy(true);
+    showError("");
+    try {
+      const result = await postJson(`/screenshot/${item.id}/delete`);
+      if (!result.ok) { showError("Delete failed."); return; }
+      removeCurrent();
+    } catch {
+      showError("Delete failed.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const setStatus = (state, model = "") => {
     ocrState = state;
-    if (!statusDot || !statusText) return;
-    statusDot.className = `shot-ocr-dot ${state}`;
-    statusText.textContent = state === "ready"
-      ? `OCR ready${model ? ` · ${model}` : ""}`
-      : state === "loading" ? "OCR model loading…" : state === "offline" ? "OCR service offline" : "Checking OCR…";
-    $$("[data-shot-autofill]").forEach((button) => { button.disabled = state !== "ready"; });
-    updateAutofill();
+    if (statusDot && statusText) {
+      statusDot.className = `shot-ocr-dot ${state}`;
+      statusText.textContent = state === "ready"
+        ? `OCR ready${model ? ` · ${model}` : ""}`
+        : state === "loading" ? "OCR model loading…" : state === "offline" ? "OCR service offline" : "Checking OCR…";
+    }
+    refreshButtons();
   };
 
   const checkStatus = async () => {
@@ -67,326 +215,16 @@
     }
   };
 
-  const postJson = async (url, body = {}) => {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    let data = {};
-    try { data = await response.json(); } catch { /* keep the status code */ }
-    return { ok: response.ok && data.ok !== false, data };
-  };
-
-  const updateCounter = (delta) => {
-    if (!counter) return;
-    const next = Math.max(0, Number(counter.dataset.count || 0) + delta);
-    counter.dataset.count = String(next);
-    if (!next) counter.remove();
-    else if (counterN) counterN.textContent = String(next);
-  };
-
-  const syncEmpty = () => {
-    if (cards().length) return;
-    if ($(".listempty", queue)) return;
-    queue.innerHTML = `<div class="card listempty"><h2>No pending screenshots</h2><p class="sub">Upload one above.</p></div>`;
-    updateAutofill();
-  };
-
-  const removeCard = (card, delta = 1) => {
-    card.remove();
-    updateCounter(-delta);
-    syncEmpty();
-    updateAutofill();
-  };
-
-  const autofillCard = async (card, force = false) => {
-    const field = jp(card);
-    if (!field) return false;
-    // An empty visible field may still have a stored value from a previous
-    // autofill, so force OCR instead of letting the server skip it.
-    force = force || !field.value.trim();
-    if (field.value.trim() && !force) {
-      if (!confirm("Replace the Japanese text with the OCR result?")) return false;
-      force = true;
-    }
-    setBusy(card, true);
-    showError(card, "");
-    try {
-      const result = await postJson(`/screenshot/${card.dataset.id}/autofill`, { force });
-      if (!result.ok) {
-        if (result.data.error === "offline") setStatus("offline");
-        showError(card, result.data.error === "offline" ? "OCR service is offline." : "Autofill failed.");
-        return false;
-      }
-      if (typeof result.data.text === "string" && !result.data.skipped) field.value = result.data.text;
-      updateBadges(card);
-      updateAutofill();
-      return true;
-    } catch {
-      showError(card, "Autofill failed.");
-      return false;
-    } finally {
-      setBusy(card, false);
-    }
-  };
-
-  const saveCard = async (card, remove = true) => {
-    const japanese = jp(card)?.value.trim() ?? "";
-    if (!japanese) { showError(card, "Japanese is required."); return false; }
-    setBusy(card, true);
-    showError(card, "");
-    try {
-      const result = await postJson(`/screenshot/${card.dataset.id}/save`, {
-        japanese,
-        english: en(card)?.value.trim() ?? "",
-        position: Number($(".shot-position-select", card)?.value) === 1 ? 1 : 0,
-      });
-      if (!result.ok) { showError(card, result.data.error === "japanese required" ? "Japanese is required." : "Save failed."); return false; }
-      const done = $(".shot-done", card);
-      if (done) done.classList.add("show");
-      card.dataset.done = "1";
-      window.setTimeout(() => { if (remove && card.isConnected) removeCard(card); }, 500);
-      return true;
-    } catch {
-      showError(card, "Save failed.");
-      return false;
-    } finally {
-      setBusy(card, false);
-    }
-  };
-
-  const deleteCard = async (card) => {
-    if (!confirm("Delete this screenshot?")) return;
-    setBusy(card, true);
-    showError(card, "");
-    try {
-      const result = await postJson(`/screenshot/${card.dataset.id}/delete`);
-      if (!result.ok) { showError(card, "Delete failed."); return; }
-      removeCard(card);
-    } catch {
-      showError(card, "Delete failed.");
-    } finally {
-      if (card.isConnected) setBusy(card, false);
-    }
-  };
-
-  // Large split editor for comparing the image and its transcription.
-  let editModal = null;
-  let editCards = [];
-  let editIndex = -1;
-  let editCard = null;
-  let editInitial = null;
-
-  const modalValues = () => ({
-    japanese: $("#shot-modal-jp")?.value ?? "",
-    english: $("#shot-modal-en")?.value ?? "",
-    position: Number($("#shot-modal-position")?.value) === 1 ? 1 : 0,
-  });
-
-  const modalDirty = () => {
-    if (!editInitial) return false;
-    const now = modalValues();
-    return now.japanese !== editInitial.japanese ||
-      now.english !== editInitial.english ||
-      now.position !== editInitial.position;
-  };
-
-  const modalError = (message) => {
-    const box = $("#shot-modal-error");
-    if (!box) return;
-    box.textContent = message;
-    box.hidden = !message;
-  };
-
-  const loadModal = (card, index) => {
-    editCard = card;
-    editIndex = index;
-    editInitial = {
-      japanese: jp(card)?.value ?? "",
-      english: en(card)?.value ?? "",
-      position: Number($(".shot-position-select", card)?.value) === 1 ? 1 : 0,
-    };
-    $("#shot-modal-jp").value = editInitial.japanese;
-    $("#shot-modal-en").value = editInitial.english;
-    $("#shot-modal-position").value = String(editInitial.position);
-    const image = $("#shot-modal-image");
-    image.src = `/shot/${card.dataset.id}?v=${encodeURIComponent(card.dataset.hash || "")}`;
-    image.alt = `Screenshot ${index + 1}`;
-    $("#shot-modal-count").textContent = `${index + 1} / ${editCards.length}`;
-    modalError("");
-  };
-
-  const buildModal = () => {
-    const root = document.createElement("div");
-    root.className = "shot-modal";
-    root.innerHTML = `<div class="shot-modal-card" role="dialog" aria-modal="true" aria-label="Edit screenshot">
-      <div class="shot-modal-head"><div><h2>Edit screenshot</h2><span class="sub" id="shot-modal-count"></span></div><button type="button" class="shot-modal-close" aria-label="Close">×</button></div>
-      <div class="shot-modal-body">
-        <div class="shot-modal-preview"><img id="shot-modal-image" alt=""></div>
-        <div class="shot-modal-fields">
-          <label class="shot-label">Japanese<textarea id="shot-modal-jp" rows="5" spellcheck="false"></textarea></label>
-          <label class="shot-label">English<textarea id="shot-modal-en" rows="3" spellcheck="false"></textarea></label>
-          <label class="shot-position">Show text<select id="shot-modal-position" class="shot-position-select"><option value="0">At the bottom</option><option value="1">At the top</option></select></label>
-          <div class="shot-error" id="shot-modal-error" role="alert" hidden></div>
-          <div class="shot-modal-actions">
-            <button class="pill ghost sm" type="button" id="shot-modal-autofill"${ocrState === "ready" ? "" : " disabled"}>Autofill</button>
-            <button class="pill dark sm" type="button" id="shot-modal-save">Save</button>
-            <button class="pill ghost rem sm" type="button" id="shot-modal-delete">Delete</button>
-          </div>
-        </div>
-      </div>
-      <div class="shot-modal-nav"><button class="pill ghost sm" type="button" id="shot-modal-prev">← Previous</button><button class="pill ghost sm" type="button" id="shot-modal-next">Next →</button></div>
-    </div>`;
-    root.addEventListener("click", (event) => { if (event.target === root) closeModal(); });
-    root.querySelector(".shot-modal-close").addEventListener("click", () => closeModal());
-    root.querySelector("#shot-modal-prev").addEventListener("click", () => moveModal(-1));
-    root.querySelector("#shot-modal-next").addEventListener("click", () => moveModal(1));
-    root.querySelector("#shot-modal-autofill").addEventListener("click", autofillModal);
-    root.querySelector("#shot-modal-save").addEventListener("click", saveModal);
-    root.querySelector("#shot-modal-delete").addEventListener("click", deleteModal);
-    document.addEventListener("keydown", modalKey);
-    document.body.append(root);
-    document.body.classList.add("shot-modal-open");
-    return root;
-  };
-
-  const openModal = (card) => {
-    editCards = cards();
-    const index = editCards.indexOf(card);
-    if (index < 0) return;
-    editModal = buildModal();
-    loadModal(card, index);
-    $("#shot-modal-jp")?.focus();
-  };
-
-  const closeModal = (force = false) => {
-    if (!editModal) return;
-    if (!force && modalDirty() && !confirm("Discard unsaved changes?")) return;
-    document.removeEventListener("keydown", modalKey);
-    editModal.remove();
-    document.body.classList.remove("shot-modal-open");
-    editModal = null;
-    editCard = null;
-    editInitial = null;
-  };
-
-  const moveModal = (delta) => {
-    if (!editModal || !editCards.length) return;
-    if (modalDirty() && !confirm("Discard unsaved changes?")) return;
-    editIndex = (editIndex + delta + editCards.length) % editCards.length;
-    loadModal(editCards[editIndex], editIndex);
-  };
-
-  function modalKey(event) {
-    if (event.key === "Escape") { event.preventDefault(); closeModal(); }
-  }
-
-  async function autofillModal() {
-    if (!editCard) return;
-    const field = $("#shot-modal-jp");
-    if (!field) return;
-    let force = !field.value.trim();
-    if (field.value.trim() && !confirm("Replace the Japanese text with the OCR result?")) return;
-    force = true;
-    $("#shot-modal-autofill").disabled = true;
-    modalError("");
-    try {
-      const result = await postJson(`/screenshot/${editCard.dataset.id}/autofill`, { force });
-      if (!result.ok) {
-        if (result.data.error === "offline") setStatus("offline");
-        modalError(result.data.error === "offline" ? "OCR service is offline." : "Autofill failed.");
-        return;
-      }
-      if (typeof result.data.text === "string" && !result.data.skipped) field.value = result.data.text;
-    } catch {
-      modalError("Autofill failed.");
-    } finally {
-      $("#shot-modal-autofill").disabled = ocrState !== "ready";
-    }
-  }
-
-  async function saveModal() {
-    if (!editCard) return;
-    const values = modalValues();
-    if (!values.japanese.trim()) { modalError("Japanese is required."); return; }
-    $("#shot-modal-save").disabled = true;
-    modalError("");
-    try {
-      const result = await postJson(`/screenshot/${editCard.dataset.id}/save`, {
-        japanese: values.japanese.trim(),
-        english: values.english.trim(),
-        position: values.position,
-      });
-      if (!result.ok) {
-        modalError(result.data.error === "japanese required" ? "Japanese is required." : "Save failed.");
-        return;
-      }
-      if (jp(editCard)) jp(editCard).value = values.japanese.trim();
-      if (en(editCard)) en(editCard).value = values.english.trim();
-      const select = $(".shot-position-select", editCard);
-      if (select) select.value = String(values.position);
-      const card = editCard;
-      closeModal(true);
-      removeCard(card);
-    } catch {
-      modalError("Save failed.");
-    } finally {
-      if ($("#shot-modal-save")) $("#shot-modal-save").disabled = false;
-    }
-  }
-
-  async function deleteModal() {
-    if (!editCard || !confirm("Delete this screenshot?")) return;
-    $("#shot-modal-delete").disabled = true;
-    modalError("");
-    try {
-      const result = await postJson(`/screenshot/${editCard.dataset.id}/delete`);
-      if (!result.ok) { modalError("Delete failed."); return; }
-      const card = editCard;
-      closeModal(true);
-      removeCard(card);
-    } catch {
-      modalError("Delete failed.");
-    } finally {
-      if ($("#shot-modal-delete")) $("#shot-modal-delete").disabled = false;
-    }
-  }
-
-  queue.addEventListener("input", (event) => {
-    if (!event.target.matches(".shot-jp, .shot-en")) return;
-    const card = event.target.closest(".shot-card");
-    if (card) updateBadges(card);
-    updateAutofill();
-  });
-
-  queue.addEventListener("click", (event) => {
-    const card = event.target.closest(".shot-card");
-    if (!card) return;
-    if (event.target.closest("[data-shot-edit]")) openModal(card);
-    else if (event.target.closest("[data-shot-autofill]")) void autofillCard(card);
-    else if (event.target.closest("[data-shot-save]")) void saveCard(card);
-    else if (event.target.closest("[data-shot-delete]")) void deleteCard(card);
-  });
-
-  autofillEmpty.addEventListener("click", async () => {
-    const targets = cards().filter((card) => !jp(card)?.value.trim());
-    autofillEmpty.disabled = true;
-    for (const card of targets) {
-      if (ocrState !== "ready") break;
-      await autofillCard(card);
-    }
-    updateAutofill();
-  });
-
-  saveAll.addEventListener("click", async () => {
-    const targets = cards().filter((card) => !!jp(card)?.value.trim());
-    saveAll.disabled = true;
-    for (const card of targets) await saveCard(card);
-    updateAutofill();
-  });
-
+  saveButton.addEventListener("click", () => void save());
+  deleteButton.addEventListener("click", () => void remove());
+  autofillButton.addEventListener("click", () => void autofill());
+  prevButton.addEventListener("click", () => move(-1));
+  nextButton.addEventListener("click", () => move(1));
   recheck?.addEventListener("click", () => void checkStatus());
+
+  if (items.length) render();
+  else showEmpty();
+  void checkStatus();
 
   // Uploader: convert each selected image to a JPEG at its original resolution.
   const fileInput = $("#shot-file-input");
@@ -404,20 +242,20 @@
     objectUrls = [];
     if (!selectedBox) return;
     selectedBox.innerHTML = "";
-    selected.forEach((file, index) => {
+    selected.forEach((file, i) => {
       const url = URL.createObjectURL(file);
       objectUrls.push(url);
       const item = document.createElement("div");
       item.className = "shot-selected-item";
-      const image = document.createElement("img");
-      image.src = url;
-      image.alt = file.name;
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.textContent = "×";
-      remove.setAttribute("aria-label", `Remove ${file.name}`);
-      remove.addEventListener("click", () => { selected.splice(index, 1); renderSelected(); });
-      item.append(image, remove);
+      const thumbnail = document.createElement("img");
+      thumbnail.src = url;
+      thumbnail.alt = file.name;
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.textContent = "×";
+      removeButton.setAttribute("aria-label", `Remove ${file.name}`);
+      removeButton.addEventListener("click", () => { selected.splice(i, 1); renderSelected(); });
+      item.append(thumbnail, removeButton);
       selectedBox.append(item);
     });
     if (uploadButton) uploadButton.disabled = selected.length === 0;
@@ -495,8 +333,4 @@
       uploadButton.disabled = false;
     }
   });
-
-  cards().forEach(updateBadges);
-  updateAutofill();
-  void checkStatus();
 })();
