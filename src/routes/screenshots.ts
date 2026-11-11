@@ -11,6 +11,7 @@ import {
   serializedOcr,
   setJapanese,
   shotPath,
+  shotThumbPath,
   shotUrl,
 } from "../screenshots";
 
@@ -32,16 +33,19 @@ export async function uploadScreenshots(req: Request) {
     return new Response(null, { status: 303, headers: { location: "/screenshot?uploadError=Could not read the upload." } });
   }
   const selected = form.getAll("files").filter((file): file is File => file instanceof File && file.size > 0);
+  const thumbFiles = form.getAll("thumbs").filter((file): file is File => file instanceof File && file.size > 0);
   let skipped = Math.max(0, selected.length - 5);
   let uploaded = 0;
   let duplicates = 0;
   let errors = 0;
-  for (const file of selected.slice(0, 5)) {
+  for (const [index, file] of selected.slice(0, 5).entries()) {
     if (file.size > MAX_IMAGE_BYTES) { skipped++; continue; }
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (sniffImage(bytes) !== "jpg") { skipped++; continue; }
+    const thumbFile = thumbFiles[index];
+    const thumbBytes = thumbFile && thumbFile.size <= MAX_IMAGE_BYTES ? new Uint8Array(await thumbFile.arrayBuffer()) : undefined;
     try {
-      const result = await addScreenshot(bytes);
+      const result = await addScreenshot(bytes, thumbBytes && sniffImage(thumbBytes) === "jpg" ? thumbBytes : undefined);
       if (result.duplicate) duplicates++;
       else uploaded++;
     } catch {
@@ -79,12 +83,13 @@ export async function saveScreenshotRoute(req: Request, rawId: string | undefine
   if (!sameOrigin(req)) return json({ ok: false, error: "forbidden" }, 403);
   const id = idFrom(rawId);
   if (id === null) return json({ ok: false, error: "bad id" }, 400);
-  let body: { japanese?: unknown; english?: unknown };
+  let body: { japanese?: unknown; english?: unknown; position?: unknown };
   try { body = await req.json() as typeof body; } catch { return json({ ok: false, error: "invalid json" }, 400); }
   const japanese = String(body.japanese ?? "").trim();
   const english = String(body.english ?? "").trim();
+  const position = Number(body.position) === 1 ? 1 : 0;
   if (!japanese) return json({ ok: false, error: "japanese required" }, 400);
-  const row = saveScreenshot(id, japanese, english);
+  const row = saveScreenshot(id, japanese, english, position);
   if (!row) return json({ ok: false, error: "not found" }, 404);
   return json({ ok: true, row });
 }
@@ -110,7 +115,20 @@ export async function serveScreenshot(rawId: string | undefined) {
   if (!row) return new Response("Not found", { status: 404 });
   const file = Bun.file(shotPath(row.file));
   if (!(await file.exists())) return new Response("Not found", { status: 404 });
-  return new Response(file, { headers: { "content-type": "image/jpeg", "cache-control": "no-cache" } });
+  return new Response(file, { headers: { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" } });
+}
+
+export async function serveScreenshotThumb(rawId: string | undefined) {
+  const id = idFrom(rawId);
+  if (id === null) return new Response("Not found", { status: 404 });
+  const row = getScreenshot(id);
+  if (!row) return new Response("Not found", { status: 404 });
+  let file = Bun.file(shotThumbPath(row.file));
+  if (!(await file.exists())) {
+    file = Bun.file(shotPath(row.file));
+    if (!(await file.exists())) return new Response("Not found", { status: 404 });
+  }
+  return new Response(file, { headers: { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" } });
 }
 
 export async function ocrStatusResponse() {

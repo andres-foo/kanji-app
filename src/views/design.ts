@@ -3,7 +3,8 @@ import { enc, esc, html, likeEsc } from "../html";
 import { findImage } from "../images";
 import { MAX_SCORE, MIN_SCORE, masteryFor } from "../mastery";
 import { phrasesPerKanji, phraseMorePerClick } from "../settings";
-import { kanjiScreenshotCount, kanjiScreenshots, shotUrl } from "../screenshots";
+import { kanjiScreenshotCount, kanjiScreenshots, shotThumbUrl } from "../screenshots";
+import { shotViewerUrl } from "./screenshots";
 import { requestContext } from "../prefs";
 import { storyHtml } from "../story";
 import type { Kanji, Word } from "../types";
@@ -91,16 +92,26 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     ORDER BY w.is_common DESC, w.kanji`)
     .all(`%${likeEsc(k.literal)}%`) as Word[];
   const shotCount = kanjiScreenshotCount(k.literal);
-  const shots = shotCount ? kanjiScreenshots(k.literal) : [];
-  const shotsCard = shots.length ? `<div class="card" style="grid-column:span 6">
+  const shots = shotCount ? kanjiScreenshots(k.literal, shotCount) : [];
+  const visibleShots = shots.slice(0, 6);
+  const shotBack = `/kanji/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
+  const carouselData = JSON.stringify(shots.map((shot) => ({
+    id: shot.id,
+    japanese: shot.japanese,
+    english: shot.english,
+    position: shot.position,
+  }))).replace(/</g, "\\u003c");
+  const shotsCard = visibleShots.length ? `<div class="card" style="grid-column:span 6">
     <div class="cardhead"><h3 class="h3">Screenshots</h3><span class="badge">${shotCount}</span></div>
     <div class="shot-kanji-list">
-      ${shots.map((shot) => `<a class="shot-kanji-item" href="${shotUrl(shot.id)}" target="_blank" rel="noopener noreferrer">
-        <img src="${shotUrl(shot.id)}" alt="Screenshot #${shot.id}" loading="lazy">
+      ${visibleShots.map((shot) => `<a class="shot-kanji-item" data-shot-id="${shot.id}" href="${shotViewerUrl(shot.id, shotBack)}" target="_blank" rel="noopener noreferrer">
+        <img src="${shotThumbUrl(shot.id)}" alt="Screenshot #${shot.id}" loading="lazy">
         <span class="shot-kanji-text"><span class="shot-jp">${esc(shot.japanese)}</span>${shot.english ? `<span class="shot-en">${esc(shot.english)}</span>` : ""}</span>
       </a>`).join("")}
     </div>
-    ${shotCount > shots.length ? `<div class="shot-more"><a class="pill ghost sm" href="/screenshot?kanji=${enc(k.literal)}">+${shotCount - shots.length} more</a></div>` : ""}
+    ${shotCount > visibleShots.length ? `<div class="shot-more"><a class="pill ghost sm" data-carousel-all href="/screenshot?kanji=${enc(k.literal)}">+${shotCount - visibleShots.length} more</a></div>` : ""}
+    <script type="application/json" id="shot-carousel-data">${carouselData}</script>
+    <script src="/js/screenshot-carousel.js" defer></script>
   </div>` : "";
   const wordCount = db.query(`SELECT COUNT(*) AS n FROM ref.word_forms WHERE form LIKE ? ESCAPE '\\'`)
     .get(`%${likeEsc(k.literal)}%`) as { n: number };

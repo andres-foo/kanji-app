@@ -17,7 +17,12 @@ shots.run(`CREATE TABLE IF NOT EXISTS screenshots (
   japanese TEXT NOT NULL DEFAULT '',
   english  TEXT NOT NULL DEFAULT '',
   added_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-  done     INTEGER NOT NULL DEFAULT 0
+  done     INTEGER NOT NULL DEFAULT 0,
+  position INTEGER NOT NULL DEFAULT 0
 )`);
+const columns = shots.query(`PRAGMA table_info(screenshots)`).all() as { name: string }[];
+if (!columns.some((column) => column.name === "position")) {
+  shots.run(`ALTER TABLE screenshots ADD COLUMN position INTEGER NOT NULL DEFAULT 0`);
+}
 shots.run(`CREATE UNIQUE INDEX IF NOT EXISTS screenshots_hash ON screenshots(hash)`);
 shots.run(`CREATE INDEX IF NOT EXISTS screenshots_done ON screenshots(done, id DESC)`);

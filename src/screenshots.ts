@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { mkdirSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { likeEsc } from "./html";
@@ -6,6 +7,8 @@ import { OCR_URL, SCREENSHOTS_DIR } from "./config";
 import { shots } from "./screenshots-db";
 
 export const PER_PAGE = 12;
+export const THUMBS_DIR = join(SCREENSHOTS_DIR, "thumbs");
+mkdirSync(THUMBS_DIR, { recursive: true });
 
 export type Screenshot = {
   id: number;
@@ -15,23 +18,32 @@ export type Screenshot = {
   english: string;
   added_at: string;
   done: number;
+  position: number;
 };
 
 export const shotPath = (file: string) => join(SCREENSHOTS_DIR, file);
+export const shotThumbPath = (file: string) => join(THUMBS_DIR, file);
 export const hashBytes = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 export const shotUrl = (id: number) => `/shot/${id}`;
+export const shotThumbUrl = (id: number) => `/shot/${id}/thumb`;
 
 export const getScreenshot = (id: number) =>
   shots.query(`SELECT * FROM screenshots WHERE id = ?`).get(id) as Screenshot | null;
 
 export const readScreenshot = (row: Screenshot) => Bun.file(shotPath(row.file));
 
-export async function addScreenshot(bytes: Uint8Array) {
+export async function addScreenshot(bytes: Uint8Array, thumbBytes?: Uint8Array) {
   const hash = hashBytes(bytes);
-  const existing = shots.query(`SELECT 1 FROM screenshots WHERE hash = ?`).get(hash);
-  if (existing) return { duplicate: true as const };
+  const existing = shots.query(`SELECT file FROM screenshots WHERE hash = ?`).get(hash) as { file: string } | null;
+  if (existing) {
+    if (thumbBytes && !(await Bun.file(shotThumbPath(existing.file)).exists())) {
+      await Bun.write(shotThumbPath(existing.file), thumbBytes);
+    }
+    return { duplicate: true as const };
+  }
   const file = `${hash}.jpg`;
   await Bun.write(shotPath(file), bytes);
+  if (thumbBytes) await Bun.write(shotThumbPath(file), thumbBytes);
   try {
     const result = shots.run(
       `INSERT INTO screenshots (file, hash) VALUES (?, ?)`,
@@ -40,6 +52,7 @@ export async function addScreenshot(bytes: Uint8Array) {
     return { duplicate: false as const, id: Number(result.lastInsertRowid) };
   } catch (error) {
     try { await unlink(shotPath(file)); } catch {}
+    try { await unlink(shotThumbPath(file)); } catch {}
     throw error;
   }
 }
@@ -78,8 +91,8 @@ export function listForKanji(literal: string, page: number) {
   return { rows, total, pages, page: current };
 }
 
-export function saveScreenshot(id: number, japanese: string, english: string) {
-  shots.run(`UPDATE screenshots SET japanese = ?, english = ?, done = 1 WHERE id = ?`, [japanese, english, id]);
+export function saveScreenshot(id: number, japanese: string, english: string, position = 0) {
+  shots.run(`UPDATE screenshots SET japanese = ?, english = ?, position = ?, done = 1 WHERE id = ?`, [japanese, english, position, id]);
   return getScreenshot(id);
 }
 
@@ -90,8 +103,10 @@ export function setJapanese(id: number, japanese: string) {
 
 export async function deleteScreenshot(row: Screenshot) {
   shots.run(`DELETE FROM screenshots WHERE id = ?`, [row.id]);
-  try { await unlink(shotPath(row.file)); } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  for (const path of [shotPath(row.file), shotThumbPath(row.file)]) {
+    try { await unlink(path); } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
   }
 }
 

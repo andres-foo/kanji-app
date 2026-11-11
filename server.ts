@@ -1,5 +1,5 @@
 import { PORT } from "./src/config";
-import { requestContext, themeFrom, detailsOpenFrom } from "./src/prefs";
+import { requestContext, themeFrom, detailsOpenFrom, safeBack } from "./src/prefs";
 import { findImage } from "./src/images";
 import type { ReviewResult } from "./src/review";
 import { home } from "./src/views/home";
@@ -10,6 +10,7 @@ import { designKanjiPage } from "./src/views/design";
 import { componentsPage } from "./src/views/components";
 import { componentSearchPage } from "./src/views/component-search";
 import { screenshotsPage } from "./src/views/screenshots";
+import { screenshotViewerPage } from "./src/views/screenshots";
 import { groupComponents } from "./src/routes/components";
 import { componentResults, componentSuggestions } from "./src/routes/component-search";
 import { messagePage } from "./src/views/message";
@@ -21,7 +22,7 @@ import { kanjiPhrases } from "./src/routes/phrases";
 import { setTheme, toggleDetails } from "./src/routes/prefs";
 import { reviewResult } from "./src/routes/review";
 import { saveSettings, resetScores } from "./src/routes/settings";
-import { uploadScreenshots, autofillScreenshot, saveScreenshotRoute, deleteScreenshotRoute, serveScreenshot, ocrStatusResponse } from "./src/routes/screenshots";
+import { uploadScreenshots, autofillScreenshot, saveScreenshotRoute, deleteScreenshotRoute, serveScreenshot, serveScreenshotThumb, ocrStatusResponse } from "./src/routes/screenshots";
 
 // ---------- server ----------
 const STATIC_FILES: Record<string, [string, string]> = {
@@ -35,6 +36,8 @@ const STATIC_FILES: Record<string, [string, string]> = {
   "/js/component-search.js": ["public/js/component-search.js", "text/javascript; charset=utf-8"],
   "/js/component-field.js": ["public/js/component-field.js", "text/javascript; charset=utf-8"],
   "/js/screenshot-page.js": ["public/js/screenshot-page.js", "text/javascript; charset=utf-8"],
+  "/js/screenshot-carousel.js": ["public/js/screenshot-carousel.js", "text/javascript; charset=utf-8"],
+  "/js/shot-viewer.js": ["public/js/shot-viewer.js", "text/javascript; charset=utf-8"],
   "/js/phrase-more.js": ["public/js/phrase-more.js", "text/javascript; charset=utf-8"],
 };
 
@@ -110,6 +113,14 @@ Bun.serve({
       if (shotSave) return req.method === "POST" ? saveScreenshotRoute(req, shotSave[1]) : new Response("Method not allowed", { status: 405 });
       const shotDelete = path.match(/^\/screenshot\/(\d+)\/delete$/);
       if (shotDelete) return req.method === "POST" ? deleteScreenshotRoute(req, shotDelete[1]) : new Response("Method not allowed", { status: 405 });
+      const shotThumb = path.match(/^\/shot\/(\d+)\/thumb$/);
+      if (shotThumb) return req.method === "GET" ? serveScreenshotThumb(shotThumb[1]) : new Response("Method not allowed", { status: 405 });
+      const shotView = path.match(/^\/shot\/(\d+)\/view$/);
+      if (shotView) {
+        if (req.method !== "GET") return new Response("Method not allowed", { status: 405 });
+        const back = safeBack(url.searchParams.get("back") ?? "/screenshot");
+        return screenshotViewerPage(Number(shotView[1]), back) ?? new Response("Not found", { status: 404 });
+      }
       const shotFile = path.match(/^\/shot\/(\d+)$/);
       if (shotFile) return req.method === "GET" ? serveScreenshot(shotFile[1]) : new Response("Method not allowed", { status: 405 });
       if (path === "/components/search") return componentSearchPage(url);

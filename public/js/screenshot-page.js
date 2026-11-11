@@ -137,6 +137,7 @@
       const result = await postJson(`/screenshot/${card.dataset.id}/save`, {
         japanese,
         english: en(card)?.value.trim() ?? "",
+        position: Number($(".shot-position-select", card)?.value) === 1 ? 1 : 0,
       });
       if (!result.ok) { showError(card, result.data.error === "japanese required" ? "Japanese is required." : "Save failed."); return false; }
       const done = $(".shot-done", card);
@@ -258,15 +259,18 @@
     addFiles(event.dataTransfer?.files ?? []);
   });
 
-  const imageToJpeg = async (file) => {
+  const imageToJpeg = async (file, maxWidth) => {
     const bitmap = await createImageBitmap(file);
     try {
+      const scale = maxWidth ? Math.min(1, maxWidth / bitmap.width) : 1;
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
       const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
+      canvas.width = width;
+      canvas.height = height;
       const context = canvas.getContext("2d");
-      context.drawImage(bitmap, 0, 0);
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      context.drawImage(bitmap, 0, 0, width, height);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", maxWidth ? 0.76 : 0.9));
       if (!blob) throw new Error("Could not convert image");
       return blob;
     } finally {
@@ -282,6 +286,7 @@
       for (let i = 0; i < selected.length; i++) {
         setProgress(`Converting ${i + 1} / ${selected.length}…`);
         form.append("files", await imageToJpeg(selected[i]), `screenshot-${i + 1}.jpg`);
+        form.append("thumbs", await imageToJpeg(selected[i], 320), `screenshot-${i + 1}-thumb.jpg`);
       }
       setProgress(`Uploading ${selected.length}…`);
       const xhr = new XMLHttpRequest();
