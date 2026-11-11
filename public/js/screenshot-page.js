@@ -14,6 +14,10 @@
   const en = $("#shot-editor-en");
   const position = $("#shot-editor-position");
   const image = $("#shot-editor-image");
+  const preview = $("#shot-editor-preview");
+  const overlay = $("#shot-editor-overlay");
+  const overlayJp = $("#shot-editor-overlay-jp");
+  const overlayEn = $("#shot-editor-overlay-en");
   const countLabel = $("#shot-editor-count");
   const errorBox = $("#shot-editor-error");
   const autofillButton = $("#shot-editor-autofill");
@@ -51,6 +55,36 @@
     errorBox.hidden = !message;
   };
 
+  // Mirror the saved output live: the same Japanese/English block the viewer
+  // and carousel draw over the image, at the edge chosen in the dropdown.
+  const syncOverlay = () => {
+    const japanese = jp.value.trim();
+    const english = en.value.trim();
+    const top = Number(position.value) === 1;
+    overlayJp.textContent = japanese;
+    overlayEn.textContent = english;
+    overlayJp.hidden = !japanese;
+    overlayEn.hidden = !english;
+    overlay.hidden = !japanese;
+    overlay.classList.toggle("top", top);
+    overlay.classList.toggle("bottom", !top);
+    placeOverlay();
+  };
+
+  // Line the text block up with the rendered image instead of the letterbox
+  // around it, so the preview matches what the viewer will show.
+  const placeOverlay = () => {
+    const box = preview.getBoundingClientRect();
+    const rect = image.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const top = Number(position.value) === 1;
+    overlay.style.left = `${rect.left - box.left}px`;
+    overlay.style.width = `${rect.width}px`;
+    overlay.style.right = "auto";
+    overlay.style.top = top ? `${rect.top - box.top}px` : "auto";
+    overlay.style.bottom = top ? "auto" : `${box.bottom - rect.bottom}px`;
+  };
+
   // Keep every control in sync with the current item, navigation and OCR
   // state; a single place means busy/empty states can't re-enable buttons.
   const refreshButtons = () => {
@@ -86,6 +120,7 @@
     image.alt = `Screenshot #${item.id}`;
     countLabel.textContent = `${index + 1} / ${items.length}`;
     showError("");
+    syncOverlay();
     refreshButtons();
   };
 
@@ -141,6 +176,7 @@
       if (typeof result.data.text === "string" && !result.data.skipped) {
         jp.value = result.data.text;
         item.japanese = result.data.text;
+        syncOverlay();
       }
     } catch {
       showError("Autofill failed.");
@@ -220,6 +256,11 @@
   autofillButton.addEventListener("click", () => void autofill());
   prevButton.addEventListener("click", () => move(-1));
   nextButton.addEventListener("click", () => move(1));
+  jp.addEventListener("input", syncOverlay);
+  en.addEventListener("input", syncOverlay);
+  position.addEventListener("change", syncOverlay);
+  image.addEventListener("load", placeOverlay);
+  window.addEventListener("resize", placeOverlay);
   recheck?.addEventListener("click", () => void checkStatus());
 
   if (items.length) render();

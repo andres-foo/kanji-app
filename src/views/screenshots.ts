@@ -32,7 +32,13 @@ const queueEditor = (row: Screenshot | undefined, total: number) => `<div class=
     </div>
   </div>
   <div class="shot-editor-body">
-    <div class="shot-editor-preview"><img id="shot-editor-image" src="${row ? shotUrl(row.id, row.hash) : ""}" alt="${row ? `Screenshot #${row.id}` : ""}"></div>
+    <div class="shot-editor-preview" id="shot-editor-preview">
+      <img id="shot-editor-image" src="${row ? shotUrl(row.id, row.hash) : ""}" alt="${row ? `Screenshot #${row.id}` : ""}">
+      <div class="shot-editor-overlay ${row?.position === 1 ? "top" : "bottom"}" id="shot-editor-overlay" aria-hidden="true"${row?.japanese ? "" : " hidden"}>
+        <div class="shot-editor-overlay-jp" id="shot-editor-overlay-jp"${row?.japanese ? "" : " hidden"}>${row ? esc(row.japanese) : ""}</div>
+        <div class="shot-editor-overlay-en" id="shot-editor-overlay-en"${row?.english ? "" : " hidden"}>${row ? esc(row.english) : ""}</div>
+      </div>
+    </div>
     <div class="shot-editor-fields">
       <label class="shot-label">Japanese
         <textarea id="shot-editor-jp" rows="5" spellcheck="false" placeholder="Japanese text">${row ? esc(row.japanese) : ""}</textarea>

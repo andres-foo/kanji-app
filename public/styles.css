@@ -923,8 +923,13 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-editor-head .sub{display:block;margin-top:2px;font-size:11px}
 .shot-editor-nav{display:flex;gap:7px;flex:none;flex-wrap:wrap}
 .shot-editor-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:16px;min-height:0}
-.shot-editor-preview{display:flex;align-items:center;justify-content:center;min-height:240px;max-height:70vh;overflow:hidden;border-radius:12px;background:#0b0d10}
+.shot-editor-preview{position:relative;display:flex;align-items:center;justify-content:center;min-height:240px;max-height:70vh;overflow:hidden;border-radius:12px;background:#0b0d10}
 .shot-editor-preview img{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;object-fit:contain}
+.shot-editor-overlay{position:absolute;left:0;right:0;box-sizing:border-box;padding:12px 14px;background:rgba(10,12,15,.76);color:#fff;backdrop-filter:blur(3px);text-align:center}
+.shot-editor-overlay.top{top:0}
+.shot-editor-overlay.bottom{bottom:0}
+.shot-editor-overlay-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:clamp(12px,1.6vw,20px);line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
+.shot-editor-overlay-en{font-size:11px;line-height:1.4;color:#d6d9de;margin-top:4px;white-space:pre-line;overflow-wrap:anywhere}
 .shot-editor-fields{display:flex;flex-direction:column;gap:9px;min-width:0;overflow-y:auto;padding-right:2px}
 .shot-editor-fields .shot-label textarea{font-size:14px}
 .shot-editor-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
