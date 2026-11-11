@@ -4,6 +4,7 @@ import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { likeEsc } from "./html";
 import { OCR_URL, SCREENSHOTS_DIR } from "./config";
+import { joinOcrText } from "./ocr-lines";
 import { shots } from "./screenshots-db";
 
 export const PER_PAGE = 12;
@@ -133,10 +134,9 @@ export async function runOcr(bytes: Uint8Array): Promise<{ ok: true; text: strin
       signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) return { ok: false, error: "offline" };
-    const data = await response.json() as { ok?: boolean; lines?: { text?: string }[] };
+    const data = await response.json() as { ok?: boolean; lines?: { text?: string; box?: number[] }[] };
     if (!data.ok) return { ok: false, error: "offline" };
-    const text = (data.lines ?? []).map((line) => String(line.text ?? "")).filter(Boolean).join("\n");
-    return { ok: true, text };
+    return { ok: true, text: joinOcrText(data.lines ?? []) };
   } catch {
     return { ok: false, error: "offline" };
   }
