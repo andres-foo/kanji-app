@@ -95,13 +95,11 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     ? db.query(`SELECT w.*, 0 AS added
         FROM ref.word_rows w
         WHERE w.kanji LIKE ? ESCAPE '\\'
-          AND w.kanji != ?
           AND NOT EXISTS (SELECT 1 FROM user_word_added u WHERE u.word_id = w.id)
           AND (w.is_common = 1 OR (w.jlpt BETWEEN 4 AND 5))
-          AND (w.jlpt IS NULL OR w.jlpt >= 4)
-        ORDER BY w.is_common DESC, w.jlpt DESC, length(w.kanji), w.freq_wiki IS NULL, w.freq_wiki, w.kanji
+        ORDER BY w.is_common DESC, w.jlpt DESC, w.freq_wiki IS NULL, w.freq_wiki, w.kanji
         LIMIT 5`)
-        .all(`%${likeEsc(k.literal)}%`, k.literal) as Word[]
+        .all(`%${likeEsc(k.literal)}%`) as Word[]
     : [];
   const shotCount = kanjiScreenshotCount(k.literal);
   const shots = shotCount ? kanjiScreenshots(k.literal, shotCount) : [];
