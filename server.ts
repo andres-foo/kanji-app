@@ -24,6 +24,15 @@ import { reviewResult } from "./src/routes/review";
 import { saveSettings, resetScores } from "./src/routes/settings";
 import { uploadScreenshots, autofillScreenshot, saveScreenshotRoute, deleteScreenshotRoute, serveScreenshot, serveScreenshotThumb, ocrStatusResponse, translateScreenshotText } from "./src/routes/screenshots";
 
+// Only these font files are public; anything else under /fonts/ is a 404.
+const FONT_FILES = new Set([
+  "Jigmo.ttf",
+  "Jigmo2.ttf",
+  "Jigmo3.ttf",
+  "NotoSansJP-VF.ttf",
+  "Manrope-VariableFont_wght.ttf",
+]);
+
 // ---------- server ----------
 const STATIC_FILES: Record<string, [string, string]> = {
   "/styles.css": ["public/styles.css", "text/css; charset=utf-8"],
@@ -50,9 +59,9 @@ Bun.serve({
     if (asset) return new Response(Bun.file(asset[0]), { headers: { "content-type": asset[1], "cache-control": "no-cache" } });
 
     if (url.pathname.startsWith("/fonts/")) {
-      // the Jigmo files live in public/fonts; only those exact names are served
+      // the font files live in public/fonts; only these exact names are served
       const name = url.pathname.slice("/fonts/".length);
-      if (!/^Jigmo\d*\.ttf$/.test(name)) return new Response("Not found", { status: 404 });
+      if (!FONT_FILES.has(name)) return new Response("Not found", { status: 404 });
       const file = Bun.file(`public/fonts/${name}`);
       if (!(await file.exists())) return new Response("Not found", { status: 404 });
 

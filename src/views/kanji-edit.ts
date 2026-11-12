@@ -44,7 +44,7 @@ export async function kanjiRedesignEditView(literal: string, q = "") {
 <div class="edithead">
   <div>
     <div class="crumb">Kanji / ${esc(k.literal)}</div>
-    <h1>Edit <span style="font-family:'Noto Serif JP',Jigmo,serif;vertical-align:-3px">${esc(k.literal)}</span></h1>
+    <h1>Edit <span style="font-family:var(--jp);vertical-align:-3px">${esc(k.literal)}</span></h1>
     <div class="sub">${esc(meaningsText(k.meanings))}</div>
   </div>
 </div>

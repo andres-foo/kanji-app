@@ -80,7 +80,7 @@ The next form is previewed below the search field. Pressing **Tab** again keeps 
 | `src/` | the app logic — config, database, HTML helpers, search, settings, mastery, review, stats, images, story |
 | `src/views/` | the HTML for each page: layout, home/dashboard, lists, kanji, review, settings and charts |
 | `src/routes/` | the POST handlers: kanji edit/toggle, images, theme/details, review answers, settings |
-| `public/` | the stylesheet, browser scripts and the Jigmo fonts |
+| `public/` | the stylesheet, browser scripts and the bundled fonts |
 | `data/` | `user.db`, `reference.db`, `phrases.db`, `screenshots.db`, kanji pictures and screenshots |
 | `docs/` | screenshots used in this README |
 
@@ -374,9 +374,13 @@ An earlier word-frequency enrichment used the [Wiktionary Japanese 2022 frequenc
 
 ### Fonts
 
-- **Jigmo / Jigmo2 / Jigmo3** — [Jigmo](https://kamichikoichi.github.io/jigmo/), CC0-1.0
-- **Noto Serif JP** — [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Serif+JP), SIL Open Font License 1.1
-- **Manrope** — [Google Fonts](https://fonts.google.com/specimen/Manrope), SIL Open Font License 1.1
+Every font is served by the app from `public/fonts`; pages make no request to a font CDN.
+
+- **Manrope** — [Google Fonts](https://fonts.google.com/specimen/Manrope), SIL Open Font License 1.1. Bundled as `public/fonts/Manrope-VariableFont_wght.ttf` (variable, 200–800) and used for the Latin interface.
+- **Noto Sans JP** — [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Sans+JP), SIL Open Font License 1.1. Bundled as `public/fonts/NotoSansJP-VF.ttf` (variable, 100–900) and used for every Japanese glyph in the app.
+- **Jigmo / Jigmo2 / Jigmo3** — [Jigmo](https://kamichikoichi.github.io/jigmo/), CC0-1.0. Fallback for the rare kanji Noto Sans JP does not cover. It has no kana or punctuation, so it always sits last in the stack.
+
+`--ui` is the Latin stack (Manrope, then the system UI font), `--jp` is Japanese-first, and `--ui-jp` is for fields and search boxes that hold either language.
 
 ### Component data
 
