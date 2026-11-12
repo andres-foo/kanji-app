@@ -1001,7 +1001,8 @@ body.shot-carousel-open{overflow:hidden}
 .shot-jp{font-size:31px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
 .shot-en{font-size:15px;line-height:1.45;color:var(--muted);white-space:pre-line;overflow-wrap:anywhere}
 .shot-kanji-list{display:flex;flex-direction:column;gap:9px;margin-top:10px}
-.shot-kanji-item{display:flex;gap:10px;align-items:flex-start;color:inherit;text-decoration:none;border-radius:10px;padding:4px;transition:background .15s}
+.shot-kanji-item{display:flex;gap:10px;align-items:flex-start;color:inherit;text-decoration:none;border-radius:10px;padding:4px;border-bottom:1px solid #f0f1f4;transition:background .15s}
+.shot-kanji-item:last-child{border-bottom:0}
 .shot-kanji-item:hover{background:var(--soft)}
 .shot-kanji-item img{width:160px;height:96px;object-fit:cover;border-radius:8px;flex:none;background:var(--soft)}
 .shot-kanji-text{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:12px}
@@ -1015,6 +1016,7 @@ body.shot-carousel-open{overflow:hidden}
 [data-theme="dark"] .shot-editor,[data-theme="dark"] .shot-gallery-card{background:#1e1f22}
 [data-theme="dark"] .shot-error{background:#3f1d1d;color:#fca5a5}
 [data-theme="dark"] .shot-kanji-item:hover{background:#2a2c31}
+[data-theme="dark"] .shot-kanji-item{border-color:#2f3237}
 [data-theme="dark"] .shot-jp{color:#e7e8eb}
 [data-theme="dark"] .shot-en{color:#aeb3bb}
 @media(max-width:800px){

@@ -112,7 +112,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     english: shot.english,
     position: shot.position,
   }))).replace(/</g, "\\u003c");
-  const shotsCard = visibleShots.length ? `<div class="card" style="grid-column:span 6">
+  const shotsCard = visibleShots.length ? `<div class="card" style="grid-column:span 12">
     <div class="cardhead"><h3 class="h3">Screenshots</h3><span class="badge">${shotCount}</span></div>
     <div class="shot-kanji-list">
       ${visibleShots.map((shot) => `<a class="shot-kanji-item" data-shot-id="${shot.id}" href="${shotViewerUrl(shot.id, shotBack)}" target="_blank" rel="noopener noreferrer">
@@ -254,14 +254,19 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
       : `<div class="sub" style="padding:6px 0">No reviews yet.</div>`}
   </div>
 
-  <div class="card" style="grid-column:span 6;display:flex;flex-direction:column">
+  <div class="card" style="grid-column:span 9;display:flex;flex-direction:column">
     <div class="cardhead"><h3 class="h3">Examples in your list</h3><span class="badge">${addedWords.length} added</span></div>
     ${addedWords.length ? addedWords.map(exRow).join("") : `<div class="sub" style="padding:6px 0">No examples in your list yet.</div>`}
     ${suggestedWords.length ? `<div class="suggested-words"><div class="suggest-head"><h4>Suggested words</h4><span class="sub">Up to 5</span></div>${suggestedWords.map(exRow).join("")}</div>` : ""}
     <div class="exfoot">${hasWords ? `<a class="pill ghost sm" href="/?q=${enc(k.literal)}&type=words&record=1">${addedWords.length ? "Find more words" : "Find words"}</a>` : `<span class="sub">There are no examples for this character.</span>`}</div>
   </div>
 
-  <div class="card" style="grid-column:span 6">
+  <div class="card" style="grid-column:span 3">
+    <div class="cardhead"><h3 class="h3">Component for</h3><span class="badge">${compFor.length} kanji</span></div>
+    <div class="comps" style="margin-top:12px">${componentFor}</div>
+  </div>
+
+  <div class="card" style="grid-column:span 12">
     <div class="cardhead"><h3 class="h3">Example phrases</h3><span class="badge" id="phrase-count">${phrases.length}${phraseTotal > phrases.length ? ` of ${phraseTotal}` : ""}</span></div>
     ${phrases.length
       ? `<div class="phrase-list" id="phrase-list">${phraseListHtml(phrases)}</div>${phraseMoreHtml}`
@@ -269,11 +274,6 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   </div>
 
   ${shotsCard}
-
-  <div class="card" style="grid-column:span 6">
-    <div class="cardhead"><h3 class="h3">Component for</h3><span class="badge">${compFor.length} kanji</span></div>
-    <div class="comps" style="margin-top:12px">${componentFor}</div>
-  </div>
 </div>
 ${strokeSvg ? `<script src="/js/stroke.js" defer></script>` : ""}
 ${phraseMoreHtml ? `<script src="/js/phrase-more.js" defer></script>` : ""}`;
