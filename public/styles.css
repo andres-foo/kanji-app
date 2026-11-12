@@ -92,7 +92,7 @@ h1 .lite{color:var(--muted);font-weight:400}
 .comp.lowpriority:hover b{color:#636871}
 [data-theme="dark"] .comp.lowpriority{background:#2a2c31;color:#9aa0a9}
 [data-theme="dark"] .comp.lowpriority:hover{background:#34373d;color:#c7cbd2}
-.comp b{font-family:"Noto Serif JP",serif;font-size:17px;line-height:1}
+.comp b{font-family:"Noto Serif JP",serif;font-size:31px;line-height:1}
 .comp span{font-size:10px;color:var(--muted)}
 .comp{position:relative}
 .comp.in{border:1px solid var(--cyan)}
@@ -106,15 +106,15 @@ h1 .lite{color:var(--muted);font-weight:400}
 .story .note{color:#6f747d;border-bottom:1px dashed #b9bec7}
 .exrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid #f0f1f4}
 .exrow:last-child{border-bottom:0}
-.exword{font-family:"Noto Serif JP",serif;font-size:16px;min-width:82px;line-height:1.2}
-.exkana{font-size:9.5px;color:var(--muted);min-width:66px}
+.exword{font-family:"Noto Serif JP",serif;font-size:31px;min-width:82px;line-height:1.2}
+.exkana{font-size:15px;color:var(--muted);min-width:66px}
 .exmean{flex:1;font-size:9.5px;color:#636871;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .phrase-list{display:flex;flex-direction:column;margin-top:8px}
 .phrase{display:block;padding:10px 0;border-bottom:1px solid #f0f1f4;color:inherit;text-decoration:none}
 .phrase:hover{background:#f8f9fb;border-radius:10px;padding-left:8px;padding-right:8px;margin-left:-8px;margin-right:-8px}
 .phrase:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:10px}
 .phrase:last-child{border-bottom:0;padding-bottom:0}
-.phrase-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:24px;line-height:1.9;color:#2a2c31}
+.phrase-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:31px;line-height:1.9;color:#2a2c31}
 .phrase-jp rt{font-family:var(--sans);font-size:.56em;color:#6f747d;letter-spacing:0}
 .phrase-en{font-size:14px;line-height:1.5;color:#636871;margin-top:3px}
 .phrase-more{display:flex;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid #f0f1f4}
@@ -358,12 +358,9 @@ a.comp:hover{background:#e9ecf1}
 .badge{font-size:11px;padding:6px 10px}
 .kw{font-size:26px}
 .kmean{font-size:15px}
-.comp b{font-size:20px}
 .comp span{font-size:12px}
 .detail span{font-size:9.5px}
 .detail b{font-size:15px}
-.exword{font-size:18px}
-.exkana{font-size:11.5px}
 .exmean{font-size:11.5px}
 .exmore summary{font-size:12px}
 .hrow{font-size:11px}
@@ -394,12 +391,11 @@ a.comp:hover{background:#e9ecf1}
 [data-theme="dark"] .pill.ghost.rem{color:#fca5a5;border-color:#5a2626}
 
 /* examples and component chips: one more size up */
-.exword{font-size:22px;min-width:96px;color:inherit;text-decoration:none}
+.exword{min-width:96px;color:inherit;text-decoration:none}
 .exword:hover{color:var(--cyan);text-decoration:underline;text-underline-offset:3px}
-.exkana{font-size:14px;min-width:80px}
+.exkana{min-width:80px}
 .exmean{font-size:14px;min-width:0}
 .exrow{padding:10px 0;gap:10px}
-.comp b{font-size:25px}
 .comp span{font-size:14px}
 .comp{padding:9px 13px;gap:9px}
 .exfoot{display:flex;align-items:center;margin-top:auto;padding-top:10px;border-top:1px solid #f0f1f4}
@@ -770,12 +766,12 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
   .kw{font-size:21px}
   .herotop{gap:14px}
   .kmean{font-size:14px}
-  .exword{min-width:80px;font-size:20px}
+  .exword{min-width:80px;font-size:28px}
   .exkana{min-width:0}
   .exmean{font-size:13px}
-  .phrase-jp{font-size:22px}
+  .phrase-jp{font-size:28px}
   .phrase-en{font-size:13px}
-  .comp b{font-size:22px}
+  .comp b{font-size:27px}
   .comp span{font-size:12px}
   .hrow{font-size:10px}
   .hrow .hdate{min-width:48px}
@@ -976,11 +972,11 @@ body.shot-carousel-open{overflow:hidden}
 .shot-carousel-nav.next{right:8px}
 .shot-carousel-image-wrap{position:relative;display:flex;align-items:center;justify-content:center;max-width:100%;max-height:calc(100vh - 150px);overflow:hidden;border-radius:10px;background:#0b0d10}
 .shot-carousel-image{display:block;max-width:100%;max-height:calc(100vh - 150px);width:auto;height:auto;object-fit:contain}
-.shot-carousel-text{position:absolute;left:0;right:0;padding:14px 18px;background:rgba(10,12,15,.78);color:#fff;text-align:center;backdrop-filter:blur(3px)}
+.shot-carousel-text{position:absolute;left:0;right:0;margin:20px;padding:14px 18px;border-radius:12px;background:rgba(10,12,15,.78);color:#fff;text-align:center;backdrop-filter:blur(3px)}
 .shot-carousel-text.top{top:0}
 .shot-carousel-text.bottom{bottom:0}
-.shot-carousel-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:clamp(16px,2.2vw,28px);line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
-.shot-carousel-en{font-size:12px;line-height:1.4;color:#d6d9de;margin-top:5px;white-space:pre-line}
+.shot-carousel-jp{font-family:"Noto Serif JP",Jigmo,serif;font-size:31px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
+.shot-carousel-en{font-size:15px;line-height:1.4;color:#d6d9de;margin-top:5px;white-space:pre-line}
 .shot-carousel-count{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em}
 .shot-carousel-thumbs{display:flex;gap:6px;max-width:100%;overflow-x:auto;padding:2px 2px 4px}
 .shot-carousel-thumb{flex:none;width:54px;height:40px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--soft);overflow:hidden;cursor:pointer;opacity:.65}
@@ -1002,8 +998,8 @@ body.shot-carousel-open{overflow:hidden}
 .shot-gallery-thumb{display:block;width:100%;height:150px;border-radius:10px;overflow:hidden;background:var(--soft);margin-bottom:9px}
 .shot-gallery-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .shot-gallery-text{display:flex;flex-direction:column;gap:5px;min-width:0}
-.shot-jp{font-size:13px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
-.shot-en{font-size:11.5px;line-height:1.45;color:var(--muted);white-space:pre-line;overflow-wrap:anywhere}
+.shot-jp{font-size:31px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
+.shot-en{font-size:15px;line-height:1.45;color:var(--muted);white-space:pre-line;overflow-wrap:anywhere}
 .shot-kanji-list{display:flex;flex-direction:column;gap:9px;margin-top:10px}
 .shot-kanji-item{display:flex;gap:10px;align-items:flex-start;color:inherit;text-decoration:none;border-radius:10px;padding:4px;transition:background .15s}
 .shot-kanji-item:hover{background:var(--soft)}
