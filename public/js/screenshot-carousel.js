@@ -8,6 +8,8 @@
   let modal = null;
   let current = 0;
   let opener = null;
+  // Kept across slides so toggling the analysis on stays on while browsing.
+  let showAnalysis = false;
 
   const build = () => {
     const root = document.createElement("div");
@@ -21,9 +23,10 @@
       <div class="shot-carousel-image-wrap">
         <img class="shot-carousel-image" alt="">
         <div class="shot-carousel-text"><div class="shot-carousel-jp"></div><div class="shot-carousel-en"></div></div>
+        <div class="shot-carousel-analysis" hidden><div class="shot-analysis-body"></div></div>
       </div>
       <button type="button" class="shot-carousel-nav next" aria-label="Next screenshot">›</button>
-      <div class="shot-carousel-foot"><div class="shot-carousel-count" aria-live="polite"></div><a class="shot-carousel-edit" href="#" target="_blank" rel="noopener noreferrer">Edit</a></div>
+      <div class="shot-carousel-foot"><div class="shot-carousel-count" aria-live="polite"></div><button type="button" class="shot-carousel-analysis-toggle" aria-expanded="false" hidden>Analysis</button><a class="shot-carousel-edit" href="#" target="_blank" rel="noopener noreferrer">Edit</a></div>
       <div class="shot-carousel-thumbs"></div>
     </div>`;
     document.body.append(root);
@@ -33,7 +36,28 @@
     root.querySelector(".shot-carousel-close").addEventListener("click", close);
     root.querySelector(".prev").addEventListener("click", () => move(-1));
     root.querySelector(".next").addEventListener("click", () => move(1));
+    root.querySelector(".shot-carousel-analysis-toggle").addEventListener("click", () => {
+      showAnalysis = !showAnalysis;
+      renderAnalysis();
+    });
     return root;
+  };
+
+  // The analysis belongs to the slide on screen, so the toggle is only offered
+  // when that screenshot has one, and Escape closes it before the carousel.
+  const renderAnalysis = () => {
+    if (!modal) return;
+    const item = items[current];
+    const toggle = modal.querySelector(".shot-carousel-analysis-toggle");
+    const panel = modal.querySelector(".shot-carousel-analysis");
+    if (!toggle || !panel) return;
+    const has = Boolean(item.analysis_html);
+    const open = has && showAnalysis;
+    toggle.hidden = !has;
+    toggle.textContent = open ? "Hide analysis" : "Analysis";
+    toggle.setAttribute("aria-expanded", String(open));
+    panel.hidden = !open;
+    if (open) panel.querySelector(".shot-analysis-body").innerHTML = item.analysis_html;
   };
 
   const render = () => {
@@ -75,6 +99,8 @@
         preload.src = `/shot/${neighbor.id}?v=${encodeURIComponent(neighbor.hash)}`;
       }
     }
+
+    renderAnalysis();
   };
 
   const move = (delta) => {
@@ -105,7 +131,17 @@
   };
 
   function onKey(event) {
-    if (event.key === "Escape") { event.preventDefault(); close(); return; }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      const panel = modal && modal.querySelector(".shot-carousel-analysis");
+      if (panel && !panel.hidden) {
+        showAnalysis = false;
+        renderAnalysis();
+        return;
+      }
+      close();
+      return;
+    }
     if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); return; }
     if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
   }

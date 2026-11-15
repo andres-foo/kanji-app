@@ -4,6 +4,7 @@ import { findImage } from "../images";
 import { MAX_SCORE, MIN_SCORE, masteryFor } from "../mastery";
 import { phrasesPerKanji, phraseMorePerClick } from "../settings";
 import { kanjiScreenshotCount, kanjiScreenshots, shotThumbUrl } from "../screenshots";
+import { markdownHtml } from "../markdown";
 import { shotViewerUrl } from "./screenshots";
 import { requestContext } from "../prefs";
 import { storyHtml } from "../story";
@@ -111,12 +112,13 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     japanese: shot.japanese,
     english: shot.english,
     position: shot.position,
+    analysis_html: markdownHtml(shot.analysis),
   }))).replace(/</g, "\\u003c");
   const shotsCard = visibleShots.length ? `<div class="card" style="grid-column:span 12">
     <div class="cardhead"><h3 class="h3">Screenshots</h3><span class="badge">${shotCount}</span></div>
     <div class="shot-kanji-list">
       ${visibleShots.map((shot) => `<a class="shot-kanji-item" data-shot-id="${shot.id}" href="${shotViewerUrl(shot.id, shotBack)}" target="_blank" rel="noopener noreferrer">
-        <img src="${shotThumbUrl(shot.id, shot.hash)}" alt="Screenshot #${shot.id}" loading="lazy">
+        <span class="shot-kanji-thumb"><img src="${shotThumbUrl(shot.id, shot.hash)}" alt="Screenshot #${shot.id}" loading="lazy">${shot.analysis.trim() ? `<span class="shot-kanji-flag" title="This screenshot has an analysis">Analysis</span>` : ""}</span>
         <span class="shot-kanji-text"><span class="shot-jp">${esc(shot.japanese)}</span>${shot.english ? `<span class="shot-en">${esc(shot.english)}</span>` : ""}</span>
       </a>`).join("")}
     </div>

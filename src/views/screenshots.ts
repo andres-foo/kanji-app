@@ -88,7 +88,7 @@ const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
   <div class="shot-gallery-text">
     <div class="shot-jp">${esc(row.japanese) || `<span class="sub">No Japanese text</span>`}</div>
     ${row.english ? `<div class="shot-en">${esc(row.english)}</div>` : ""}
-    <span class="badge">${row.done ? "saved" : "unfinished"}${row.source === "import" ? " · from app" : ""}</span>
+    <span class="shot-badge-row"><span class="badge">${row.done ? "saved" : "unfinished"}${row.source === "import" ? " · from app" : ""}</span>${row.analysis.trim() ? `<span class="badge">analysis</span>` : ""}</span>
   </div>
 </article>`;
 
