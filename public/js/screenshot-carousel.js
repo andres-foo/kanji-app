@@ -8,7 +8,8 @@
   let modal = null;
   let current = 0;
   let opener = null;
-  // Kept across slides so toggling the analysis on stays on while browsing.
+  // The analysis overlay belongs to the slide on screen: switching slides
+  // collapses it so the next image is what you see first.
   let showAnalysis = false;
 
   const build = () => {
@@ -88,7 +89,12 @@
       thumb.alt = "";
       thumb.loading = "lazy";
       button.append(thumb);
-      button.addEventListener("click", () => { current = index; render(); });
+      button.addEventListener("click", () => {
+        if (index === current) return;
+        current = index;
+        showAnalysis = false;
+        render();
+      });
       strip.append(button);
     });
 
@@ -106,6 +112,7 @@
   const move = (delta) => {
     if (!items.length) return;
     current = (current + delta + items.length) % items.length;
+    showAnalysis = false;
     render();
   };
 
@@ -121,6 +128,7 @@
   const open = (index, source) => {
     opener = source || null;
     current = Number.isInteger(index) ? Math.max(0, Math.min(items.length - 1, index)) : 0;
+    showAnalysis = false;
     if (!modal) {
       modal = build();
       document.body.classList.add("shot-carousel-open");
