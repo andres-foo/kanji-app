@@ -929,6 +929,7 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
 .shot-editor-head h2{font-size:22px;font-weight:600;letter-spacing:-.02em;margin:0}
 .shot-editor-head .sub{display:block;margin-top:2px;font-size:11px}
+.shot-editor-head .badge{margin-left:8px}
 .shot-editor-nav{display:flex;gap:7px;flex:none;flex-wrap:wrap}
 .shot-editor-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:16px;min-height:0}
 .shot-editor-preview{position:relative;display:flex;align-items:center;justify-content:center;min-height:240px;max-height:70vh;overflow:hidden;border-radius:12px;background:#0b0d10}

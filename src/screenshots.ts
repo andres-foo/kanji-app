@@ -20,6 +20,8 @@ export type Screenshot = {
   added_at: string;
   done: number;
   position: number;
+  analysis: string;
+  source: string;
 };
 
 export const shotPath = (file: string) => join(SCREENSHOTS_DIR, file);
@@ -52,6 +54,73 @@ export async function addScreenshot(bytes: Uint8Array, thumbBytes?: Uint8Array) 
     );
     return { duplicate: false as const, id: Number(result.lastInsertRowid) };
   } catch (error) {
+    try { await unlink(shotPath(file)); } catch {}
+    try { await unlink(shotThumbPath(file)); } catch {}
+    throw error;
+  }
+}
+
+// Imported rows arrive already OCR'd and translated, so unlike addScreenshot()
+// this writes the text in the same insert and reports the row id either way.
+// Duplicates (same image bytes) are never re-processed: the existing row is
+// returned, with gaps filled unless the caller asked to overwrite it.
+export type ImportedScreenshot = {
+  japanese: string;
+  english: string;
+  thumbBytes?: Uint8Array;
+  analysis?: string;
+  position: 0 | 1;
+  overwrite: boolean;
+};
+
+export async function addImportedScreenshot(
+  bytes: Uint8Array,
+  input: ImportedScreenshot,
+): Promise<{ duplicate: boolean; id: number }> {
+  const hash = hashBytes(bytes);
+  const existing = shots.query(`SELECT * FROM screenshots WHERE hash = ?`).get(hash) as Screenshot | null;
+  if (existing) {
+    // The row can outlive its files (manual cleanup, a half-finished upload);
+    // the bytes are in hand, so repair instead of leaving a broken image.
+    if (!(await Bun.file(shotPath(existing.file)).exists())) await Bun.write(shotPath(existing.file), bytes);
+    if (input.thumbBytes && !(await Bun.file(shotThumbPath(existing.file)).exists())) {
+      await Bun.write(shotThumbPath(existing.file), input.thumbBytes);
+    }
+    if (input.overwrite) {
+      shots.run(
+        `UPDATE screenshots SET japanese = ?, english = ?, analysis = ?, position = ? WHERE id = ?`,
+        [input.japanese, input.english, input.analysis ?? existing.analysis, input.position, existing.id],
+      );
+    } else if (existing.done === 0) {
+      // Fill only what is missing, so a row that already has text (from OCR or
+      // the editor) is never silently replaced by the import.
+      const japanese = existing.japanese.trim() ? existing.japanese : input.japanese;
+      const english = existing.english.trim() ? existing.english : input.english;
+      const analysis = existing.analysis.trim() ? existing.analysis : (input.analysis ?? "");
+      if (japanese !== existing.japanese || english !== existing.english || analysis !== existing.analysis) {
+        shots.run(`UPDATE screenshots SET japanese = ?, english = ?, analysis = ? WHERE id = ?`,
+          [japanese, english, analysis, existing.id]);
+      }
+    }
+    return { duplicate: true, id: existing.id };
+  }
+
+  const file = `${hash}.jpg`;
+  await Bun.write(shotPath(file), bytes);
+  if (input.thumbBytes) await Bun.write(shotThumbPath(file), input.thumbBytes);
+  try {
+    const result = shots.run(
+      `INSERT INTO screenshots (file, hash, japanese, english, position, analysis, source)
+       VALUES (?, ?, ?, ?, ?, ?, 'import')`,
+      [file, hash, input.japanese, input.english, input.position, input.analysis ?? ""],
+    );
+    return { duplicate: false, id: Number(result.lastInsertRowid) };
+  } catch (error) {
+    // A concurrent import of the same bytes won the unique hash index. Its row
+    // and files are the ones to keep — deleting them would break that row — so
+    // report it as the duplicate it is instead of cleaning up.
+    const raced = shots.query(`SELECT id FROM screenshots WHERE hash = ?`).get(hash) as { id: number } | null;
+    if (raced) return { duplicate: true, id: raced.id };
     try { await unlink(shotPath(file)); } catch {}
     try { await unlink(shotThumbPath(file)); } catch {}
     throw error;

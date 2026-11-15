@@ -69,8 +69,42 @@ The next form is previewed below the search field. Pressing **Tab** again keeps 
 - `SCREENSHOTS_DB_PATH` (default `./data/screenshots.db`): the separate screenshot library database.
 - `SCREENSHOTS_DIR` (default `./data/screenshots`): full screenshots and their `thumbs/` thumbnails.
 - `OCR_URL` (default `http://127.0.0.1:8765`): optional KanjiApp OCR service; the app remains usable when it is offline.
+- `IMPORT_TOKEN` (unset by default): shared secret that enables `POST /api/import`, the programmatic screenshot import described below. While it is unset the endpoint answers `503 import disabled`.
 - `IMAGES_DIR` (default `./data/images`): one image per kanji, named after the character (`水.jpg` or `水.png`). Square images look best; they are picked up on the next page load.
 - No dependencies: `bun:sqlite` is built in.
+
+### Importing from another app
+
+`POST /api/import` accepts a screenshot that a local tool has already OCR'd and translated, so nothing is re-run here. It is off unless `IMPORT_TOKEN` is set, and every request must carry that value in `X-Import-Token`: the endpoint is called server-to-server, so there is no `Origin` header to check.
+
+The full integration guide for the sending app — field rules, base64 and image-size requirements, a Python reference implementation and the failure modes — is in [docs/import-api.md](docs/import-api.md).
+
+```json
+{
+  "japanese": "日本語のテキスト",
+  "english": "English translation",
+  "image": "<base64 JPEG>",
+  "thumb": "<base64 JPEG>",
+  "analysis": "## markdown analysis",
+  "position": 0,
+  "overwrite": false
+}
+```
+
+`image` is required: standard base64 of JPEG bytes, no `data:` prefix, decoded size within the upload limit. `japanese` is required; `japanese` and `english` are trimmed and capped at 2000 characters. `thumb`, `analysis` and `position` are optional — a markdown analysis is stored as-is, anything else as JSON. Sending the same image bytes twice is idempotent:
+
+| Status | Body |
+|---|---|
+| 200 | `{"ok":true,"id":N,"duplicate":false}` |
+| 200 | `{"ok":true,"id":N,"duplicate":true}` — those bytes are already stored; nothing is replaced unless `"overwrite":true` |
+| 400 | `invalid json`, `japanese required`, `japanese too long`, `english too long`, `invalid image`, `invalid thumb` |
+| 401 | `bad token` |
+| 413 | `image too large` |
+| 415 | `image must be jpeg` |
+| 500 | `import failed` — the file or database write failed |
+| 503 | `import disabled` — `IMPORT_TOKEN` is not set |
+
+Imported rows arrive unfinished (`done = 0`) with the text prefilled, are marked "from app", and appear at the top of the queue on `/screenshot`, so they can be reviewed and saved like an ordinary upload.
 
 ## Project layout
 

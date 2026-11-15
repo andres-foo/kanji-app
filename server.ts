@@ -23,6 +23,7 @@ import { setTheme, toggleDetails } from "./src/routes/prefs";
 import { reviewResult } from "./src/routes/review";
 import { saveSettings, resetScores } from "./src/routes/settings";
 import { uploadScreenshots, autofillScreenshot, saveScreenshotRoute, deleteScreenshotRoute, serveScreenshot, serveScreenshotThumb, ocrStatusResponse, translateScreenshotText } from "./src/routes/screenshots";
+import { importScreenshot } from "./src/routes/import";
 
 // Only these font files are public; anything else under /fonts/ is a 404.
 const FONT_FILES = new Set([
@@ -115,6 +116,7 @@ Bun.serve({
       if (path === "/history") return historyPage();
       if (path === "/api/ocr") return req.method === "GET" ? ocrStatusResponse() : new Response("Method not allowed", { status: 405 });
       if (path === "/api/translate") return req.method === "POST" ? translateScreenshotText(req) : new Response("Method not allowed", { status: 405 });
+      if (path === "/api/import") return req.method === "POST" ? importScreenshot(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot") return req.method === "GET" ? screenshotsPage(url) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot/all") return req.method === "GET" ? savedScreenshotsPage(url) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot/upload") return req.method === "POST" ? uploadScreenshots(req) : new Response("Method not allowed", { status: 405 });

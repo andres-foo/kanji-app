@@ -19,6 +19,8 @@
   const overlayJp = $("#shot-editor-overlay-jp");
   const overlayEn = $("#shot-editor-overlay-en");
   const countLabel = $("#shot-editor-count");
+  const addedLabel = $("#shot-editor-added");
+  const sourceBadge = $("#shot-editor-source");
   const errorBox = $("#shot-editor-error");
   const autofillButton = $("#shot-editor-autofill");
   const translateButton = $("#shot-editor-translate");
@@ -121,6 +123,8 @@
     image.src = `/shot/${item.id}?v=${encodeURIComponent(item.hash || "")}`;
     image.alt = `Screenshot #${item.id}`;
     countLabel.textContent = `${index + 1} / ${items.length}`;
+    if (addedLabel) addedLabel.textContent = item.added_at ? `Added ${item.added_at}` : "";
+    if (sourceBadge) sourceBadge.hidden = item.source !== "import";
     showError("");
     syncOverlay();
     refreshButtons();

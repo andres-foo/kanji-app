@@ -25,7 +25,7 @@ const thumb = (row: Screenshot, className: string) =>
 
 const queueEditor = (row: Screenshot | undefined, total: number) => `<div class="shot-editor" id="shot-editor"${row ? "" : " hidden"}>
   <div class="shot-editor-head">
-    <div><h2 class="h3">Edit screenshot</h2><span class="sub" id="shot-editor-count" aria-live="polite">${row ? `1 / ${total}` : ""}</span></div>
+    <div><h2 class="h3">Edit screenshot</h2><span class="sub" id="shot-editor-count" aria-live="polite">${row ? `1 / ${total}` : ""}</span><span class="sub" id="shot-editor-meta"><span id="shot-editor-added">${row ? `Added ${esc(row.added_at)}` : ""}</span><span class="badge" id="shot-editor-source"${row?.source === "import" ? "" : " hidden"}>From app</span></span></div>
     <div class="shot-editor-nav">
       <button class="pill ghost sm" type="button" id="shot-editor-prev"${row && total > 1 ? "" : " disabled"}>← Previous</button>
       <button class="pill ghost sm" type="button" id="shot-editor-next"${row && total > 1 ? "" : " disabled"}>Next →</button>
@@ -73,6 +73,8 @@ const queueData = (rows: Screenshot[]) => JSON.stringify(rows.map((row) => ({
   japanese: row.japanese,
   english: row.english,
   position: row.position,
+  added_at: row.added_at,
+  source: row.source,
 }))).replace(/</g, "\\u003c");
 
 const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
@@ -80,7 +82,7 @@ const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
   <div class="shot-gallery-text">
     <div class="shot-jp">${esc(row.japanese) || `<span class="sub">No Japanese text</span>`}</div>
     ${row.english ? `<div class="shot-en">${esc(row.english)}</div>` : ""}
-    <span class="badge">${row.done ? "saved" : "unfinished"}</span>
+    <span class="badge">${row.done ? "saved" : "unfinished"}${row.source === "import" ? " · from app" : ""}</span>
   </div>
 </article>`;
 
@@ -91,6 +93,7 @@ const savedCard = (row: Screenshot, back: string) => `<article class="shot-galle
   <div class="shot-gallery-text">
     <div class="shot-jp">${esc(row.japanese) || `<span class="sub">No Japanese text</span>`}</div>
     ${row.english ? `<div class="shot-en">${esc(row.english)}</div>` : ""}
+    ${row.source === "import" ? `<span class="badge">from app</span>` : ""}
   </div>
 </article>`;
 
@@ -99,7 +102,7 @@ export function screenshotViewerPage(id: number, back: string) {
   if (!row) return null;
   const theme = requestContext.getStore()?.theme ?? "light";
   const position = row.position === 1 ? "top" : "bottom";
-  const body = `<div class="listhead"><div><h1>Screenshot</h1><p class="sub" id="shot-viewer-summary">${esc(row.japanese) || "No Japanese text"}</p></div><div class="shot-viewer-actions"><a class="pill ghost sm" href="${esc(back)}">Back</a><button class="pill ghost rem sm" id="shot-viewer-delete" type="button">Delete</button></div></div>
+  const body = `<div class="listhead"><div><h1>Screenshot</h1><p class="sub" id="shot-viewer-summary">${esc(row.japanese) || "No Japanese text"}</p>${row.source === "import" ? `<span class="badge">from app</span>` : ""}</div><div class="shot-viewer-actions"><a class="pill ghost sm" href="${esc(back)}">Back</a><button class="pill ghost rem sm" id="shot-viewer-delete" type="button">Delete</button></div></div>
     <div class="shot-viewer-layout" id="shot-viewer-layout">
       <div class="shot-viewer-frame">
         <img src="${shotUrl(row.id, row.hash)}" alt="Screenshot #${row.id}">
