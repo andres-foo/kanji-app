@@ -21,6 +21,8 @@
   const countLabel = $("#shot-editor-count");
   const addedLabel = $("#shot-editor-added");
   const sourceBadge = $("#shot-editor-source");
+  const analysisBox = $("#shot-analysis");
+  const analysisBody = $("#shot-analysis-body");
   const errorBox = $("#shot-editor-error");
   const autofillButton = $("#shot-editor-autofill");
   const translateButton = $("#shot-editor-translate");
@@ -125,6 +127,9 @@
     countLabel.textContent = `${index + 1} / ${items.length}`;
     if (addedLabel) addedLabel.textContent = item.added_at ? `Added ${item.added_at}` : "";
     if (sourceBadge) sourceBadge.hidden = item.source !== "import";
+    // Rendered and escaped server-side; the import endpoint is the only source.
+    if (analysisBox) analysisBox.hidden = !item.analysis_html;
+    if (analysisBody) analysisBody.innerHTML = item.analysis_html || "";
     showError("");
     syncOverlay();
     refreshButtons();

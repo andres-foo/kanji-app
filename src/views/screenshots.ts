@@ -1,5 +1,6 @@
 import { enc, esc, html } from "../html";
 import { requestContext } from "../prefs";
+import { markdownHtml } from "../markdown";
 import { layout } from "./layout";
 import { getScreenshot, listAllQueue, listForKanji, listSaved, shotThumbUrl, shotUrl, type Screenshot } from "../screenshots";
 
@@ -65,6 +66,10 @@ const queueEditor = (row: Screenshot | undefined, total: number) => `<div class=
       </div>
     </div>
   </div>
+  <div class="shot-analysis" id="shot-analysis"${row && row.analysis.trim() ? "" : " hidden"}>
+    <h3 class="shot-analysis-head">Analysis</h3>
+    <div class="shot-analysis-body" id="shot-analysis-body">${row ? markdownHtml(row.analysis) : ""}</div>
+  </div>
 </div>`;
 
 const queueData = (rows: Screenshot[]) => JSON.stringify(rows.map((row) => ({
@@ -75,6 +80,7 @@ const queueData = (rows: Screenshot[]) => JSON.stringify(rows.map((row) => ({
   position: row.position,
   added_at: row.added_at,
   source: row.source,
+  analysis_html: markdownHtml(row.analysis),
 }))).replace(/</g, "\\u003c");
 
 const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
@@ -140,6 +146,10 @@ export function screenshotViewerPage(id: number, back: string) {
         <div class="shot-error" id="shot-edit-error" role="alert" hidden></div>
       </form>
     </div>
+    ${row.analysis.trim() ? `<section class="card shot-analysis-card">
+      <div class="cardhead"><h2 class="h3">Analysis</h2></div>
+      <div class="shot-analysis-body">${markdownHtml(row.analysis)}</div>
+    </section>` : ""}
     <div class="shot-toast" id="shot-viewer-saved" role="status" hidden>Changes saved.</div>
     <script type="application/json" id="shot-viewer-data">${JSON.stringify({ id: row.id, back }).replace(/</g, "\\u003c")}</script>
     <script src="/js/shot-viewer.js" defer></script>`;

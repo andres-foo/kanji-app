@@ -932,6 +932,26 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-editor-head .badge{margin-left:8px}
 .shot-editor-nav{display:flex;gap:7px;flex:none;flex-wrap:wrap}
 .shot-editor-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:16px;min-height:0}
+.shot-analysis{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.shot-analysis-card{margin-top:16px}
+.shot-analysis-head{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.shot-analysis-body{font-size:13.5px;line-height:1.6;color:var(--ink);max-height:46vh;overflow:auto}
+.shot-analysis-body>:first-child{margin-top:0}
+.shot-analysis-body>:last-child{margin-bottom:0}
+.shot-analysis-body h1,.shot-analysis-body h2,.shot-analysis-body h3,.shot-analysis-body h4{margin:14px 0 6px;line-height:1.3;font-weight:650}
+.shot-analysis-body h1{font-size:18px}
+.shot-analysis-body h2{font-size:16px}
+.shot-analysis-body h3{font-size:14.5px}
+.shot-analysis-body h4{font-size:13.5px}
+.shot-analysis-body p{margin:0 0 8px}
+.shot-analysis-body ul,.shot-analysis-body ol{margin:0 0 8px;padding-left:20px}
+.shot-analysis-body li{margin:2px 0}
+.shot-analysis-body code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;background:var(--soft);border-radius:5px;padding:1px 5px}
+.shot-analysis-body pre{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:var(--soft);overflow:auto}
+.shot-analysis-body pre code{padding:0;background:none;font-size:12px}
+.shot-analysis-body blockquote{margin:0 0 10px;padding:2px 0 2px 12px;border-left:3px solid var(--line);color:var(--muted)}
+.shot-analysis-body hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.shot-analysis-body a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .shot-editor-preview{position:relative;display:flex;align-items:center;justify-content:center;min-height:240px;max-height:70vh;overflow:hidden;border-radius:12px;background:#0b0d10}
 .shot-editor-preview img{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;object-fit:contain}
 .shot-editor-overlay{position:absolute;left:0;right:0;box-sizing:border-box;padding:12px 14px;background:rgba(10,12,15,.76);color:#fff;backdrop-filter:blur(3px);text-align:center}
