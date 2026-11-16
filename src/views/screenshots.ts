@@ -1,6 +1,9 @@
 import { enc, esc, html } from "../html";
+import { hasAiKey } from "../ai-key";
+import { aiConfigured } from "../ai";
 import { requestContext } from "../prefs";
 import { markdownHtml } from "../markdown";
+import { textSetting } from "../settings";
 import { layout } from "./layout";
 import { getScreenshot, listAllQueue, listForKanji, listSaved, shotThumbUrl, shotUrl, type Screenshot } from "../screenshots";
 
@@ -24,7 +27,13 @@ const pager = (page: number, pages: number, make: (n: number) => string) => {
 const thumb = (row: Screenshot, className: string) =>
   `<a class="${className}" href="${shotUrl(row.id, row.hash)}" target="_blank" rel="noopener noreferrer"><img src="${shotThumbUrl(row.id, row.hash)}" alt="Screenshot #${row.id}" loading="lazy"></a>`;
 
-const queueEditor = (row: Screenshot | undefined, total: number) => `<div class="shot-editor" id="shot-editor"${row ? "" : " hidden"}>
+const aiStatusLine = (id: string) => aiConfigured()
+  ? `<div class="shot-ai-line" id="${id}"><span class="shot-ai-dot ready"></span><span>AI ready · ${esc(textSetting("ai_model"))}</span></div>`
+  : hasAiKey()
+    ? `<div class="shot-ai-line" id="${id}"><span class="shot-ai-dot"></span><span>AI is off — enable it in <a href="/settings">Settings</a></span></div>`
+    : `<div class="shot-ai-line" id="${id}"><span class="shot-ai-dot"></span><span>Add an API key in <a href="/settings">Settings</a> to use Autofill</span></div>`;
+
+const queueEditor = (row: Screenshot | undefined, total: number, aiReady: boolean) => `<div class="shot-editor" id="shot-editor" data-ai-configured="${aiReady ? "1" : "0"}"${row ? "" : " hidden"}>
   <div class="shot-editor-head">
     <div><h2 class="h3">Edit screenshot</h2><span class="sub" id="shot-editor-count" aria-live="polite">${row ? `1 / ${total}` : ""}</span><span class="sub" id="shot-editor-meta"><span id="shot-editor-added">${row ? `Added ${esc(row.added_at)}` : ""}</span><span class="badge" id="shot-editor-source"${row?.source === "import" ? "" : " hidden"}>From app</span></span></div>
     <div class="shot-editor-nav">
@@ -43,15 +52,14 @@ const queueEditor = (row: Screenshot | undefined, total: number) => `<div class=
     <div class="shot-editor-fields">
       <div class="shot-field">
         <label class="shot-label">Japanese
-          <textarea id="shot-editor-jp" rows="5" spellcheck="false" placeholder="Japanese text">${row ? esc(row.japanese) : ""}</textarea>
+          <textarea id="shot-editor-jp" rows="4" spellcheck="false" placeholder="Japanese text">${row ? esc(row.japanese) : ""}</textarea>
         </label>
-        <button class="pill ghost sm" type="button" id="shot-editor-autofill" disabled>Autofill</button>
       </div>
       <div class="shot-field">
         <label class="shot-label">English
-          <textarea id="shot-editor-en" rows="3" spellcheck="false" placeholder="English (optional)">${row ? esc(row.english) : ""}</textarea>
+          <textarea id="shot-editor-en" rows="4" spellcheck="false" placeholder="English (optional)">${row ? esc(row.english) : ""}</textarea>
         </label>
-        <button class="pill ghost sm" type="button" id="shot-editor-translate"${row ? "" : " disabled"}>Translate</button>
+        ${aiReady ? "" : `<button class="pill ghost sm" type="button" id="shot-editor-translate"${row ? "" : " disabled"}>Translate</button>`}
       </div>
       <label class="shot-position">Show text
         <select id="shot-editor-position" class="shot-position-select" aria-label="Text position">
@@ -61,14 +69,11 @@ const queueEditor = (row: Screenshot | undefined, total: number) => `<div class=
       </label>
       <div class="shot-error" id="shot-editor-error" role="alert" hidden></div>
       <div class="shot-editor-actions">
+        ${aiReady ? `<button class="pill ghost sm shot-autofill" type="button" id="shot-editor-autofill"${row ? "" : " disabled"} title="Fill Japanese and English from the screenshot">Autofill with AI</button>` : ""}
         <button class="pill dark sm" type="button" id="shot-editor-save"${row ? "" : " disabled"}>Save</button>
         <button class="pill ghost rem sm" type="button" id="shot-editor-delete"${row ? "" : " disabled"}>Delete</button>
       </div>
     </div>
-  </div>
-  <div class="shot-analysis" id="shot-analysis"${row && row.analysis.trim() ? "" : " hidden"}>
-    <h3 class="shot-analysis-head">Analysis</h3>
-    <div class="shot-analysis-body" id="shot-analysis-body">${row ? markdownHtml(row.analysis) : ""}</div>
   </div>
 </div>`;
 
@@ -80,7 +85,6 @@ const queueData = (rows: Screenshot[]) => JSON.stringify(rows.map((row) => ({
   position: row.position,
   added_at: row.added_at,
   source: row.source,
-  analysis_html: markdownHtml(row.analysis),
 }))).replace(/</g, "\\u003c");
 
 const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
@@ -108,6 +112,7 @@ export function screenshotViewerPage(id: number, back: string) {
   if (!row) return null;
   const theme = requestContext.getStore()?.theme ?? "light";
   const position = row.position === 1 ? "top" : "bottom";
+  const aiReady = aiConfigured();
   const body = `<div class="listhead"><div><h1>Screenshot</h1><p class="sub" id="shot-viewer-summary">${esc(row.japanese) || "No Japanese text"}</p>${row.source === "import" ? `<span class="badge">from app</span>` : ""}</div><div class="shot-viewer-actions"><a class="pill ghost sm" href="${esc(back)}">Back</a><button class="pill ghost rem sm" id="shot-viewer-delete" type="button">Delete</button></div></div>
     <div class="shot-viewer-layout" id="shot-viewer-layout">
       <div class="shot-viewer-frame">
@@ -119,18 +124,21 @@ export function screenshotViewerPage(id: number, back: string) {
       </div>
       <form class="card shot-edit-card" id="shot-edit-form">
         <div class="cardhead"><h2 class="h3">Edit screenshot</h2></div>
+        ${aiStatusLine("shot-viewer-ai-line")}
         <div class="shot-edit-fields">
           <div class="shot-field">
             <label class="shot-label">Japanese
-              <textarea id="shot-edit-jp" rows="5" spellcheck="false">${esc(row.japanese)}</textarea>
+              <textarea id="shot-edit-jp" rows="4" spellcheck="false">${esc(row.japanese)}</textarea>
             </label>
-            <button class="pill ghost sm" type="button" id="shot-edit-autofill">Autofill</button>
+            ${aiReady ? `<div class="shot-field-actions">
+              <button class="pill ghost sm" type="button" id="shot-edit-analyze">Analyze</button>
+            </div>` : ""}
           </div>
           <div class="shot-field">
             <label class="shot-label">English
-              <textarea id="shot-edit-en" rows="3" spellcheck="false">${esc(row.english)}</textarea>
+              <textarea id="shot-edit-en" rows="4" spellcheck="false">${esc(row.english)}</textarea>
             </label>
-            <button class="pill ghost sm" type="button" id="shot-edit-translate">Translate</button>
+            ${aiReady ? "" : `<button class="pill ghost sm" type="button" id="shot-edit-translate">Translate</button>`}
           </div>
           <label class="shot-position">Show text
             <select class="shot-position-select" id="shot-edit-position">
@@ -140,18 +148,19 @@ export function screenshotViewerPage(id: number, back: string) {
           </label>
         </div>
         <div class="shot-edit-actions">
+          ${aiReady ? `<button class="pill ghost sm shot-autofill" type="button" id="shot-edit-autofill" title="Fill Japanese and English from the screenshot">Autofill with AI</button>` : ""}
           <button class="pill dark sm" type="button" id="shot-edit-save">Save changes</button>
           <button class="pill ghost sm" type="button" id="shot-edit-cancel">Cancel</button>
         </div>
         <div class="shot-error" id="shot-edit-error" role="alert" hidden></div>
       </form>
     </div>
-    ${row.analysis.trim() ? `<section class="card shot-analysis-card">
+    <section class="card shot-analysis-card" id="shot-viewer-analysis"${row.analysis.trim() ? "" : " hidden"}>
       <div class="cardhead"><h2 class="h3">Analysis</h2></div>
-      <div class="shot-analysis-body">${markdownHtml(row.analysis)}</div>
-    </section>` : ""}
+      <div class="shot-analysis-body" id="shot-viewer-analysis-body">${markdownHtml(row.analysis)}</div>
+    </section>
     <div class="shot-toast" id="shot-viewer-saved" role="status" hidden>Changes saved.</div>
-    <script type="application/json" id="shot-viewer-data">${JSON.stringify({ id: row.id, back }).replace(/</g, "\\u003c")}</script>
+    <script type="application/json" id="shot-viewer-data">${JSON.stringify({ id: row.id, back, configured: aiReady }).replace(/</g, "\\u003c")}</script>
     <script src="/js/shot-viewer.js" defer></script>`;
   return html(layout("Screenshot – Kanji", body, { theme, back, active: "screenshots" }));
 }
@@ -173,6 +182,7 @@ export function screenshotsPage(url: URL) {
   const rows = listAllQueue();
   const count = rows.length;
   const saved = listSaved(1);
+  const aiReady = aiConfigured();
   const uploadNotice = (() => {
     const uploaded = Number(url.searchParams.get("uploaded") ?? 0);
     const duplicates = Number(url.searchParams.get("duplicates") ?? 0);
@@ -198,11 +208,8 @@ export function screenshotsPage(url: URL) {
     ${count ? `<p class="shot-counter" id="shot-counter" data-count="${count}"><a href="#queue"><span id="shot-counter-n">${count}</span> screenshot${count === 1 ? "" : "s"} unfinished</a></p>` : ""}
     <section id="queue" class="shot-queue-section">
       <div class="shot-queue-head"><h2>Queue</h2></div>
-      <div class="shot-ocr-line" id="shot-ocr-line">
-        <span class="shot-ocr-dot checking"></span><span id="shot-ocr-text">Checking OCR…</span>
-        <button class="pill ghost sm" id="shot-ocr-recheck" type="button">Recheck</button>
-      </div>
-      ${queueEditor(rows[0], count)}
+      ${aiStatusLine("shot-ai-line")}
+      ${queueEditor(rows[0], count, aiReady)}
       <div class="card listempty" id="shot-empty"${count ? " hidden" : ""}><h2>No pending screenshots</h2><p class="sub">Upload one above.</p></div>
       <script type="application/json" id="shot-editor-data">${queueData(rows)}</script>
     </section>

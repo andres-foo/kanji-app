@@ -7,11 +7,13 @@
   try { data = JSON.parse(dataNode.textContent || "{}"); } catch { return; }
   const id = Number(data.id);
   const back = String(data.back || "/screenshot");
+  const configured = data.configured === true;
   const deleteButton = document.getElementById("shot-viewer-delete");
   const saveButton = document.getElementById("shot-edit-save");
   const cancelButton = document.getElementById("shot-edit-cancel");
   const translateButton = document.getElementById("shot-edit-translate");
   const autofillButton = document.getElementById("shot-edit-autofill");
+  const analyzeButton = document.getElementById("shot-edit-analyze");
   const jp = document.getElementById("shot-edit-jp");
   const en = document.getElementById("shot-edit-en");
   const position = document.getElementById("shot-edit-position");
@@ -19,9 +21,12 @@
   const overlayJp = document.getElementById("shot-viewer-jp");
   const overlayEn = document.getElementById("shot-viewer-en");
   const summary = document.getElementById("shot-viewer-summary");
+  const analysisSection = document.getElementById("shot-viewer-analysis");
+  const analysisBody = document.getElementById("shot-viewer-analysis-body");
   const error = document.getElementById("shot-edit-error");
   const savedToast = document.getElementById("shot-viewer-saved");
   let savedTimer = 0;
+
   let saved = {
     japanese: overlayJp?.textContent || "",
     english: overlayEn?.textContent || "",
@@ -34,11 +39,57 @@
     error.hidden = !message;
   };
 
+  const aiError = (code) => {
+    switch (code) {
+      case "disabled": return "No API key is configured. Add one in Settings.";
+      case "unauthorized": return "API key was rejected — check Settings";
+      case "rate-limited": return "Rate limited — try again shortly";
+      case "timeout": return "The AI request timed out";
+      case "offline": return "The AI provider is unreachable — check the connection and base URL";
+      case "bad-response": return "The AI provider returned an unexpected response — check the base URL and model";
+      case "no-text": return "Add Japanese text first.";
+      case "forbidden": return "Request rejected. Reload the page and try again.";
+      default: return "";
+    }
+  };
+
+  const busyLabel = (button, label) => {
+    if (!button) return () => {};
+    const original = button.textContent;
+    button.textContent = label;
+    button.setAttribute("aria-busy", "true");
+    return () => {
+      button.textContent = original;
+      button.removeAttribute("aria-busy");
+    };
+  };
+
   const showSaved = () => {
     if (!savedToast) return;
     savedToast.hidden = false;
     clearTimeout(savedTimer);
     savedTimer = setTimeout(() => { savedToast.hidden = true; }, 4000);
+  };
+
+  // Position is metadata, so it saves on change instead of waiting for Save.
+  let positionSave = Promise.resolve();
+  const savePosition = () => {
+    if (!position) return;
+    const value = Number(position.value) === 1 ? 1 : 0;
+    if (value === saved.position) return;
+    positionSave = positionSave.then(async () => {
+      const response = await fetch(`/screenshot/${id}/position`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ position: value }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok === false) {
+        showError("Could not save the text position.");
+        return;
+      }
+      saved.position = value;
+    }).catch(() => showError("Could not save the text position."));
   };
 
   const hideSaved = () => {
@@ -78,6 +129,7 @@
     if ((en?.value.trim() ?? "") && !confirm("Replace the English text with the translation?")) return;
     translateButton.disabled = true;
     showError("");
+    const done = busyLabel(translateButton, "Translating…");
     try {
       const response = await fetch("/api/translate", {
         method: "POST",
@@ -86,7 +138,7 @@
       });
       const result = await response.json();
       if (!response.ok || result.ok === false || typeof result.text !== "string") {
-        showError("Translation failed. Check that this machine can reach Google.");
+        showError((result.ai === true && aiError(result.error)) || "Translation failed. Check that this machine can reach Google.");
         return;
       }
       if (en) en.value = result.text;
@@ -94,40 +146,82 @@
     } catch {
       showError("Translation failed. Check that this machine can reach Google.");
     } finally {
+      done();
       translateButton.disabled = false;
     }
   });
 
   autofillButton?.addEventListener("click", async () => {
+    if (!configured) { showError("Add an API key in Settings to use Autofill."); return; }
     if ((jp?.value.trim() ?? "") && !confirm("Replace the Japanese text with the OCR result?")) return;
     autofillButton.disabled = true;
     showError("");
+    const done = busyLabel(autofillButton, "Autofilling…");
     try {
       const response = await fetch(`/screenshot/${id}/autofill`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ force: true }),
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (!response.ok || result.ok === false) {
-        showError(result.error === "offline" ? "OCR service is offline." : "Autofill failed.");
+        showError(aiError(result.error) || "Autofill failed.");
         return;
       }
-      if (typeof result.text === "string" && result.text) {
-        // The autofill route stores the recognized text as the screenshot's
-        // Japanese, so it becomes the value Cancel falls back to.
-        saved.japanese = result.text;
-        if (jp) jp.value = result.text;
-        if (summary) summary.textContent = result.text;
-        hideSaved();
-        renderOverlay();
-      } else if (typeof result.text === "string") {
-        showError("No text was recognized in the screenshot.");
-      }
+      const japanese = typeof result.japanese === "string" ? result.japanese : "";
+      const english = typeof result.english === "string" ? result.english : "";
+      // The route persisted both values; keep the local "saved" snapshot in
+      // step with it so Cancel restores what the database actually holds.
+      saved.japanese = japanese;
+      saved.english = english;
+      if (jp) jp.value = japanese;
+      if (en && !en.value.trim() && english) en.value = english;
+      if (summary) summary.textContent = japanese || "No Japanese text";
+      hideSaved();
+      renderOverlay();
+      if (!japanese && !english) showError("No text was recognized in the screenshot.");
     } catch {
       showError("Autofill failed.");
     } finally {
-      autofillButton.disabled = false;
+      done();
+      autofillButton.disabled = !configured;
+    }
+  });
+
+  analyzeButton?.addEventListener("click", async () => {
+    if (!configured) { showError("Add an API key in Settings to use Analyze."); return; }
+    if (!saved.japanese.trim()) {
+      showError(jp?.value.trim() ? "Save the Japanese text first, then analyze." : "Add Japanese text first.");
+      return;
+    }
+    analyzeButton.disabled = true;
+    showError("");
+    const done = busyLabel(analyzeButton, "Analyzing…");
+    try {
+      const response = await fetch(`/screenshot/${id}/analyze`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok === false) {
+        showError(aiError(result.error) || "Analysis failed.");
+        return;
+      }
+      const html = typeof result.analysis_html === "string" ? result.analysis_html : "";
+      if (!html || !analysisSection || !analysisBody) {
+        showError("The analysis came back empty.");
+        return;
+      }
+      // Escaped and rendered server-side by markdown.ts.
+      analysisBody.innerHTML = html;
+      analysisSection.hidden = false;
+      analysisSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch {
+      showError("Analysis failed.");
+    } finally {
+      done();
+      analyzeButton.disabled = !configured;
     }
   });
 
@@ -135,7 +229,10 @@
     hideSaved();
     renderOverlay();
   }));
-  position?.addEventListener("change", renderOverlay);
+  position?.addEventListener("change", () => {
+    renderOverlay();
+    void savePosition();
+  });
 
   saveButton?.addEventListener("click", async () => {
     const japanese = jp?.value.trim() ?? "";

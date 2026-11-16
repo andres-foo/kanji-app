@@ -37,7 +37,60 @@ function inline(text: string): string {
 
 type List = { ordered: boolean; items: string[] };
 
-// Block markup: headings, fenced code, lists, block quotes, rules and
+type Alignment = "left" | "center" | "right" | null;
+type Table = { header: string[]; align: Alignment[]; rows: string[][] };
+
+const TABLE_SEPARATOR = /^:?-{3,}:?$/;
+const PIPE = "\u0001";
+
+// Split a GFM-style row, with or without the outer pipes. Escaped pipes are
+// parked behind a placeholder so a cell can contain a literal "|".
+const splitTableRow = (line: string): string[] => {
+  let text = line.trim().replace(/\\\|/g, PIPE);
+  if (text.startsWith("|")) text = text.slice(1);
+  if (text.endsWith("|")) text = text.slice(0, -1);
+  return text.split("|").map((cell) => cell.trim().replace(/\u0001/g, "|"));
+};
+
+const alignmentOf = (cell: string): Alignment => {
+  const left = cell.startsWith(":");
+  const right = cell.endsWith(":");
+  return left && right ? "center" : left ? "left" : right ? "right" : null;
+};
+
+// A table starts with a header row followed by a separator row whose cells are
+// only dashes and optional alignment colons. Body rows run until a blank line
+// or a line without a pipe.
+const tableAt = (lines: string[], start: number): { table: Table; next: number } | null => {
+  const headerLine = lines[start]?.trim() ?? "";
+  const separatorLine = lines[start + 1]?.trim() ?? "";
+  if (!headerLine.includes("|") || !separatorLine.includes("|")) return null;
+  const header = splitTableRow(headerLine);
+  const separator = splitTableRow(separatorLine);
+  if (!separator.length || header.length !== separator.length) return null;
+  if (!separator.every((cell) => TABLE_SEPARATOR.test(cell))) return null;
+
+  const rows: string[][] = [];
+  let next = start + 2;
+  for (; next < lines.length; next++) {
+    const line = lines[next].trim();
+    if (!line || !line.includes("|")) break;
+    const cells = splitTableRow(line);
+    rows.push(header.map((_, index) => cells[index] ?? ""));
+  }
+  return { table: { header, align: separator.map(alignmentOf), rows }, next };
+};
+
+const tableHtml = ({ header, align, rows }: Table) => {
+  const renderRow = (tag: "th" | "td", cells: string[]) =>
+    `<tr>${cells.map((cell, index) => {
+      const alignment = align[index];
+      return `<${tag}${alignment ? ` style="text-align:${alignment}"` : ""}>${inline(cell)}</${tag}>`;
+    }).join("")}</tr>`;
+  return `<div class="markdown-table"><table><thead>${renderRow("th", header)}</thead><tbody>${rows.map((row) => renderRow("td", row)).join("")}</tbody></table></div>`;
+};
+
+// Block markup: headings, tables, fenced code, lists, block quotes, rules and
 // paragraphs. Lines inside a paragraph keep their hard breaks.
 export function markdownHtml(source: string): string {
   const lines = String(source ?? "").replace(/\r\n?/g, "\n").split("\n");
@@ -86,6 +139,14 @@ export function markdownHtml(source: string): string {
     }
 
     if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed)) { flush(); out.push("<hr>"); continue; }
+
+    const table = tableAt(lines, i);
+    if (table) {
+      flush();
+      out.push(tableHtml(table.table));
+      i = table.next - 1;
+      continue;
+    }
 
     const quoted = /^>\s?(.*)$/.exec(trimmed);
     if (quoted) {

@@ -5,9 +5,6 @@
   if (!editor || !dataNode || !emptyCard) return;
 
   const $ = (sel, root = document) => root.querySelector(sel);
-  const statusDot = $("#shot-ocr-line .shot-ocr-dot");
-  const statusText = $("#shot-ocr-text");
-  const recheck = $("#shot-ocr-recheck");
   const counter = $("#shot-counter");
   const counterN = $("#shot-counter-n");
   const jp = $("#shot-editor-jp");
@@ -21,8 +18,6 @@
   const countLabel = $("#shot-editor-count");
   const addedLabel = $("#shot-editor-added");
   const sourceBadge = $("#shot-editor-source");
-  const analysisBox = $("#shot-analysis");
-  const analysisBody = $("#shot-analysis-body");
   const errorBox = $("#shot-editor-error");
   const autofillButton = $("#shot-editor-autofill");
   const translateButton = $("#shot-editor-translate");
@@ -37,7 +32,7 @@
     if (Array.isArray(parsed)) items = parsed;
   } catch { /* keep the empty queue */ }
   let index = 0;
-  let ocrState = "checking";
+  const aiReady = editor.dataset.aiConfigured === "1";
   let busy = false;
 
   const values = () => ({
@@ -58,6 +53,31 @@
   const showError = (message) => {
     errorBox.textContent = message;
     errorBox.hidden = !message;
+  };
+
+  const busyLabel = (button, label) => {
+    if (!button) return () => {};
+    const original = button.textContent;
+    button.textContent = label;
+    button.setAttribute("aria-busy", "true");
+    return () => {
+      button.textContent = original;
+      button.removeAttribute("aria-busy");
+    };
+  };
+
+  const aiError = (code) => {
+    switch (code) {
+      case "disabled": return "No API key is configured. Add one in Settings.";
+      case "unauthorized": return "API key was rejected — check Settings";
+      case "rate-limited": return "Rate limited — try again shortly";
+      case "timeout": return "The AI request timed out";
+      case "offline": return "The AI provider is unreachable — check the connection and base URL";
+      case "bad-response": return "The AI provider returned an unexpected response — check the base URL and model";
+      case "no-text": return "Add Japanese text first.";
+      case "forbidden": return "Request rejected. Reload the page and try again.";
+      default: return "";
+    }
   };
 
   // Mirror the saved output live: the same Japanese/English block the viewer
@@ -90,7 +110,7 @@
     overlay.style.bottom = top ? "auto" : `${box.bottom - rect.bottom}px`;
   };
 
-  // Keep every control in sync with the current item, navigation and OCR
+  // Keep every control in sync with the current item, navigation and AI
   // state; a single place means busy/empty states can't re-enable buttons.
   const refreshButtons = () => {
     const hasItem = Boolean(items[index]);
@@ -99,8 +119,8 @@
     nextButton.disabled = !canMove;
     saveButton.disabled = busy || !hasItem;
     deleteButton.disabled = busy || !hasItem;
-    translateButton.disabled = busy || !hasItem;
-    autofillButton.disabled = busy || !hasItem || ocrState !== "ready";
+    if (translateButton) translateButton.disabled = busy || !hasItem;
+    if (autofillButton) autofillButton.disabled = busy || !hasItem || !aiReady;
   };
 
   const setBusy = (value) => {
@@ -127,9 +147,6 @@
     countLabel.textContent = `${index + 1} / ${items.length}`;
     if (addedLabel) addedLabel.textContent = item.added_at ? `Added ${item.added_at}` : "";
     if (sourceBadge) sourceBadge.hidden = item.source !== "import";
-    // Rendered and escaped server-side; the import endpoint is the only source.
-    if (analysisBox) analysisBox.hidden = !item.analysis_html;
-    if (analysisBody) analysisBody.innerHTML = item.analysis_html || "";
     showError("");
     syncOverlay();
     refreshButtons();
@@ -169,6 +186,26 @@
     return { ok: response.ok && data.ok !== false, data };
   };
 
+  // Position is metadata, so it saves on change instead of waiting for Save.
+  // Changes are chained so a quick back-and-forth cannot land out of order.
+  let positionSave = Promise.resolve();
+  const savePosition = () => {
+    const item = items[index];
+    if (!item) return;
+    const value = Number(position.value) === 1 ? 1 : 0;
+    if (value === item.position) return;
+    positionSave = positionSave.then(async () => {
+      const result = await postJson(`/screenshot/${item.id}/position`, { position: value });
+      if (!result.ok) {
+        if (items[index] === item) showError("Could not save the text position.");
+        return;
+      }
+      item.position = value;
+    }).catch(() => {
+      if (items[index] === item) showError("Could not save the text position.");
+    });
+  };
+
   const translate = async () => {
     const item = items[index];
     if (!item) return;
@@ -177,10 +214,11 @@
     if (en.value.trim() && !confirm("Replace the English text with the translation?")) return;
     setBusy(true);
     showError("");
+    const done = busyLabel(translateButton, "Translating…");
     try {
       const result = await postJson("/api/translate", { text });
       if (!result.ok || typeof result.data.text !== "string") {
-        showError("Translation failed. Check that this machine can reach Google.");
+        showError((result.data.ai === true && aiError(result.data.error)) || "Translation failed. Check that this machine can reach Google.");
         return;
       }
       // Leave item.english untouched so an unsaved translation still counts
@@ -190,6 +228,7 @@
     } catch {
       showError("Translation failed. Check that this machine can reach Google.");
     } finally {
+      done();
       setBusy(false);
     }
   };
@@ -200,23 +239,28 @@
     if (jp.value.trim() && !confirm("Replace the Japanese text with the OCR result?")) return;
     setBusy(true);
     showError("");
+    const done = busyLabel(autofillButton, "Autofilling…");
     try {
       // An empty visible field may still have a stored value from a previous
-      // autofill, so force OCR instead of letting the server skip it.
+      // autofill, so force the provider instead of letting the server skip it.
       const result = await postJson(`/screenshot/${item.id}/autofill`, { force: true });
       if (!result.ok) {
-        if (result.data.error === "offline") setStatus("offline");
-        showError(result.data.error === "offline" ? "OCR service is offline." : "Autofill failed.");
+        showError(aiError(result.data.error) || "Autofill failed.");
         return;
       }
-      if (typeof result.data.text === "string" && !result.data.skipped) {
-        jp.value = result.data.text;
-        item.japanese = result.data.text;
-        syncOverlay();
-      }
+      const japanese = typeof result.data.japanese === "string" ? result.data.japanese : "";
+      const english = typeof result.data.english === "string" ? result.data.english : "";
+      jp.value = japanese;
+      item.japanese = japanese;
+      // Only fill an empty English field; anything typed there wins.
+      if (!en.value.trim() && english) en.value = english;
+      item.english = english;
+      syncOverlay();
+      if (!japanese && !english) showError("No text was recognized in the screenshot.");
     } catch {
       showError("Autofill failed.");
     } finally {
+      done();
       setBusy(false);
     }
   };
@@ -262,47 +306,23 @@
     }
   };
 
-  const setStatus = (state, model = "") => {
-    ocrState = state;
-    if (statusDot && statusText) {
-      statusDot.className = `shot-ocr-dot ${state}`;
-      statusText.textContent = state === "ready"
-        ? `OCR ready${model ? ` · ${model}` : ""}`
-        : state === "loading" ? "OCR model loading…" : state === "offline" ? "OCR service offline" : "Checking OCR…";
-    }
-    refreshButtons();
-  };
-
-  const checkStatus = async () => {
-    setStatus("checking");
-    if (recheck) recheck.disabled = true;
-    try {
-      const response = await fetch("/api/ocr", { headers: { accept: "application/json" } });
-      const data = await response.json();
-      setStatus(data.state ?? "offline", data.model ?? "");
-    } catch {
-      setStatus("offline");
-    } finally {
-      if (recheck) recheck.disabled = false;
-    }
-  };
-
   saveButton.addEventListener("click", () => void save());
   deleteButton.addEventListener("click", () => void remove());
-  autofillButton.addEventListener("click", () => void autofill());
-  translateButton.addEventListener("click", () => void translate());
+  autofillButton?.addEventListener("click", () => void autofill());
+  translateButton?.addEventListener("click", () => void translate());
   prevButton.addEventListener("click", () => move(-1));
   nextButton.addEventListener("click", () => move(1));
   jp.addEventListener("input", syncOverlay);
   en.addEventListener("input", syncOverlay);
-  position.addEventListener("change", syncOverlay);
+  position.addEventListener("change", () => {
+    syncOverlay();
+    void savePosition();
+  });
   image.addEventListener("load", placeOverlay);
   window.addEventListener("resize", placeOverlay);
-  recheck?.addEventListener("click", () => void checkStatus());
 
   if (items.length) render();
   else showEmpty();
-  void checkStatus();
 
   // Uploader: convert each selected image to a JPEG at its original resolution.
   const fileInput = $("#shot-file-input");

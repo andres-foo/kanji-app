@@ -31,7 +31,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 **Review and measure.** A simple spaced-repetition system moves each kanji's score and uses it to pick the next interval; the queue is split into new, due today and overdue. Answer with the buttons, the keyboard (`Space` to reveal, `A S D F` to answer) or a controller (`A` to reveal, `LT LB RB RT` to answer), and watch the dashboard stats for the list size, the due queue, the level trend and the answer mix.
 
-**Screenshots.** Upload screenshots of Japanese text; each one appears on the page of every kanji it contains, with the Japanese and optional English text available as an overlay or carousel. Autofill can use the optional [KanjiApp OCR](https://github.com/andres-foo/kanji-app-ocr) companion service: a standalone local PaddleOCR backend that accepts raw JPEG bytes and returns recognized Japanese lines with confidence scores and bounding boxes. It has no UI, translation, database or image storage, and the app works without it. A Translate button fills the English text from the Japanese using Google's public translate endpoint; it needs no API key, but that one request leaves the machine and may be rate-limited.
+**Screenshots.** Upload screenshots of Japanese text; each one appears on the page of every kanji it contains, with the Japanese and optional English text available as an overlay or carousel. Autofill (image → Japanese and English) and Analyze (stored Japanese → tutor notes) can use an optional vision-capable LLM through any OpenAI-compatible API; it is off by default and the app works without it. A Translate button fills the English text from the Japanese — through the AI provider when configured, otherwise Google's public translate endpoint, which needs no API key but leaves the machine and may be rate-limited.
 
 **Make it yours.** Light and dark themes, editable review deltas and mastery-level names, and a reset that returns every added kanji to the starting score.
 
@@ -68,10 +68,13 @@ The next form is previewed below the search field. Pressing **Tab** again keeps 
 - `PHRASE_DB_PATH` (default `./data/phrases.db`): the read-only example phrase database. It holds the Tatoeba phrases and furigana. The app does not write to it.
 - `SCREENSHOTS_DB_PATH` (default `./data/screenshots.db`): the separate screenshot library database.
 - `SCREENSHOTS_DIR` (default `./data/screenshots`): full screenshots and their `thumbs/` thumbnails.
-- `OCR_URL` (default `http://127.0.0.1:8765`): optional KanjiApp OCR service; the app remains usable when it is offline.
 - `IMPORT_TOKEN` (unset by default): shared secret that enables `POST /api/import`, the programmatic screenshot import described below. While it is unset the endpoint answers `503 import disabled`.
 - `IMAGES_DIR` (default `./data/images`): one image per kanji, named after the character (`水.jpg` or `水.png`). Square images look best; they are picked up on the next page load.
 - No dependencies: `bun:sqlite` is built in.
+
+### Optional AI backend
+
+Autofill, Translate and Analyze can use a vision-capable LLM through any OpenAI-compatible API — OpenAI, OpenRouter, Groq, Gemini's `/v1beta/openai/` endpoint, or a local Ollama / LM Studio server. It is off by default: with no key no AI request is made, Autofill and Analyze stay disabled with a link to Settings, and Translate uses Google as before. Once enabled, the screenshot image (Autofill only) and the Japanese text are sent to the provider you choose, so point it at a provider you trust. Configure it in **Settings → AI (optional)**. The non-secret settings are stored in the `settings` table of `user.db` as `ai_base_url`, `ai_model` and `ai_enabled` (`"1"` means on). The API key is saved as `AI_API_KEY` in the local, gitignored `.env` file; the server re-reads it on each request, so saving it in Settings takes effect immediately. The key is never rendered back to the browser. The base URL must be `https://`, or `http://` only for `localhost` / `127.0.0.1`.
 
 ### Importing from another app
 

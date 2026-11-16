@@ -22,8 +22,14 @@ import { kanjiPhrases } from "./src/routes/phrases";
 import { setTheme, toggleDetails } from "./src/routes/prefs";
 import { reviewResult } from "./src/routes/review";
 import { saveSettings, resetScores } from "./src/routes/settings";
-import { uploadScreenshots, autofillScreenshot, saveScreenshotRoute, deleteScreenshotRoute, serveScreenshot, serveScreenshotThumb, ocrStatusResponse, translateScreenshotText } from "./src/routes/screenshots";
+import { aiStatusResponse, aiTestResponse } from "./src/routes/ai";
+import { uploadScreenshots, autofillScreenshot, analyzeScreenshot, saveScreenshotRoute, saveScreenshotPosition, deleteScreenshotRoute, serveScreenshot, serveScreenshotThumb, translateScreenshotText } from "./src/routes/screenshots";
 import { importScreenshot } from "./src/routes/import";
+import { migrateLegacyAiKey } from "./src/ai-key";
+
+// A key saved by the first build lives in user.db; move it to .env before the
+// server starts serving requests so the tracked database stops holding it.
+migrateLegacyAiKey();
 
 // Only these font files are public; anything else under /fonts/ is a 404.
 const FONT_FILES = new Set([
@@ -49,6 +55,7 @@ const STATIC_FILES: Record<string, [string, string]> = {
   "/js/screenshot-carousel.js": ["public/js/screenshot-carousel.js", "text/javascript; charset=utf-8"],
   "/js/shot-viewer.js": ["public/js/shot-viewer.js", "text/javascript; charset=utf-8"],
   "/js/phrase-more.js": ["public/js/phrase-more.js", "text/javascript; charset=utf-8"],
+  "/js/settings-ai.js": ["public/js/settings-ai.js", "text/javascript; charset=utf-8"],
 };
 
 Bun.serve({
@@ -114,16 +121,21 @@ Bun.serve({
       if (path === "/") return home(url);
       if (path === "/my-list") return myListPage(url);
       if (path === "/history") return historyPage();
-      if (path === "/api/ocr") return req.method === "GET" ? ocrStatusResponse() : new Response("Method not allowed", { status: 405 });
       if (path === "/api/translate") return req.method === "POST" ? translateScreenshotText(req) : new Response("Method not allowed", { status: 405 });
+      if (path === "/api/ai/status") return req.method === "GET" ? aiStatusResponse() : new Response("Method not allowed", { status: 405 });
+      if (path === "/api/ai/test") return req.method === "POST" ? aiTestResponse(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/api/import") return req.method === "POST" ? importScreenshot(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot") return req.method === "GET" ? screenshotsPage(url) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot/all") return req.method === "GET" ? savedScreenshotsPage(url) : new Response("Method not allowed", { status: 405 });
       if (path === "/screenshot/upload") return req.method === "POST" ? uploadScreenshots(req) : new Response("Method not allowed", { status: 405 });
       const shotAutofill = path.match(/^\/screenshot\/(\d+)\/autofill$/);
       if (shotAutofill) return req.method === "POST" ? autofillScreenshot(req, shotAutofill[1]) : new Response("Method not allowed", { status: 405 });
+      const shotAnalyze = path.match(/^\/screenshot\/(\d+)\/analyze$/);
+      if (shotAnalyze) return req.method === "POST" ? analyzeScreenshot(req, shotAnalyze[1]) : new Response("Method not allowed", { status: 405 });
       const shotSave = path.match(/^\/screenshot\/(\d+)\/save$/);
       if (shotSave) return req.method === "POST" ? saveScreenshotRoute(req, shotSave[1]) : new Response("Method not allowed", { status: 405 });
+      const shotPosition = path.match(/^\/screenshot\/(\d+)\/position$/);
+      if (shotPosition) return req.method === "POST" ? saveScreenshotPosition(req, shotPosition[1]) : new Response("Method not allowed", { status: 405 });
       const shotDelete = path.match(/^\/screenshot\/(\d+)\/delete$/);
       if (shotDelete) return req.method === "POST" ? deleteScreenshotRoute(req, shotDelete[1]) : new Response("Method not allowed", { status: 405 });
       const shotThumb = path.match(/^\/shot\/(\d+)\/thumb$/);

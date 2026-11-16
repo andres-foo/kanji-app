@@ -3,8 +3,7 @@ import { mkdirSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { likeEsc } from "./html";
-import { OCR_URL, SCREENSHOTS_DIR } from "./config";
-import { joinOcrText } from "./ocr-lines";
+import { SCREENSHOTS_DIR } from "./config";
 import { shots } from "./screenshots-db";
 
 export const PER_PAGE = 12;
@@ -177,49 +176,31 @@ export function setJapanese(id: number, japanese: string) {
   return getScreenshot(id);
 }
 
+// Autofill persists the recognized text immediately (the editor can still be
+// cancelled, but the row already holds what the image said). The English side
+// is only filled when the row has none.
+export function setScreenshotText(id: number, japanese: string, english: string) {
+  shots.run(`UPDATE screenshots SET japanese = ?, english = ? WHERE id = ?`, [japanese, english, id]);
+  return getScreenshot(id);
+}
+
+export function setScreenshotAnalysis(id: number, analysis: string) {
+  shots.run(`UPDATE screenshots SET analysis = ? WHERE id = ?`, [analysis, id]);
+  return getScreenshot(id);
+}
+
+// The text position is autosaved as soon as it changes; unlike saveScreenshot
+// it is only metadata, so the row stays unfinished and in the queue.
+export function setScreenshotPosition(id: number, position: number) {
+  shots.run(`UPDATE screenshots SET position = ? WHERE id = ?`, [position, id]);
+  return getScreenshot(id);
+}
+
 export async function deleteScreenshot(row: Screenshot) {
   shots.run(`DELETE FROM screenshots WHERE id = ?`, [row.id]);
   for (const path of [shotPath(row.file), shotThumbPath(row.file)]) {
     try { await unlink(path); } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
-  }
-}
-
-// OCR calls are serialized so a burst of per-card autofill clicks cannot
-// overload the external service.
-let ocrQueue: Promise<unknown> = Promise.resolve();
-export function serializedOcr<T>(fn: () => Promise<T>): Promise<T> {
-  const run = ocrQueue.then(fn, fn);
-  ocrQueue = run.catch(() => {});
-  return run;
-}
-
-export async function ocrStatus(): Promise<{ state: "ready" | "loading" | "offline"; model?: string }> {
-  try {
-    const response = await fetch(`${OCR_URL}/health`, { signal: AbortSignal.timeout(2000) });
-    if (!response.ok) return { state: "offline" };
-    const data = await response.json() as { ready?: boolean; model?: string };
-    if (!data.ready) return { state: "loading", model: data.model };
-    return { state: "ready", model: data.model };
-  } catch {
-    return { state: "offline" };
-  }
-}
-
-export async function runOcr(bytes: Uint8Array): Promise<{ ok: true; text: string } | { ok: false; error: "offline" }> {
-  try {
-    const response = await fetch(`${OCR_URL}/ocr`, {
-      method: "POST",
-      headers: { "content-type": "image/jpeg" },
-      body: bytes,
-      signal: AbortSignal.timeout(20000),
-    });
-    if (!response.ok) return { ok: false, error: "offline" };
-    const data = await response.json() as { ok?: boolean; lines?: { text?: string; box?: number[] }[] };
-    if (!data.ok) return { ok: false, error: "offline" };
-    return { ok: true, text: joinOcrText(data.lines ?? []) };
-  } catch {
-    return { ok: false, error: "offline" };
   }
 }

@@ -1,8 +1,9 @@
+import { hasAiKey } from "../ai-key";
 import { esc, html } from "../html";
 import { HISTORY_MAX } from "../history";
 import { masteryLevels } from "../mastery";
 import { requestContext } from "../prefs";
-import { setting, startScore, type SettingKey, WORD_RESULTS_MAX, PHRASE_RESULTS_MAX, PHRASE_MORE_MAX } from "../settings";
+import { setting, startScore, textSetting, type SettingKey, WORD_RESULTS_MAX, PHRASE_RESULTS_MAX, PHRASE_MORE_MAX } from "../settings";
 import { layout } from "./layout";
 
 export const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = [
@@ -30,9 +31,14 @@ export function settingsPage(url: URL, errors: string[] = [], submitted?: Record
   const wordPerPage = submitted?.word_results_per_page ?? String(setting("word_results_per_page"));
   const phrasePerKanji = submitted?.phrase_results_per_kanji ?? String(setting("phrase_results_per_kanji"));
   const phraseMore = submitted?.phrase_more_per_click ?? String(setting("phrase_more_per_click"));
+  const aiBaseUrl = submitted?.ai_base_url ?? textSetting("ai_base_url");
+  const aiModel = submitted?.ai_model ?? textSetting("ai_model");
+  const aiEnabled = submitted ? submitted.ai_enabled === "1" : textSetting("ai_enabled") === "1";
+  const aiRemoveKey = submitted?.ai_remove_key === "1";
+  const hasKey = hasAiKey();
   const phraseOptions = Array.from({ length: PHRASE_RESULTS_MAX }, (_, i) => i + 1)
     .map((n) => `<option value="${n}"${String(n) === phrasePerKanji ? " selected" : ""}>${n}</option>`).join("");
-  const body = `<div class="listhead"><div><h1>Settings</h1><p class="sub">Review scoring, mastery timing and other settings.</p></div></div>
+  const body = `<div class="listhead"><div><h1>Settings</h1><p class="sub">Review scoring, mastery timing, AI and other settings.</p></div></div>
 ${notice}
 <form class="setform" method="post" action="/settings">
   <div class="card setcard">
@@ -65,12 +71,35 @@ ${notice}
       <span class="hint">Entries shown in each History column: this many searches and this many kanji visits (default 50).</span></label>
     </div>
   </div>
+  <div class="card setcard">
+    <div class="sethead"><h2>AI (optional)</h2><p class="sub">Powers Autofill, Translate and Analyze. Screenshots and text are sent to the provider you choose. Requires an API key.</p></div>
+    <div class="setfields">
+      <div class="setfield"><span class="setflabel">Enabled</span>
+        <label class="setcheckline"><input type="checkbox" name="ai_enabled" value="1"${aiEnabled ? " checked" : ""}> Enable AI</label>
+        <span class="hint">${hasKey ? "A key is saved. Tick this and save to use Autofill, Translate and Analyze." : "Autofill and Analyze stay disabled until this is on and a key is saved."}</span></div>
+      <label class="setfield"><span class="setflabel">Base URL</span>
+        <input class="setinput" type="url" name="ai_base_url" value="${esc(aiBaseUrl)}" required>
+        <span class="hint">OpenAI-compatible API root, for example https://api.openai.com/v1. http:// is only allowed for localhost or 127.0.0.1.</span></label>
+      <label class="setfield"><span class="setflabel">Model</span>
+        <input class="setinput" type="text" name="ai_model" value="${esc(aiModel)}" required>
+        <span class="hint">Any model the endpoint offers, for example gpt-4.1-mini or a local vision model.</span></label>
+      <label class="setfield"><span class="setflabel">API key</span>
+        <input class="setinput" type="password" name="ai_api_key" value="" placeholder="${hasKey ? "•••••• (unchanged)" : "sk-…"}" autocomplete="new-password">
+        <span class="hint">Left blank keeps the key in the local .env file; the key is never shown again.</span></label>
+      <label class="setcheckline"><input type="checkbox" name="ai_remove_key" value="1"${aiRemoveKey ? " checked" : ""}> Remove key</label>
+    </div>
+    <div class="ai-test-row">
+      <button class="pill ghost sm" type="button" id="ai-test">Test connection</button>
+      <span class="sub ai-test-result" id="ai-test-result" role="status" aria-live="polite">Uses the saved settings.</span>
+    </div>
+  </div>
   <div class="setactions"><button class="pill dark" type="submit">Save settings</button></div>
 </form>
 <form class="card setdanger" method="post" action="/settings/reset-scores" data-msg="Reset every added kanji to score ${startScore()} and make them all due now? This cannot be undone." onsubmit="return confirm(this.dataset.msg)">
   <div class="sethead"><h2>Reset scores</h2><p class="sub">Sets every added kanji to the starting score (${startScore()}) and makes it due now.</p></div>
   <button class="pill danger" type="submit">Reset scores</button>
-</form>`;
+</form>
+<script src="/js/settings-ai.js" defer></script>`;
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = requestContext.getStore()?.back ?? "/settings";
   return html(layout("Settings – Kanji", body, { theme, back }), status);

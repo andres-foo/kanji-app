@@ -26,8 +26,12 @@ const columns = shots.query(`PRAGMA table_info(screenshots)`).all() as { name: s
 if (!columns.some((column) => column.name === "position")) {
   shots.run(`ALTER TABLE screenshots ADD COLUMN position INTEGER NOT NULL DEFAULT 0`);
 }
-if (!columns.some((column) => column.name === "analysis")) {
+// Databases created before analyses were shown get the column on startup. The
+// duplicate error is the normal case for every later start.
+try {
   shots.run(`ALTER TABLE screenshots ADD COLUMN analysis TEXT NOT NULL DEFAULT ''`);
+} catch (error) {
+  if (!/duplicate column name/i.test(String((error as Error).message ?? error))) throw error;
 }
 if (!columns.some((column) => column.name === "source")) {
   shots.run(`ALTER TABLE screenshots ADD COLUMN source TEXT NOT NULL DEFAULT 'upload'`);

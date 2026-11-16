@@ -20,6 +20,25 @@ export const WORD_RESULTS_MAX = 200;
 export const PHRASE_RESULTS_MAX = 10;
 export const PHRASE_MORE_MAX = 20;
 
+// Text settings share the same key/value table but keep their own defaults.
+// The AI key is not here: it lives in the local .env file (AI_API_KEY).
+const TEXT_SETTING_DEFAULTS = {
+  ai_base_url: "https://api.openai.com/v1",
+  ai_model: "gpt-4.1-mini",
+  ai_enabled: "0",
+} as const;
+export type TextSettingKey = keyof typeof TEXT_SETTING_DEFAULTS;
+
+export function textSetting(key: TextSettingKey, fallback: string = TEXT_SETTING_DEFAULTS[key]): string {
+  try {
+    const row = db.query(`SELECT value FROM settings WHERE key = ?`).get(key) as { value: string | null } | null;
+    const text = String(row?.value ?? "").trim();
+    return text !== "" ? text : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function setting(key: SettingKey): number {
   try {
     const row = db.query(`SELECT value FROM settings WHERE key = ?`).get(key) as { value: string | null } | null;

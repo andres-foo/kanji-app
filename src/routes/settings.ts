@@ -1,9 +1,21 @@
 import { db } from "../db";
+import { getAiKey, setAiKey } from "../ai-key";
 import { HISTORY_MAX } from "../history";
 import { MAX_SCORE, MIN_SCORE, type Mastery } from "../mastery";
 import { sameOrigin } from "../prefs";
 import { startScore, type SettingKey, WORD_RESULTS_MAX, PHRASE_RESULTS_MAX, PHRASE_MORE_MAX } from "../settings";
 import { DELTA_FIELDS, settingsPage } from "../views/settings";
+
+// https:// anywhere; plain http:// only for a local model on this machine.
+const validAiBaseUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    if (url.protocol === "https:") return true;
+    return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+  } catch {
+    return false;
+  }
+};
 
 export async function saveSettings(req: Request, url: URL) {
   if (!sameOrigin(req)) return new Response("Forbidden", { status: 403 });
@@ -43,6 +55,20 @@ export async function saveSettings(req: Request, url: URL) {
   if (phraseMoreText === "" || !Number.isInteger(phraseMore) || phraseMore < 1 || phraseMore > PHRASE_MORE_MAX) {
     errors.push(`More phrases per click must be a whole number from 1 to ${PHRASE_MORE_MAX}.`);
   }
+  const aiBaseUrl = String(form.get("ai_base_url") ?? "").trim().replace(/\/+$/, "");
+  const aiModel = String(form.get("ai_model") ?? "").trim();
+  const aiEnabled = form.get("ai_enabled") === "1";
+  const removeKey = form.get("ai_remove_key") === "1";
+  const typedKey = String(form.get("ai_api_key") ?? "").trim();
+  const aiKey = removeKey ? "" : typedKey || getAiKey();
+  submitted.ai_base_url = aiBaseUrl;
+  submitted.ai_model = aiModel;
+  submitted.ai_enabled = aiEnabled ? "1" : "0";
+  submitted.ai_remove_key = removeKey ? "1" : "0";
+  submitted.ai_api_key = "";
+  if (!validAiBaseUrl(aiBaseUrl)) errors.push("AI base URL must start with https:// (http:// is only allowed for localhost).");
+  if (!aiModel) errors.push("AI model cannot be empty.");
+  if (aiEnabled && !aiKey) errors.push("An API key is required to enable AI.");
   for (let score = MIN_SCORE; score <= MAX_SCORE; score++) {
     const label = String(form.get(`label_${score}`) ?? "").trim();
     const daysText = String(form.get(`days_${score}`) ?? "").trim();
@@ -56,6 +82,12 @@ export async function saveSettings(req: Request, url: URL) {
   }
   if (errors.length) return settingsPage(url, errors, submitted, 400);
   try {
+    if (removeKey) setAiKey("");
+    else if (typedKey) setAiKey(typedKey);
+  } catch (e) {
+    return settingsPage(url, [`Could not save the API key to .env: ${(e as Error).message}. Check that the file is writable.`], submitted, 500);
+  }
+  try {
     db.transaction(() => {
       for (const [key, value] of deltas) {
         db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, String(value)]);
@@ -64,6 +96,13 @@ export async function saveSettings(req: Request, url: URL) {
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["word_results_per_page", String(wordResults)]);
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["phrase_results_per_kanji", String(phraseResults)]);
       db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, ["phrase_more_per_click", String(phraseMore)]);
+      for (const [key, value] of [
+        ["ai_base_url", aiBaseUrl],
+        ["ai_model", aiModel],
+        ["ai_enabled", aiEnabled ? "1" : "0"],
+      ] as [string, string][]) {
+        db.run(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, value]);
+      }
       for (const m of levels) {
         db.run(
           `INSERT INTO mastery_levels (score, label, interval_days) VALUES (?, ?, ?)

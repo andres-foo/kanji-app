@@ -1,16 +1,17 @@
+import { aiConfigured, analyzeJapanese, describeImage, translateJapanese } from "../ai";
 import { sniffImage, MAX_IMAGE_BYTES } from "../images";
+import { markdownHtml } from "../markdown";
 import { sameOrigin } from "../prefs";
 import { translateToEnglish } from "../translate";
 import {
   addScreenshot,
   deleteScreenshot,
   getScreenshot,
-  ocrStatus,
   readScreenshot,
-  runOcr,
   saveScreenshot,
-  serializedOcr,
-  setJapanese,
+  setScreenshotAnalysis,
+  setScreenshotPosition,
+  setScreenshotText,
   shotPath,
   shotThumbPath
 } from "../screenshots";
@@ -60,6 +61,7 @@ export async function autofillScreenshot(req: Request, rawId: string | undefined
   if (!sameOrigin(req)) return json({ ok: false, error: "forbidden" }, 403);
   const id = idFrom(rawId);
   if (id === null) return json({ ok: false, error: "bad id" }, 400);
+  if (!aiConfigured()) return json({ ok: false, error: "disabled" });
   const row = getScreenshot(id);
   if (!row) return json({ ok: false, error: "not found" }, 404);
   let force = false;
@@ -67,16 +69,42 @@ export async function autofillScreenshot(req: Request, rawId: string | undefined
     const body = await req.json() as { force?: boolean };
     force = body.force === true;
   } catch { /* an empty body means normal autofill */ }
-  if (row.japanese.trim() && !force) return json({ ok: true, skipped: true, text: row.japanese });
-  return serializedOcr(async () => {
-    const file = readScreenshot(row);
-    if (!(await file.exists())) return json({ ok: false, error: "file missing" }, 404);
-    const result = await runOcr(new Uint8Array(await file.arrayBuffer()));
-    if (!result.ok) return json({ ok: false, error: "offline" }, 502);
-    if (!result.text) return json({ ok: true, text: "" });
-    setJapanese(row.id, result.text);
-    return json({ ok: true, text: result.text });
-  });
+  // The editor confirms before overwriting visible Japanese, then sends force.
+  // Without it, return the stored text instead of paying for another call.
+  if (row.japanese.trim() && !force) {
+    return json({ ok: true, japanese: row.japanese, english: row.english });
+  }
+
+  const file = readScreenshot(row);
+  if (!(await file.exists())) return json({ ok: false, error: "not found" }, 404);
+  const result = await describeImage(new Uint8Array(await file.arrayBuffer()));
+  if (!result.ok) return json({ ok: false, error: result.error });
+
+  // Low confidence still fills the field, with a visible warning the user has
+  // to delete (or decide to keep) before saving.
+  const japanese = result.value.confidence < 0.5
+    ? `${result.value.japanese}${result.value.japanese ? "\n" : ""}⚠ low confidence`
+    : result.value.japanese;
+  const english = row.english.trim() ? row.english : result.value.english;
+  setScreenshotText(row.id, japanese, english);
+  return json({ ok: true, japanese, english });
+}
+
+// Analyze runs on the stored Japanese text only; the image never leaves the
+// machine for this call. The markdown is persisted so it survives a reload.
+export async function analyzeScreenshot(req: Request, rawId: string | undefined) {
+  if (!sameOrigin(req)) return json({ ok: false, error: "forbidden" }, 403);
+  const id = idFrom(rawId);
+  if (id === null) return json({ ok: false, error: "bad id" }, 400);
+  if (!aiConfigured()) return json({ ok: false, error: "disabled" });
+  const row = getScreenshot(id);
+  if (!row) return json({ ok: false, error: "not found" }, 404);
+  if (!row.japanese.trim()) return json({ ok: false, error: "no-text" });
+
+  const result = await analyzeJapanese(row.japanese);
+  if (!result.ok) return json({ ok: false, error: result.error });
+  setScreenshotAnalysis(row.id, result.value);
+  return json({ ok: true, analysis: result.value, analysis_html: markdownHtml(result.value) });
 }
 
 export async function saveScreenshotRoute(req: Request, rawId: string | undefined) {
@@ -92,6 +120,20 @@ export async function saveScreenshotRoute(req: Request, rawId: string | undefine
   const row = saveScreenshot(id, japanese, english, position);
   if (!row) return json({ ok: false, error: "not found" }, 404);
   return json({ ok: true, row });
+}
+
+// Position-only autosave from the editor; it must not mark the row as saved.
+export async function saveScreenshotPosition(req: Request, rawId: string | undefined) {
+  if (!sameOrigin(req)) return json({ ok: false, error: "forbidden" }, 403);
+  const id = idFrom(rawId);
+  if (id === null) return json({ ok: false, error: "bad id" }, 400);
+  let body: { position?: unknown };
+  try { body = await req.json() as typeof body; } catch { return json({ ok: false, error: "invalid json" }, 400); }
+  const position = Number(body.position);
+  if (position !== 0 && position !== 1) return json({ ok: false, error: "invalid position" }, 400);
+  const row = setScreenshotPosition(id, position);
+  if (!row) return json({ ok: false, error: "not found" }, 404);
+  return json({ ok: true, position });
 }
 
 export async function deleteScreenshotRoute(req: Request, rawId: string | undefined) {
@@ -131,18 +173,20 @@ export async function serveScreenshotThumb(rawId: string | undefined) {
   return new Response(file, { headers: { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" } });
 }
 
-export async function ocrStatusResponse() {
-  return json(await ocrStatus());
-}
-
-// Japanese → English for the screenshot editors. The text is the only thing
-// sent to Google; images and database rows stay local.
+// Japanese → English for the screenshot editors. When an AI key is configured
+// the provider translates; with no key this stays on Google's free endpoint,
+// which never sees images or database rows.
 export async function translateScreenshotText(req: Request) {
   if (!sameOrigin(req)) return json({ ok: false, error: "forbidden" }, 403);
   let body: { text?: unknown };
   try { body = await req.json() as typeof body; } catch { return json({ ok: false, error: "invalid json" }, 400); }
   const text = String(body.text ?? "").trim();
   if (!text) return json({ ok: false, error: "empty" }, 400);
+  if (aiConfigured()) {
+    const result = await translateJapanese(text.slice(0, 4000));
+    if (!result.ok) return json({ ok: false, error: result.error, ai: true });
+    return json({ ok: true, text: result.value, ai: true });
+  }
   const result = await translateToEnglish(text.slice(0, 4000));
   if (!result.ok) return json({ ok: false, error: result.error }, 502);
   return json({ ok: true, text: result.text });
