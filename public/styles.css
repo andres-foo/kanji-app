@@ -969,6 +969,10 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .shot-editor-overlay.top{top:0}
 .shot-editor-overlay.bottom{bottom:0}
 .shot-editor-overlay-jp{font-family:var(--jp);font-size:clamp(12px,1.6vw,20px);line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
+.shot-editor-overlay-jp rt,.shot-viewer-jp rt{font-family:var(--ui-jp);font-size:.56em;color:#d6d9de;letter-spacing:0}
+.shot-jp rt{font-family:var(--ui-jp);font-size:.56em;color:#6f747d;letter-spacing:0}
+[data-theme="dark"] .shot-jp rt{color:#9aa0a9}
+.shot-carousel-jp rt{font-family:var(--ui-jp);font-size:.56em;color:#d6d9de;letter-spacing:0}
 .shot-editor-overlay-en{font-size:11px;line-height:1.4;color:#d6d9de;margin-top:4px;white-space:pre-line;overflow-wrap:anywhere}
 .shot-editor-fields{display:flex;flex-direction:column;gap:10px;min-width:0;overflow-y:auto;padding-right:2px}
 .shot-editor-fields .shot-label textarea{font-size:14px}

@@ -5,6 +5,69 @@
   if (!editor || !dataNode || !emptyCard) return;
 
   const $ = (sel, root = document) => root.querySelector(sel);
+  const furiganaPattern = () => /([\u3400-\u4DBF\u4E00-\u9FFF\u3005\u3041-\u3096\u30A1-\u30FA\u30FC]+)《([\u3041-\u3096\u30A1-\u30FA\u30FC]+)》/g;
+  const KANJI_CHAR = /[\u3400-\u4DBF\u4E00-\u9FFF\u3005]/;
+  const KANA_CHAR = /[\u3041-\u3096\u30A1-\u30FA\u30FC]/;
+
+  // The annotated word can include okurigana (心して《こころして》); split the
+  // shared trailing kana so ruby sits over the kanji part.
+  const furiganaParts = (run, reading) => {
+    const firstKanji = run.search(KANJI_CHAR);
+    if (firstKanji < 0) return null;
+    const context = run.slice(0, firstKanji);
+    const word = run.slice(firstKanji);
+    let yomi = reading;
+    for (let length = context.length; length > 0; length--) {
+      const prefix = context.slice(context.length - length);
+      if (yomi.startsWith(prefix)) {
+        yomi = yomi.slice(prefix.length);
+        break;
+      }
+    }
+    let cut = 0;
+    while (
+      cut < word.length &&
+      cut < yomi.length &&
+      KANA_CHAR.test(word[word.length - 1 - cut]) &&
+      word[word.length - 1 - cut] === yomi[yomi.length - 1 - cut]
+    ) {
+      cut++;
+    }
+    const base = word.slice(0, word.length - cut);
+    const after = word.slice(word.length - cut);
+    const ruby = yomi.slice(0, yomi.length - cut);
+    if (!base || !KANJI_CHAR.test(base) || !ruby) return null;
+    return { context, base, reading: ruby, after };
+  };
+
+  // Ruby is generated from the annotated string, but every other character is
+  // only ever a text node. A malformed annotation falls back to plain text.
+  const renderFurigana = (element, japanese, furigana) => {
+    element.textContent = japanese;
+    if (!furigana) return;
+    const matches = [...furigana.matchAll(furiganaPattern())];
+    if (!matches.length) return;
+    let last = 0;
+    const fragment = document.createDocumentFragment();
+    for (const match of matches) {
+      if (/[《》]/.test(furigana.slice(last, match.index))) return;
+      const parts = furiganaParts(match[1], match[2]);
+      if (!parts) return;
+      fragment.append(furigana.slice(last, match.index));
+      fragment.append(parts.context);
+      const ruby = document.createElement("ruby");
+      ruby.textContent = parts.base;
+      const rt = document.createElement("rt");
+      rt.textContent = parts.reading;
+      ruby.append(rt);
+      fragment.append(ruby);
+      fragment.append(parts.after);
+      last = (match.index ?? 0) + match[0].length;
+    }
+    if (/[《》]/.test(furigana.slice(last))) return;
+    fragment.append(furigana.slice(last));
+    element.replaceChildren(fragment);
+  };
   const counter = $("#shot-counter");
   const counterN = $("#shot-counter-n");
   const jp = $("#shot-editor-jp");
@@ -86,7 +149,11 @@
     const japanese = jp.value.trim();
     const english = en.value.trim();
     const top = Number(position.value) === 1;
-    overlayJp.textContent = japanese;
+    const item = items[index];
+    // Once the Japanese field is edited the imported reading no longer
+    // describes it, so the preview goes back to plain text.
+    const furigana = item && japanese === item.japanese.trim() ? item.japanese_furigana : "";
+    renderFurigana(overlayJp, japanese, furigana);
     overlayEn.textContent = english;
     overlayJp.hidden = !japanese;
     overlayEn.hidden = !english;
@@ -252,6 +319,7 @@
       const english = typeof result.data.english === "string" ? result.data.english : "";
       jp.value = japanese;
       item.japanese = japanese;
+      item.japanese_furigana = "";
       // Only fill an empty English field; anything typed there wins.
       if (!en.value.trim() && english) en.value = english;
       item.english = english;

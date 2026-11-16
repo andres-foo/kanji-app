@@ -1,5 +1,5 @@
 import { db, totalKnown } from "../db";
-import { enc, esc, html, likeEsc } from "../html";
+import { enc, esc, furiganaHtml, html, likeEsc } from "../html";
 import { findImage } from "../images";
 import { MAX_SCORE, MIN_SCORE, masteryFor } from "../mastery";
 import { phrasesPerKanji, phraseMorePerClick } from "../settings";
@@ -110,6 +110,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     id: shot.id,
     hash: shot.hash,
     japanese: shot.japanese,
+    japanese_furigana: shot.japanese_furigana,
     english: shot.english,
     position: shot.position,
     analysis_html: markdownHtml(shot.analysis),
@@ -119,7 +120,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     <div class="shot-kanji-list">
       ${visibleShots.map((shot) => `<a class="shot-kanji-item" data-shot-id="${shot.id}" href="${shotViewerUrl(shot.id, shotBack)}" target="_blank" rel="noopener noreferrer">
         <span class="shot-kanji-thumb"><img src="${shotThumbUrl(shot.id, shot.hash)}" alt="Screenshot #${shot.id}" loading="lazy">${shot.analysis.trim() ? `<span class="shot-kanji-flag" title="This screenshot has an analysis">Analysis</span>` : ""}</span>
-        <span class="shot-kanji-text"><span class="shot-jp">${esc(shot.japanese)}</span>${shot.english ? `<span class="shot-en">${esc(shot.english)}</span>` : ""}</span>
+        <span class="shot-kanji-text"><span class="shot-jp">${furiganaHtml(shot.japanese, shot.japanese_furigana)}</span>${shot.english ? `<span class="shot-en">${esc(shot.english)}</span>` : ""}</span>
       </a>`).join("")}
     </div>
     ${shotCount > visibleShots.length ? `<div class="shot-more"><a class="pill ghost sm" data-carousel-all href="/screenshot?kanji=${enc(k.literal)}">+${shotCount - visibleShots.length} more</a></div>` : ""}

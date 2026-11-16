@@ -15,6 +15,7 @@ export type Screenshot = {
   file: string;
   hash: string;
   japanese: string;
+  japanese_furigana: string;
   english: string;
   added_at: string;
   done: number;
@@ -66,6 +67,7 @@ export async function addScreenshot(bytes: Uint8Array, thumbBytes?: Uint8Array) 
 export type ImportedScreenshot = {
   japanese: string;
   english: string;
+  furigana?: string;
   thumbBytes?: Uint8Array;
   analysis?: string;
   position: 0 | 1;
@@ -87,18 +89,20 @@ export async function addImportedScreenshot(
     }
     if (input.overwrite) {
       shots.run(
-        `UPDATE screenshots SET japanese = ?, english = ?, analysis = ?, position = ? WHERE id = ?`,
-        [input.japanese, input.english, input.analysis ?? existing.analysis, input.position, existing.id],
+        `UPDATE screenshots SET japanese = ?, japanese_furigana = ?, english = ?, analysis = ?, position = ? WHERE id = ?`,
+        [input.japanese, input.furigana ?? "", input.english, input.analysis ?? existing.analysis, input.position, existing.id],
       );
     } else if (existing.done === 0) {
       // Fill only what is missing, so a row that already has text (from OCR or
       // the editor) is never silently replaced by the import.
       const japanese = existing.japanese.trim() ? existing.japanese : input.japanese;
+      const furigana = existing.japanese_furigana.trim() ? existing.japanese_furigana : (input.furigana ?? "");
       const english = existing.english.trim() ? existing.english : input.english;
       const analysis = existing.analysis.trim() ? existing.analysis : (input.analysis ?? "");
-      if (japanese !== existing.japanese || english !== existing.english || analysis !== existing.analysis) {
-        shots.run(`UPDATE screenshots SET japanese = ?, english = ?, analysis = ? WHERE id = ?`,
-          [japanese, english, analysis, existing.id]);
+      if (japanese !== existing.japanese || furigana !== existing.japanese_furigana ||
+          english !== existing.english || analysis !== existing.analysis) {
+        shots.run(`UPDATE screenshots SET japanese = ?, japanese_furigana = ?, english = ?, analysis = ? WHERE id = ?`,
+          [japanese, furigana, english, analysis, existing.id]);
       }
     }
     return { duplicate: true, id: existing.id };
@@ -109,9 +113,9 @@ export async function addImportedScreenshot(
   if (input.thumbBytes) await Bun.write(shotThumbPath(file), input.thumbBytes);
   try {
     const result = shots.run(
-      `INSERT INTO screenshots (file, hash, japanese, english, position, analysis, source)
-       VALUES (?, ?, ?, ?, ?, ?, 'import')`,
-      [file, hash, input.japanese, input.english, input.position, input.analysis ?? ""],
+      `INSERT INTO screenshots (file, hash, japanese, japanese_furigana, english, position, analysis, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'import')`,
+      [file, hash, input.japanese, input.furigana ?? "", input.english, input.position, input.analysis ?? ""],
     );
     return { duplicate: false, id: Number(result.lastInsertRowid) };
   } catch (error) {
@@ -166,13 +170,13 @@ export function listSaved(page: number) {
   return { rows, total, pages, page: current };
 }
 
-export function saveScreenshot(id: number, japanese: string, english: string, position = 0) {
-  shots.run(`UPDATE screenshots SET japanese = ?, english = ?, position = ?, done = 1 WHERE id = ?`, [japanese, english, position, id]);
+export function saveScreenshot(id: number, japanese: string, english: string, position = 0, furigana = "") {
+  shots.run(`UPDATE screenshots SET japanese = ?, japanese_furigana = ?, english = ?, position = ?, done = 1 WHERE id = ?`, [japanese, furigana, english, position, id]);
   return getScreenshot(id);
 }
 
 export function setJapanese(id: number, japanese: string) {
-  shots.run(`UPDATE screenshots SET japanese = ? WHERE id = ?`, [japanese, id]);
+  shots.run(`UPDATE screenshots SET japanese = ?, japanese_furigana = '' WHERE id = ?`, [japanese, id]);
   return getScreenshot(id);
 }
 
@@ -180,7 +184,7 @@ export function setJapanese(id: number, japanese: string) {
 // cancelled, but the row already holds what the image said). The English side
 // is only filled when the row has none.
 export function setScreenshotText(id: number, japanese: string, english: string) {
-  shots.run(`UPDATE screenshots SET japanese = ?, english = ? WHERE id = ?`, [japanese, english, id]);
+  shots.run(`UPDATE screenshots SET japanese = ?, japanese_furigana = '', english = ? WHERE id = ?`, [japanese, english, id]);
   return getScreenshot(id);
 }
 

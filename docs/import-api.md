@@ -18,8 +18,9 @@ The port is KanjiApp's `PORT` (3000 by default). The app listens on `0.0.0.0`, s
 
 ```json
 {
-  "japanese": "猫が窓辺で眠っています。",
-  "english": "The cat is sleeping by the window.",
+  "japanese": "そのコもしかして…リンクの妖精さん？",
+  "japanese_furigana": "そのコもしかして…リンクの妖精《ようせい》さん？",
+  "english": "Is that girl... a link fairy?",
   "image": "<base64 JPEG>",
   "thumb": "<base64 JPEG>",
   "analysis": "## Analysis\n\n- **猫** (neko): cat",
@@ -30,7 +31,8 @@ The port is KanjiApp's `PORT` (3000 by default). The app listens on `0.0.0.0`, s
 
 | Field | Type | Required | Rules |
 |---|---|---|---|
-| `japanese` | string | **yes** | Trimmed by the server; must be non-empty after trim; ≤ 2000 characters |
+| `japanese` | string | **yes** | Trimmed by the server; must be non-empty after trim; ≤ 2000 characters. This is the plain text used for search and copy. |
+| `japanese_furigana` | string | no (default `""`) | Trimmed; ≤ 4000 characters. The same sentence as `japanese`, with each kanji-bearing word followed by its reading in `《》` — e.g. `妖精《ようせい》`, `心して《こころして》`, `お茶《おちゃ》`. The annotated word may include okurigana; the viewer splits the reading so ruby sits over the kanji part. Kana words and punctuation are not annotated. Absent or `null` = `""`. Display-only: the viewer, queue, gallery cards and kanji-page lists render it as ruby above the kanji; it is never used for search. |
 | `english` | string | no (default `""`) | Trimmed; ≤ 2000 characters |
 | `image` | string | **yes** | Standard base64 of JPEG bytes. Decoded size ≤ **15,728,640 bytes** (15 MB). Must be a real JPEG. |
 | `thumb` | string | no | Same base64/JPEG rules (practically a ~320 px wide JPEG). **If present it must be valid**, otherwise the whole import fails with `400 invalid thumb`. Omit it (or send `null`) if you have none. |
@@ -66,6 +68,8 @@ Every response is JSON (except `405`).
 | 400 | `{"ok":false,"error":"invalid json"}` | Body is not a JSON object (or a non-string `english`) |
 | 400 | `{"ok":false,"error":"japanese required"}` | Missing, not a string, or empty after trim |
 | 400 | `{"ok":false,"error":"japanese too long"}` | Over 2000 characters |
+| 400 | `{"ok":false,"error":"invalid furigana"}` | `japanese_furigana` is not a string |
+| 400 | `{"ok":false,"error":"furigana too long"}` | Over 4000 characters |
 | 400 | `{"ok":false,"error":"english too long"}` | Over 2000 characters |
 | 400 | `{"ok":false,"error":"invalid image"}` | Image missing, not a string, or bad base64 |
 | 400 | `{"ok":false,"error":"invalid thumb"}` | `thumb` was sent but is not valid base64 JPEG |
@@ -79,19 +83,19 @@ A non-POST request returns `405 Method not allowed` as plain text.
 
 **Treat `200` as success even when `duplicate` is `true`** — show "Already in the library (#N)" rather than an error. Do not treat it as a failure and do not retry it.
 
-Validation runs in this order, which decides the error you get: token (`503`/`401`) → JSON (`400`) → `japanese` (`400`) → `english` (`400`) → `image` (`400`/`413`/`415`) → `thumb` (`400`) → storage (`500`).
+Validation runs in this order, which decides the error you get: token (`503`/`401`) → JSON (`400`) → `japanese` (`400`) → `english` (`400`) → `japanese_furigana` (`400`) → `image` (`400`/`413`/`415`) → `thumb` (`400`) → storage (`500`).
 
 ## Duplicates and overwrite
 
 - Duplicate detection = SHA-256 of the decoded JPEG bytes. Same bytes ⇒ same row id. Text, thumbnail, analysis and timestamps are **not** part of the key.
-- `overwrite: false` (default): the existing row is returned untouched, except that a row that is still **unfinished** (`done = 0`) gets missing pieces filled (missing thumbnail, missing analysis, empty japanese/english). Non-empty values are never replaced; saved rows (`done = 1`) are never modified.
-- `overwrite: true`: `japanese`, `english`, `analysis` and `position` are replaced on the existing row. The image, row id, creation time, `done` state and "imported" marker are kept. Use this for an explicit "Replace in KanjiApp" action.
+- `overwrite: false` (default): the existing row is returned untouched, except that a row that is still **unfinished** (`done = 0`) gets missing pieces filled (missing thumbnail, missing analysis, empty japanese/english/furigana). Non-empty values are never replaced; saved rows (`done = 1`) are never modified.
+- `overwrite: true`: `japanese`, `japanese_furigana`, `english`, `analysis` and `position` are replaced on the existing row. The image, row id, creation time, `done` state and "imported" marker are kept. Use this for an explicit "Replace in KanjiApp" action.
 - **Retries:** if a request times out or the connection drops, retry the same body — you will get `duplicate:true` with the original id, which means it worked. Do not consider a timeout a failed import until a retry confirms it.
 - There is no batch endpoint; send one screenshot per request. Sequential or parallel both work.
 
 ## What KanjiApp does with the row
 
-The row is created **unfinished** (`done = 0`) with `japanese` and `english` prefilled, marked "from app", with the import timestamp. It appears at the top of the queue on `http://127.0.0.1:3000/screenshot`, where a human reviews it and presses Save. The returned id is the row id, usable at `/shot/<id>` and in the screenshot page.
+The row is created **unfinished** (`done = 0`) with `japanese` and `english` prefilled, marked "from app", with the import timestamp. It appears at the top of the queue on `http://127.0.0.1:3000/screenshot`, where a human reviews it and presses Save. The returned id is the row id, usable at `/shot/<id>` and in the screenshot page. When `japanese_furigana` is present, the viewer, queue, gallery cards and kanji-page lists display it as ruby; `japanese` remains the plain text used for search, editing and copy.
 
 Importing must not call `/screenshot/:id/save`, `/screenshot/:id/autofill` or `/api/translate`; those are browser actions. `/api/import` is the only endpoint required.
 
@@ -127,6 +131,7 @@ def import_screenshot(
     analysis_md: str | None = None,
     position: int = 0,
     overwrite: bool = False,
+    furigana: str | None = None,
 ) -> dict:
     with Image.open(image_path) as img:
         payload = {
@@ -137,6 +142,8 @@ def import_screenshot(
             "position": 1 if position == 1 else 0,
             "overwrite": bool(overwrite),
         }
+    if furigana:
+        payload["japanese_furigana"] = furigana.strip()[:4000]
     if analysis_md:
         payload["analysis"] = analysis_md
 
@@ -176,7 +183,8 @@ Usage: `import_screenshot("shot.jpg", "猫が窓辺で眠っています。", "T
 - Don't re-run OCR/translation, and don't call any endpoint other than `POST /api/import`.
 - Don't add an `Origin` header (not needed; the token is the only gate).
 - Don't call `/screenshot/:id/save` — the human finishes the row in the UI.
-- Don't send more than 2000 characters of Japanese/English; truncate first.
+- Don't send more than 2000 characters of Japanese/English; truncate first. Furigana is capped at 4000 characters.
+- Don't send furigana with mismatched or stray `《`/`》`; the viewer falls back to plain Japanese, so nothing breaks, but the ruby is lost.
 - Don't treat `duplicate:true` as an error.
 
 ## Quick self-test

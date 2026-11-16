@@ -15,6 +15,7 @@ shots.run(`CREATE TABLE IF NOT EXISTS screenshots (
   file     TEXT NOT NULL,
   hash     TEXT NOT NULL,
   japanese TEXT NOT NULL DEFAULT '',
+  japanese_furigana TEXT NOT NULL DEFAULT '',
   english  TEXT NOT NULL DEFAULT '',
   added_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   done     INTEGER NOT NULL DEFAULT 0,
@@ -35,6 +36,9 @@ try {
 }
 if (!columns.some((column) => column.name === "source")) {
   shots.run(`ALTER TABLE screenshots ADD COLUMN source TEXT NOT NULL DEFAULT 'upload'`);
+}
+if (!columns.some((column) => column.name === "japanese_furigana")) {
+  shots.run(`ALTER TABLE screenshots ADD COLUMN japanese_furigana TEXT NOT NULL DEFAULT ''`);
 }
 shots.run(`CREATE UNIQUE INDEX IF NOT EXISTS screenshots_hash ON screenshots(hash)`);
 shots.run(`CREATE INDEX IF NOT EXISTS screenshots_done ON screenshots(done, id DESC)`);

@@ -6,6 +6,7 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 
 const MAX_TEXT = 2000;
+const MAX_FURIGANA = 4000;
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const digest = (value: string) => createHash("sha256").update(value).digest();
 
@@ -60,6 +61,13 @@ export async function importScreenshot(req: Request) {
     if (english.length > MAX_TEXT) return json({ ok: false, error: "english too long" }, 400);
   }
 
+  let furigana = "";
+  if (input.japanese_furigana !== undefined && input.japanese_furigana !== null) {
+    if (typeof input.japanese_furigana !== "string") return json({ ok: false, error: "invalid furigana" }, 400);
+    furigana = input.japanese_furigana.trim();
+    if (furigana.length > MAX_FURIGANA) return json({ ok: false, error: "furigana too long" }, 400);
+  }
+
   const image = decodeBase64(input.image);
   if (!image) return json({ ok: false, error: "invalid image" }, 400);
   if (image.length > MAX_IMAGE_BYTES) return json({ ok: false, error: "image too large" }, 413);
@@ -82,6 +90,7 @@ export async function importScreenshot(req: Request) {
     const result = await addImportedScreenshot(image, {
       japanese,
       english,
+      furigana,
       thumbBytes,
       analysis,
       position: Number(input.position) === 1 ? 1 : 0,

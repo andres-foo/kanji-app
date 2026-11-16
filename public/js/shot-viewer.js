@@ -26,10 +26,74 @@
   const error = document.getElementById("shot-edit-error");
   const savedToast = document.getElementById("shot-viewer-saved");
   let savedTimer = 0;
+  const furiganaPattern = () => /([\u3400-\u4DBF\u4E00-\u9FFF\u3005\u3041-\u3096\u30A1-\u30FA\u30FC]+)《([\u3041-\u3096\u30A1-\u30FA\u30FC]+)》/g;
+  const KANJI_CHAR = /[\u3400-\u4DBF\u4E00-\u9FFF\u3005]/;
+  const KANA_CHAR = /[\u3041-\u3096\u30A1-\u30FA\u30FC]/;
+
+  // The annotated word can include okurigana (心して《こころして》); split the
+  // shared trailing kana so ruby sits over the kanji part.
+  const furiganaParts = (run, reading) => {
+    const firstKanji = run.search(KANJI_CHAR);
+    if (firstKanji < 0) return null;
+    const context = run.slice(0, firstKanji);
+    const word = run.slice(firstKanji);
+    let yomi = reading;
+    for (let length = context.length; length > 0; length--) {
+      const prefix = context.slice(context.length - length);
+      if (yomi.startsWith(prefix)) {
+        yomi = yomi.slice(prefix.length);
+        break;
+      }
+    }
+    let cut = 0;
+    while (
+      cut < word.length &&
+      cut < yomi.length &&
+      KANA_CHAR.test(word[word.length - 1 - cut]) &&
+      word[word.length - 1 - cut] === yomi[yomi.length - 1 - cut]
+    ) {
+      cut++;
+    }
+    const base = word.slice(0, word.length - cut);
+    const after = word.slice(word.length - cut);
+    const ruby = yomi.slice(0, yomi.length - cut);
+    if (!base || !KANJI_CHAR.test(base) || !ruby) return null;
+    return { context, base, reading: ruby, after };
+  };
+
+  // Ruby is generated from the annotated string, but every other character is
+  // only ever a text node. A malformed annotation falls back to plain text.
+  const renderFurigana = (element, japanese, furigana) => {
+    element.textContent = japanese;
+    if (!furigana) return;
+    const matches = [...furigana.matchAll(furiganaPattern())];
+    if (!matches.length) return;
+    let last = 0;
+    const fragment = document.createDocumentFragment();
+    for (const match of matches) {
+      if (/[《》]/.test(furigana.slice(last, match.index))) return;
+      const parts = furiganaParts(match[1], match[2]);
+      if (!parts) return;
+      fragment.append(furigana.slice(last, match.index));
+      fragment.append(parts.context);
+      const ruby = document.createElement("ruby");
+      ruby.textContent = parts.base;
+      const rt = document.createElement("rt");
+      rt.textContent = parts.reading;
+      ruby.append(rt);
+      fragment.append(ruby);
+      fragment.append(parts.after);
+      last = (match.index ?? 0) + match[0].length;
+    }
+    if (/[《》]/.test(furigana.slice(last))) return;
+    fragment.append(furigana.slice(last));
+    element.replaceChildren(fragment);
+  };
 
   let saved = {
-    japanese: overlayJp?.textContent || "",
+    japanese: typeof data.japanese === "string" ? data.japanese : overlayJp?.textContent || "",
     english: overlayEn?.textContent || "",
+    furigana: typeof data.japanese_furigana === "string" ? data.japanese_furigana : "",
     position: Number(position?.value) === 1 ? 1 : 0,
   };
 
@@ -104,7 +168,9 @@
     const top = Number(position?.value) === 1;
     overlay.className = `shot-viewer-overlay ${top ? "top" : "bottom"}`;
     overlay.hidden = !text.trim();
-    overlayJp.textContent = text;
+    // An edited sentence no longer matches the imported reading, so only the
+    // unchanged one keeps its ruby.
+    renderFurigana(overlayJp, text.trim(), text.trim() === saved.japanese.trim() ? saved.furigana : "");
     overlayEn.textContent = english;
     overlayEn.hidden = !english.trim();
   };
@@ -174,6 +240,7 @@
       // step with it so Cancel restores what the database actually holds.
       saved.japanese = japanese;
       saved.english = english;
+      saved.furigana = "";
       if (jp) jp.value = japanese;
       if (en && !en.value.trim() && english) en.value = english;
       if (summary) summary.textContent = japanese || "No Japanese text";
@@ -258,6 +325,7 @@
       saved = {
         japanese,
         english: en?.value.trim() ?? "",
+        furigana: typeof result.row?.japanese_furigana === "string" ? result.row.japanese_furigana : "",
         position: Number(position?.value) === 1 ? 1 : 0,
       };
       applySaved();

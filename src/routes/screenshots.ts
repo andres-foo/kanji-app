@@ -117,7 +117,12 @@ export async function saveScreenshotRoute(req: Request, rawId: string | undefine
   const english = String(body.english ?? "").trim();
   const position = Number(body.position) === 1 ? 1 : 0;
   if (!japanese) return json({ ok: false, error: "japanese required" }, 400);
-  const row = saveScreenshot(id, japanese, english, position);
+  const existing = getScreenshot(id);
+  if (!existing) return json({ ok: false, error: "not found" }, 404);
+  // Imported furigana describes the imported sentence. Keep it when the text
+  // is unchanged; a different sentence invalidates it.
+  const furigana = existing.japanese === japanese ? existing.japanese_furigana : "";
+  const row = saveScreenshot(id, japanese, english, position, furigana);
   if (!row) return json({ ok: false, error: "not found" }, 404);
   return json({ ok: true, row });
 }

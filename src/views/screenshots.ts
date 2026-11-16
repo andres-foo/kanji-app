@@ -1,4 +1,4 @@
-import { enc, esc, html } from "../html";
+import { enc, esc, furiganaHtml, html } from "../html";
 import { hasAiKey } from "../ai-key";
 import { aiConfigured } from "../ai";
 import { requestContext } from "../prefs";
@@ -45,7 +45,7 @@ const queueEditor = (row: Screenshot | undefined, total: number, aiReady: boolea
     <div class="shot-editor-preview" id="shot-editor-preview">
       <img id="shot-editor-image" src="${row ? shotUrl(row.id, row.hash) : ""}" alt="${row ? `Screenshot #${row.id}` : ""}">
       <div class="shot-editor-overlay ${row?.position === 1 ? "top" : "bottom"}" id="shot-editor-overlay" aria-hidden="true"${row?.japanese ? "" : " hidden"}>
-        <div class="shot-editor-overlay-jp" id="shot-editor-overlay-jp"${row?.japanese ? "" : " hidden"}>${row ? esc(row.japanese) : ""}</div>
+        <div class="shot-editor-overlay-jp" id="shot-editor-overlay-jp"${row?.japanese ? "" : " hidden"}>${row ? furiganaHtml(row.japanese, row.japanese_furigana) : ""}</div>
         <div class="shot-editor-overlay-en" id="shot-editor-overlay-en"${row?.english ? "" : " hidden"}>${row ? esc(row.english) : ""}</div>
       </div>
     </div>
@@ -81,6 +81,7 @@ const queueData = (rows: Screenshot[]) => JSON.stringify(rows.map((row) => ({
   id: row.id,
   hash: row.hash,
   japanese: row.japanese,
+  japanese_furigana: row.japanese_furigana,
   english: row.english,
   position: row.position,
   added_at: row.added_at,
@@ -90,7 +91,7 @@ const queueData = (rows: Screenshot[]) => JSON.stringify(rows.map((row) => ({
 const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
   ${thumb(row, "shot-gallery-thumb")}
   <div class="shot-gallery-text">
-    <div class="shot-jp">${esc(row.japanese) || `<span class="sub">No Japanese text</span>`}</div>
+    <div class="shot-jp">${furiganaHtml(row.japanese, row.japanese_furigana) || `<span class="sub">No Japanese text</span>`}</div>
     ${row.english ? `<div class="shot-en">${esc(row.english)}</div>` : ""}
     <span class="shot-badge-row"><span class="badge">${row.done ? "saved" : "unfinished"}${row.source === "import" ? " · from app" : ""}</span>${row.analysis.trim() ? `<span class="badge">analysis</span>` : ""}</span>
   </div>
@@ -101,7 +102,7 @@ const galleryCard = (row: Screenshot) => `<article class="shot-gallery-card">
 const savedCard = (row: Screenshot, back: string) => `<article class="shot-gallery-card">
   <a class="shot-gallery-thumb" href="${shotViewerUrl(row.id, back)}" title="Edit screenshot #${row.id}"><img src="${shotThumbUrl(row.id, row.hash)}" alt="Screenshot #${row.id}" loading="lazy"></a>
   <div class="shot-gallery-text">
-    <div class="shot-jp">${esc(row.japanese) || `<span class="sub">No Japanese text</span>`}</div>
+    <div class="shot-jp">${furiganaHtml(row.japanese, row.japanese_furigana) || `<span class="sub">No Japanese text</span>`}</div>
     ${row.english ? `<div class="shot-en">${esc(row.english)}</div>` : ""}
     ${row.source === "import" ? `<span class="badge">from app</span>` : ""}
   </div>
@@ -118,7 +119,7 @@ export function screenshotViewerPage(id: number, back: string) {
       <div class="shot-viewer-frame">
         <img src="${shotUrl(row.id, row.hash)}" alt="Screenshot #${row.id}">
         <div class="shot-viewer-overlay ${position}" id="shot-viewer-overlay"${row.japanese ? "" : " hidden"}>
-          <div class="shot-viewer-jp" id="shot-viewer-jp">${esc(row.japanese)}</div>
+          <div class="shot-viewer-jp" id="shot-viewer-jp">${furiganaHtml(row.japanese, row.japanese_furigana)}</div>
           <div class="shot-viewer-en" id="shot-viewer-en"${row.english ? "" : " hidden"}>${esc(row.english)}</div>
         </div>
       </div>
@@ -160,7 +161,7 @@ export function screenshotViewerPage(id: number, back: string) {
       <div class="shot-analysis-body" id="shot-viewer-analysis-body">${markdownHtml(row.analysis)}</div>
     </section>
     <div class="shot-toast" id="shot-viewer-saved" role="status" hidden>Changes saved.</div>
-    <script type="application/json" id="shot-viewer-data">${JSON.stringify({ id: row.id, back, configured: aiReady }).replace(/</g, "\\u003c")}</script>
+    <script type="application/json" id="shot-viewer-data">${JSON.stringify({ id: row.id, back, configured: aiReady, japanese: row.japanese, japanese_furigana: row.japanese_furigana }).replace(/</g, "\\u003c")}</script>
     <script src="/js/shot-viewer.js" defer></script>`;
   return html(layout("Screenshot – Kanji", body, { theme, back, active: "screenshots" }));
 }
