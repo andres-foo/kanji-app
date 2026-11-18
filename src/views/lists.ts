@@ -25,18 +25,18 @@ const page = (title: string, body: string, active: string) => {
   return html(layout(title, body, { theme, back, active }));
 };
 
-// every kanji with a level in the given column, grouped by level (easiest first)
-export function levelPage(column: "jlpt" | "kanken", label: string, active: string, url: URL) {
+// every kanji with a JLPT level, grouped by level (easiest first)
+export function jlptPage(url: URL) {
   const showRaw = url.searchParams.get("show");
   const filter = showRaw === "finished" || showRaw === "not-added" || showRaw === "unfinished" ? showRaw : "all";
-  const rows = db.query(`SELECT literal, ${column} AS lvl, frequency, added, unfinished FROM kanjis WHERE ${column} IS NOT NULL AND ${column} > 0`)
+  const rows = db.query(`SELECT literal, jlpt AS lvl, frequency, added, unfinished FROM kanjis WHERE jlpt IS NOT NULL AND jlpt > 0`)
     .all() as (Pick<Kanji, "literal" | "frequency" | "added" | "unfinished"> & { lvl: number })[];
   const levels = new Map<number, typeof rows>();
   for (const r of rows) levels.set(Number(r.lvl), [...(levels.get(Number(r.lvl)) ?? []), r]);
   const finishedTotal = rows.filter((r) => r.added === 1 && r.unfinished !== 1).length;
   const unfinishedTotal = rows.filter((r) => r.added === 1 && r.unfinished === 1).length;
   const notAddedTotal = rows.filter((r) => r.added !== 1).length;
-  // JLPT counts down from 5 to 1 and Kanken from 10 to 1, so the highest number is always the easiest level
+  // JLPT counts down from 5 to 1, so the highest number is always the easiest level
   const sections = [...levels.keys()].sort((a, b) => b - a).map((lvl) => {
     const list = levels.get(lvl)!.sort((a, b) => nullsLast(a.frequency, b.frequency) || a.literal.localeCompare(b.literal));
     const visible = filter === "all" ? list : list.filter((r) =>
@@ -50,21 +50,21 @@ export function levelPage(column: "jlpt" | "kanken", label: string, active: stri
     const notAdded = list.length - finished - unfinished;
     const pct = Math.round((finished / list.length) * 100);
     return `<section class="listsection">
-      <div class="levelhead"><div><h2>${esc(label)} ${lvl}</h2><div class="sub">${list.length} kanji · ${pct}% finished</div></div><div class="levelcounts"><span class="fin">${finished} finished</span><span class="learn">${unfinished} unfinished</span><span class="miss">${notAdded} not added</span></div></div>
+      <div class="levelhead"><div><h2>JLPT ${lvl}</h2><div class="sub">${list.length} kanji · ${pct}% finished</div></div><div class="levelcounts"><span class="fin">${finished} finished</span><span class="learn">${unfinished} unfinished</span><span class="miss">${notAdded} not added</span></div></div>
       <div class="levelbar"><i class="fin" style="width:${(finished / list.length) * 100}%"></i><i class="learn" style="width:${(unfinished / list.length) * 100}%"></i></div>
       <div class="lgrid">${visible.map(kanjiTile).join("")}</div>
     </section>`;
   }).filter(Boolean);
-  const tab = (id: string, text: string, count: number) => `<a class="tab${filter === id ? " on" : ""}" href="/${active}${id === "all" ? "" : `?show=${id}`}">${text} ${count}</a>`;
-  const head = `<div class="listhead left"><div><h1>${esc(label)}</h1><p class="sub">${rows.length} kanji · ${levels.size} levels</p></div>${rows.length ? `<div class="tabs">${tab("all", "All", rows.length)}${tab("finished", "Finished", finishedTotal)}${tab("unfinished", "Unfinished", unfinishedTotal)}${tab("not-added", "Not added", notAddedTotal)}</div>` : ""}</div>`;
+  const tab = (id: string, text: string, count: number) => `<a class="tab${filter === id ? " on" : ""}" href="/jlpt${id === "all" ? "" : `?show=${id}`}">${text} ${count}</a>`;
+  const head = `<div class="listhead left"><div><h1>JLPT</h1><p class="sub">${rows.length} kanji · ${levels.size} levels</p></div>${rows.length ? `<div class="tabs">${tab("all", "All", rows.length)}${tab("finished", "Finished", finishedTotal)}${tab("unfinished", "Unfinished", unfinishedTotal)}${tab("not-added", "Not added", notAddedTotal)}</div>` : ""}</div>`;
   const empty = sections.length
     ? ""
     : emptyCard(
-        filter === "finished" ? "No finished kanji" : filter === "not-added" ? "No not added kanji" : filter === "unfinished" ? "No unfinished kanji" : `No ${label} kanji`,
-        filter === "all" ? `No kanji have a ${label} level yet.` : `No ${filter === "finished" ? "finished" : filter === "not-added" ? "not added" : "unfinished"} kanji in ${label}.`,
+        filter === "finished" ? "No finished kanji" : filter === "not-added" ? "No not added kanji" : filter === "unfinished" ? "No unfinished kanji" : "No JLPT kanji",
+        filter === "all" ? "No kanji have a JLPT level yet." : `No ${filter === "finished" ? "finished" : filter === "not-added" ? "not added" : "unfinished"} kanji in JLPT.`,
       );
   const body = head + (sections.length ? `<div class="card listcard">${sections.join("")}</div>` : empty);
-  return page(`${label} – Kanji`, body, active);
+  return page("JLPT – Kanji", body, "jlpt");
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];

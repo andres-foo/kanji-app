@@ -23,7 +23,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 ## What you can do with it
 
-**Search and browse.** Look up kanji by character, keyword, meaning, reading or romaji, with readings, components, JLPT/Kanken levels, frequency and example words; words are searchable too. Text searches need two characters, but a single kanji or kana is enough for a direct lookup. The **字** button opens a component search: type a component keyword, select matching components, and see every kanji that contains all of them. **My List** groups what you are studying by date or score, and the JLPT and Kanken pages show every level as a grid.
+**Search and browse.** Look up kanji by character, keyword, meaning, reading or romaji, with readings, components, JLPT level, frequency and example words; words are searchable too. Text searches need two characters, but a single kanji or kana is enough for a direct lookup. Start typing and the search bar suggests kanji by keyword, with arrow keys to pick one and **Tab** to toggle romaji and hiragana. **Find by components** in the search bar opens the component search: type a component keyword, select matching components, and see every kanji that contains all of them. **My List** groups what you are studying by date or score, and the JLPT page shows every level as a grid.
 
 **Suggested words.** When a kanji has fewer than three added example words, its Examples in your list card suggests up to five unadded words. Suggestions prefer common words, then N4/N5 words.
 
@@ -33,7 +33,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 **Screenshots.** Upload screenshots of Japanese text; each one appears on the page of every kanji it contains, with the Japanese and optional English text available as an overlay or carousel. Autofill (image → Japanese and English) and Analyze (stored Japanese → tutor notes) can use an optional vision-capable LLM through any OpenAI-compatible API; it is off by default and the app works without it. A Translate button fills the English text from the Japanese — through the AI provider when configured, otherwise Google's public translate endpoint, which needs no API key but leaves the machine and may be rate-limited.
 
-**Make it yours.** Light and dark themes, editable review deltas and mastery-level names, and a reset that returns every added kanji to the starting score.
+**Make it yours.** Light and dark themes (chosen in Settings), editable review deltas and mastery-level names, and a reset that returns every added kanji to the starting score.
 
 ### Search tips
 
@@ -123,7 +123,7 @@ Imported rows arrive unfinished (`done = 0`) with the text prefilled, are marked
 
 Assumptions the app makes:
 - `frequency` and `freq_wiki` are ranks (1 = most common), so lower sorts first.
-- `jlpt` is 1 to 5 (shown as N1 to N5) and `kanken` is shown as-is.
+- `jlpt` is 1 to 5 (shown as N1 to N5).
 
 ## Overview
 
@@ -340,13 +340,15 @@ From the floor, three Goods get a kanji back to 0.
 
 The stats section at the bottom of the Dashboard (`/`) is built from the review history and the current state of your list. Choose 30 days, 90 days or 6 months above it.
 
-The dashboard cards at the top show the list size, the queue split into **New · no due date** (green), **Due today** (blue) and **Overdue** (red), reviewed today, the current streak, and finished / total counts. Below that, the longer-range section shows:
+The Dashboard has two tabs. **Stats** (the default) shows cards for the queue split into **New · no due date** (green), **Due today** (blue) and **Overdue** (red), reviewed today, the current streak and the list size, then the review heatmap and the longer-range section:
 
 | Section | What it shows |
 |---|---|
 | **Kanji by level** | A stacked chart of how many kanji sit at each mastery level on each day, rebuilt from the `after` scores in the history |
 | **Coming up** | A stacked **Now** column (green new / blue due today / red overdue), then how many kanji are already scheduled for each of the next 14 days |
 | **Answers by level** | For each score: number of reviews, split of Bad / Neutral / Good / Easy, the **Not bad** percentage and a verdict |
+
+The **History** tab (`/?tab=history`) shows what happened last: **Recently added**, **Recent reviews**, **Recent searches** and **Recently visited** kanji, the last two limited by the history setting.
 
 Definitions:
 
@@ -372,7 +374,7 @@ A kanji is reviewed at score *s* because it was scheduled with the interval of s
 - **Database columns.** Reviewing needs `user_kanjis.score`, `user_kanjis.last_reviewed` and `user_kanjis.due_date`, and the tables `review_history`, `settings` and `mastery_levels` in `user.db`. If a column is missing, review pages show an error naming it.
 - **`added_at` is recorded when a kanji is added through the edit form.** Older rows may not have a timestamp; the dashboard stats chart then counts that kanji for the whole period.
 - **Old history.** Reviews saved before the 0-to-10 scale (and the four-button system) used different score meanings. They are still in `review_history` and will skew the dashboard stats for periods that reach back that far.
-- **The priority colours are separate.** The green / orange / red / grey backgrounds on JLPT and Kanken badges depend only on how many kanji are added, finished and not components. They have nothing to do with review scores.
+- **The priority colours are separate.** The green / orange / red / grey backgrounds on JLPT badges depend only on how many kanji are added, finished and not components. They have nothing to do with review scores.
 - **Backups.** `user.db` is the only copy of your scores, stories and history. Copy it somewhere else regularly, and before using **Reset scores**. Back up `reference.db` after adding custom component kanji. `phrases.db` is replaceable reference data.
 
 ---
@@ -392,10 +394,6 @@ Both sets of data are stored here as modified SQLite transformations and are use
 ### JLPT kanji levels
 
 Kanji JLPT levels for 2,220 kanji come from the [Nihongo-Pro Kanji Pal JLPT lists](https://www.nihongo-pro.com/kanji-pal/list/jlpt). These are unofficial study lists; the JLPT does not publish an official kanji list.
-
-### Kanken levels
-
-Kanken levels for 6,350 kanji come from [Kanjikana's Kanken level lists](https://kanjikana.com/en/kanji/kanken). These are third-party study lists; check the source page for its current terms and attribution requirements.
 
 ### Word JLPT levels
 

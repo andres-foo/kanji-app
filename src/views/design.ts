@@ -9,7 +9,7 @@ import { shotViewerUrl } from "./screenshots";
 import { requestContext } from "../prefs";
 import { storyHtml } from "../story";
 import type { Kanji, Word } from "../types";
-import { jlptPriority, kankenPriority, keywordText, meaningsText, readingList, splitKanjiMarker, type Priority } from "./shared";
+import { jlptPriority, keywordText, meaningsText, readingList, splitKanjiMarker, type Priority } from "./shared";
 import { messagePage } from "./message";
 import { layout } from "./layout";
 import { readFile } from "node:fs/promises";
@@ -156,7 +156,6 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
   const pageHref = `${base}/${enc(k.literal)}${q ? `?q=${enc(q)}` : ""}`;
   const badges = [
     k.jlpt ? levelBadge(`JLPT N${k.jlpt}`, jlptPriority(Number(k.jlpt), known)) : "",
-    k.kanken ? levelBadge(`Kanken ${k.kanken}`, kankenPriority(Number(k.kanken), known)) : "",
   ].join("");
   const linkKanji = k.literal.trim();
 
@@ -179,7 +178,7 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
     ["On readings", k.onReadings ? readingList(k.onReadings) : null],
     ["Kun readings", k.kunReadings ? readingList(k.kunReadings) : null],
     ["Strokes", k.strokes], ["Grade", k.grade], ["JLPT", k.jlpt ? `N${k.jlpt}` : null],
-    ["Kanken", k.kanken], ["Frequency", k.frequency ? `#${k.frequency}` : null],
+    ["Frequency", k.frequency ? `#${k.frequency}` : null],
   ].map(([lab, val]) => `<div class="detail"><span>${lab}</span><b>${val ?? "–"}</b></div>`).join("");
 
   const typeLabel: Record<string, string> = { bad: "Bad", neutral: "Neutral", good: "Good", easy: "Easy" };

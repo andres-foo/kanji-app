@@ -3,8 +3,7 @@ import { requestContext, themeFrom, detailsOpenFrom, safeBack } from "./src/pref
 import { findImage } from "./src/images";
 import type { ReviewResult } from "./src/review";
 import { home } from "./src/views/home";
-import { historyPage } from "./src/views/history";
-import { levelPage, myListPage } from "./src/views/lists";
+import { jlptPage, myListPage } from "./src/views/lists";
 import { kanjiPage } from "./src/views/kanji";
 import { designKanjiPage } from "./src/views/design";
 import { componentsPage } from "./src/views/components";
@@ -25,6 +24,7 @@ import { saveSettings, resetScores } from "./src/routes/settings";
 import { aiStatusResponse, aiTestResponse } from "./src/routes/ai";
 import { uploadScreenshots, autofillScreenshot, analyzeScreenshot, saveScreenshotRoute, saveScreenshotPosition, deleteScreenshotRoute, serveScreenshot, serveScreenshotThumb, translateScreenshotText } from "./src/routes/screenshots";
 import { importScreenshot } from "./src/routes/import";
+import { suggestions } from "./src/routes/suggest";
 import { migrateLegacyAiKey } from "./src/ai-key";
 
 // A key saved by the first build lives in user.db; move it to .env before the
@@ -45,6 +45,8 @@ const STATIC_FILES: Record<string, [string, string]> = {
   "/styles.css": ["public/styles.css", "text/css; charset=utf-8"],
   "/js/layout.js": ["public/js/layout.js", "text/javascript; charset=utf-8"],
   "/js/search-romaji.js": ["public/js/search-romaji.js", "text/javascript; charset=utf-8"],
+  "/js/search-suggest.js": ["public/js/search-suggest.js", "text/javascript; charset=utf-8"],
+  "/js/nav-menu.js": ["public/js/nav-menu.js", "text/javascript; charset=utf-8"],
   "/js/story-editor.js": ["public/js/story-editor.js", "text/javascript; charset=utf-8"],
   "/js/review-keys.js": ["public/js/review-keys.js", "text/javascript; charset=utf-8"],
   "/js/stroke.js": ["public/js/stroke.js", "text/javascript; charset=utf-8"],
@@ -120,7 +122,6 @@ Bun.serve({
       }
       if (path === "/") return home(url);
       if (path === "/my-list") return myListPage(url);
-      if (path === "/history") return historyPage();
       if (path === "/api/translate") return req.method === "POST" ? translateScreenshotText(req) : new Response("Method not allowed", { status: 405 });
       if (path === "/api/ai/status") return req.method === "GET" ? aiStatusResponse() : new Response("Method not allowed", { status: 405 });
       if (path === "/api/ai/test") return req.method === "POST" ? aiTestResponse(req) : new Response("Method not allowed", { status: 405 });
@@ -151,10 +152,10 @@ Bun.serve({
       if (path === "/components/search") return componentSearchPage(url);
       if (path === "/components/search/suggest") return componentSuggestions(url);
       if (path === "/components/search/results") return componentResults(url);
+      if (path === "/suggest") return suggestions(url);
       if (path === "/components") return componentsPage();
       if (path === "/components/group") return req.method === "POST" ? groupComponents(req) : new Response("Method not allowed", { status: 405 });
-      if (path === "/jlpt") return levelPage("jlpt", "JLPT", "jlpt", url);
-      if (path === "/kanken") return levelPage("kanken", "KANKEN", "kanken", url);
+      if (path === "/jlpt") return jlptPage(url);
       const designKanji = path.match(/^\/design\/kanji\/([^/]+)$/);
       if (designKanji) return designKanjiPage(designKanji[1]);
       if (path.startsWith("/kanji/")) return kanjiPage(path.slice(7), url);

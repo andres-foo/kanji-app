@@ -9,7 +9,7 @@ import { dashboardView } from "./dashboard";
 import { levelBadge } from "./design";
 import { recordHistory } from "../history";
 import { layout } from "./layout";
-import { jlptPriority, kankenPriority, keywordText, meaningGroups, meaningsText, readingList, splitKanjiMarker } from "./shared";
+import { jlptPriority, keywordText, meaningGroups, meaningsText, readingList, splitKanjiMarker } from "./shared";
 
 const kanjiRow = (k: Kanji, q: string, known: number) => {
   const readings = [readingList(k.onReadings), readingList(k.kunReadings)].filter(Boolean).join(" · ");
@@ -17,7 +17,6 @@ const kanjiRow = (k: Kanji, q: string, known: number) => {
   const state = k.added === 1 ? (k.unfinished === 1 ? " unf" : " in") : "";
   const badges = [
     k.jlpt ? levelBadge(`JLPT N${k.jlpt}`, jlptPriority(Number(k.jlpt), known)) : "",
-    k.kanken ? levelBadge(`Kanken ${k.kanken}`, kankenPriority(Number(k.kanken), known)) : "",
     low ? `<span class="badge low">Low priority</span>` : "",
   ].join("");
   return `<div class="resultrow kanjirow${low ? " lowpriority" : ""}">
@@ -115,7 +114,8 @@ export function home(url: URL) {
 
   if (!q) {
     const days = Number(url.searchParams.get("days") ?? 30);
-    const dash = dashboardView(days);
+    const tab = url.searchParams.get("tab") === "history" ? "history" : "stats";
+    const dash = dashboardView(days, tab);
     return page(dash.title, dash.body);
   }
   if (shortQuery(q)) return page("Search – Kanji", hero("Enter at least two characters to search."));

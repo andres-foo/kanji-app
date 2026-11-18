@@ -9,12 +9,10 @@ CREATE TABLE IF NOT EXISTS kanjis (
   jlpt INTEGER,
   frequency INTEGER,
   grade INTEGER,
-  kanken NUMERIC,
   other_forms TEXT,
   low_priority INTEGER,
   source TEXT NOT NULL CHECK (source IN ('kanjidic2', 'custom'))
 );
 
 CREATE INDEX IF NOT EXISTS kanjis_jlpt ON kanjis(jlpt);
-CREATE INDEX IF NOT EXISTS kanjis_kanken ON kanjis(kanken);
 CREATE INDEX IF NOT EXISTS kanjis_frequency ON kanjis(frequency);

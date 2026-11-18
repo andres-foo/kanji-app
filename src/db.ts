@@ -23,7 +23,7 @@ db.run("ATTACH DATABASE ? AS phr", [PHRASE_DB_PATH]);
 db.run(`CREATE TEMP VIEW IF NOT EXISTS kanjis AS
   SELECT k.literal, k.meanings, k.onReadings, k.kunReadings, k.strokes,
          k.jlpt, k.frequency, k.grade, u.components, k.other_forms,
-         k.kanken, u.story, u.added, u.score, u.added_at, u.unfinished,
+         u.story, u.added, u.score, u.added_at, u.unfinished,
          u.is_component, u.component_group, u.related, k.low_priority,
          u.keyword, u.last_reviewed, u.due_date
   FROM ref.kanjis k

@@ -1,4 +1,6 @@
 // Tab in the main search bar toggles between romaji and hiragana.
+// The suggestion row in search-suggest.js shows what Tab would insert and calls
+// apply(); it reads target() to know what to display.
 (() => {
 const KANA = {};
 `a あ i い u う e え o お ka か ki き ku く ke け ko こ sa さ shi し si し su す se せ so そ
@@ -81,73 +83,45 @@ function hiraganaToRomaji(value) {
 }
 
 const input = document.querySelector('.navsearch input[name="q"]');
-const hint = document.getElementById("search-romaji-hint");
 if (input) {
+  // after a Tab the field holds `to` and Tab again gives back `from`
   let converted = null;
 
-  const caretToEnd = () => {
-    const end = input.value.length;
-    input.setSelectionRange(end, end);
+  // what Tab would insert right now, or null when the text is not convertible
+  const target = () => {
+    if (converted && input.value === converted.to) return converted.from;
+    const hiragana = romajiToHiragana(input.value.trim());
+    if (hiragana && hiragana !== input.value) return hiragana;
+    const romaji = hiraganaToRomaji(input.value);
+    return romaji && romaji !== input.value ? romaji : null;
   };
 
-  const hideHint = () => {
-    if (!hint) return;
-    hint.hidden = true;
-    hint.textContent = "";
-  };
-
-  const updateHint = () => {
-    if (!hint) return;
-    let target = "";
-    if (converted && input.value === converted.to) target = converted.from;
-    else {
-      const hiragana = romajiToHiragana(input.value.trim());
-      if (hiragana && hiragana !== input.value) target = hiragana;
-      else {
-        const romaji = hiraganaToRomaji(input.value);
-        if (romaji && romaji !== input.value) target = romaji;
-      }
-    }
-    if (!target) {
-      hideHint();
-      return;
-    }
-    hint.innerHTML = `<span class="tab-key"><span class="tab-icon" aria-hidden="true">⇥</span><span>Tab</span></span><span class="tab-arrow">→</span><span class="tab-target"></span>`;
-    const targetEl = hint.querySelector(".tab-target");
-    if (targetEl) targetEl.textContent = target;
-    hint.hidden = false;
-  };
-
-  input.addEventListener("focus", updateHint);
-  input.addEventListener("blur", hideHint);
-  input.form?.addEventListener("submit", hideHint);
-  input.addEventListener("input", () => { converted = null; updateHint(); });
-
-  input.addEventListener("keydown", (event) => {
-    if (event.key !== "Tab" || event.shiftKey) return;
+  const apply = () => {
     if (converted && input.value === converted.to) {
-      event.preventDefault();
-      const from = converted.from;
-      const to = converted.to;
-      input.value = from;
-      converted = { from: to, to: from };
-      caretToEnd();
-      updateHint();
-      return;
-    }
-    const from = input.value;
-    const hiragana = romajiToHiragana(from.trim());
-    const romaji = hiragana ? "" : hiraganaToRomaji(from);
-    const to = hiragana || romaji;
-    if (to && to !== from) {
-      event.preventDefault();
+      const swap = converted;
+      input.value = swap.from;
+      converted = { from: swap.to, to: swap.from };
+    } else {
+      const from = input.value;
+      const to = romajiToHiragana(from.trim()) || hiraganaToRomaji(from);
+      if (!to || to === from) return false;
       input.value = to;
       converted = { from, to };
-      caretToEnd();
-      updateHint();
     }
+    const end = input.value.length;
+    input.setSelectionRange(end, end);
+    input.dispatchEvent(new CustomEvent("kanji-romaji", { bubbles: true }));
+    return true;
+  };
+
+  input.addEventListener("input", () => { converted = null; });
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab" || event.shiftKey) return;
+    if (!target()) return;
+    event.preventDefault();
+    apply();
   });
 
-  if (document.activeElement === input) updateHint();
+  window.kanjiRomaji = { target, apply };
 }
 })();

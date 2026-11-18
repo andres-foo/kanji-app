@@ -17,6 +17,8 @@ export const DELTA_FIELDS: { key: SettingKey; label: string; hint: string }[] = 
 // edits the score changes for Bad / Neutral / Good / Easy, the mastery levels, pagination and history limits, and resets scores.
 export function settingsPage(url: URL, errors: string[] = [], submitted?: Record<string, string>, status = 200) {
   const resetCount = url.searchParams.get("reset");
+  const theme = requestContext.getStore()?.theme ?? "light";
+  const back = requestContext.getStore()?.back ?? "/settings";
   const notice = errors.length
     ? `<div class="setnotice err">${errors.map(esc).join("<br>")}</div>`
     : url.searchParams.get("saved") === "1" ? `<div class="setnotice ok">Settings saved.</div>`
@@ -38,8 +40,16 @@ export function settingsPage(url: URL, errors: string[] = [], submitted?: Record
   const hasKey = hasAiKey();
   const phraseOptions = Array.from({ length: PHRASE_RESULTS_MAX }, (_, i) => i + 1)
     .map((n) => `<option value="${n}"${String(n) === phrasePerKanji ? " selected" : ""}>${n}</option>`).join("");
-  const body = `<div class="listhead"><div><h1>Settings</h1><p class="sub">Review scoring, mastery timing, AI and other settings.</p></div></div>
+  const body = `<div class="listhead"><div><h1>Settings</h1><p class="sub">Appearance, review scoring, mastery timing and AI.</p></div></div>
 ${notice}
+<form class="card setcard" method="post" action="/theme">
+  <input type="hidden" name="back" value="/settings">
+  <div class="sethead"><h2>Appearance</h2><p class="sub">Saved in this browser only, not in the database.</p></div>
+  <div class="themechoice">
+    <button class="pill ${theme === "light" ? "dark" : "ghost"} sm" type="submit" name="theme" value="light">Light</button>
+    <button class="pill ${theme === "dark" ? "dark" : "ghost"} sm" type="submit" name="theme" value="dark">Dark</button>
+  </div>
+</form>
 <form class="setform" method="post" action="/settings">
   <div class="card setcard">
     <div class="sethead"><h2>Score changes</h2><p class="sub">How much each answer moves a kanji's score.</p></div>
@@ -68,7 +78,7 @@ ${notice}
       <span class="hint">How many additional phrases each “Show more” click reveals (default 5).</span></label>
       <label class="setfield"><span class="setflabel">History limit</span>
       <input class="setinput" type="number" step="1" min="1" max="${HISTORY_MAX}" name="history_limit" value="${esc(historyLimit)}" required>
-      <span class="hint">Entries shown in each History column: this many searches and this many kanji visits (default 50).</span></label>
+      <span class="hint">Entries shown in each history section on the dashboard: this many searches and this many kanji visits (default 50).</span></label>
     </div>
   </div>
   <div class="card setcard">
@@ -100,7 +110,5 @@ ${notice}
   <button class="pill danger" type="submit">Reset scores</button>
 </form>
 <script src="/js/settings-ai.js" defer></script>`;
-  const theme = requestContext.getStore()?.theme ?? "light";
-  const back = requestContext.getStore()?.back ?? "/settings";
   return html(layout("Settings – Kanji", body, { theme, back }), status);
 }

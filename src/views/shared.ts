@@ -20,26 +20,8 @@ export const jlptPriority = (jlpt: number, total: number): Priority => {
   return "high";
 };
 
-export const kankenPriority = (kanken: number, total: number): Priority => {
-  if (kanken === 10) return "high";
-  if (kanken === 1.5 || kanken === 1) return "zero";
-  const levels = [10, 9, 8, 7, 6, 5, 4, 3, 2.5, 2, 1.5, 1];
-  const t = [80, 240, 440, 642, 835, 1026, 1339, 1623, 1951];
-  for (let i = 0; i < t.length; i++) {
-    if (total < t[i]) {
-      const idx = levels.includes(kanken) ? levels.indexOf(kanken) : levels.length;
-      if (idx <= i) return "high";
-      if (idx === i + 1) return "medium";
-      return i === 8 ? "medium" : "low";
-    }
-  }
-  return "high";
-};
-
 export const jlptBadge = (k: Pick<Kanji, "jlpt">, total: number) =>
   k.jlpt ? `<span class="b priority-${jlptPriority(Number(k.jlpt), total)}">N${esc(k.jlpt)}</span>` : "";
-export const kankenBadge = (k: Pick<Kanji, "kanken">, total: number, label = "Kanken ") =>
-  k.kanken ? `<span class="b priority-${kankenPriority(Number(k.kanken), total)}">${label}${esc(k.kanken)}</span>` : "";
 
 // the database separates meanings with ";": show them separated by commas
 const meaningsList = (s: unknown) => String(s ?? "").split(";").map((m) => m.trim()).filter(Boolean);
