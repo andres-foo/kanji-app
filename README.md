@@ -25,7 +25,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 </tr>
 <tr>
 <td width="50%"><a href="docs/screenshots/screenshot-view.png"><img src="docs/screenshots/screenshot-view.png" alt="Screenshot view: the image with furigana and translation, its editor and the analysis" width="100%"></a><br><sub><b>Screenshot view</b></sub></td>
-<td width="50%"></td>
+<td width="50%"><a href="docs/screenshots/settings.png"><img src="docs/screenshots/settings.png" alt="Settings: appearance, score changes and mastery levels" width="100%"></a><br><sub><b>Settings</b></sub></td>
 </tr>
 </table>
 
