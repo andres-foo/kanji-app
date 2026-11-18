@@ -33,7 +33,7 @@ export const layout = (title: string, body: string, { theme, back, lab = false, 
 <div class="panel">
 <nav class="nav">
   <div class="navlinks" role="navigation" aria-label="Main">
-    <a class="navhome${active === "" ? " on" : ""}" href="/" aria-label="Dashboard" title="Dashboard">${HOME_ICON}<span>DASHBOARD</span></a>
+    <a class="navhome${active === "dashboard" ? " on" : ""}" href="/" aria-label="Dashboard" title="Dashboard">${HOME_ICON}<span>DASHBOARD</span></a>
     <a class="${active === "my-list" ? "on" : ""}" href="/my-list">MY LIST</a><a class="${active === "jlpt" ? "on" : ""}" href="/jlpt">JLPT</a>
     <details class="navover"><summary class="navdots${menuOpen ? " on" : ""}" aria-label="More sections" title="More sections">${DOTS_ICON}</summary><div class="navmenu" role="menu">${menu}</div></details>
   </div>
@@ -45,7 +45,7 @@ export const layout = (title: string, body: string, { theme, back, lab = false, 
   </form>
   <div class="navright">
     <a class="pill dark review" href="/review" aria-label="Review: ${total} due (${d.fresh} new, ${d.today} due today, ${d.overdue} overdue)">${BOLT_ICON}<span class="rlabel">REVIEW</span><span class="rnums"><span class="rn-fresh">${d.fresh}</span><span class="rn-dot">·</span><span class="rn-today">${d.today}</span><span class="rn-dot">·</span><span class="rn-overdue">${d.overdue}</span></span></a>
-    <a class="iconbtn" href="/settings" aria-label="Settings">${GEAR_ICON}</a>
+    <a class="iconbtn${active === "settings" ? " on" : ""}" href="/settings" aria-label="Settings"${active === "settings" ? ` aria-current="page"` : ""}>${GEAR_ICON}</a>
   </div>
 </nav>
 ${bar ? `<div class="reviewbar${barClass ? ` ${barClass}` : ""}">${bar}</div>` : ""}

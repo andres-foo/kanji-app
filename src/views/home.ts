@@ -110,13 +110,13 @@ export function home(url: URL) {
   const type = t === "kanji" || t === "words" ? t : "all";
   const theme = requestContext.getStore()?.theme ?? "light";
   const back = `${url.pathname}${url.search}`;
-  const page = (title: string, body: string) => html(layout(title, body, { theme, back, searchValue: q }));
+  const page = (title: string, body: string, active = "") => html(layout(title, body, { theme, back, searchValue: q, active }));
 
   if (!q) {
     const days = Number(url.searchParams.get("days") ?? 30);
     const tab = url.searchParams.get("tab") === "history" ? "history" : "stats";
     const dash = dashboardView(days, tab);
-    return page(dash.title, dash.body);
+    return page(dash.title, dash.body, "dashboard");
   }
   if (shortQuery(q)) return page("Search – Kanji", hero("Enter at least two characters to search."));
   if (!url.searchParams.has("type") || url.searchParams.get("record") === "1") recordHistory("search", q);

@@ -55,6 +55,7 @@ body{
 [data-theme="dark"] .iconbtn:hover{background:#2f3237}
 .navright{display:flex;align-items:center;gap:7px}
 .iconbtn{width:36px;height:36px;border-radius:50%;background:#fff;border:0;display:grid;place-items:center;color:#2a2c31}
+.iconbtn.on{background:#151619;color:#fff}
 
 /* ---------- type ---------- */
 h1{font-size:38px;font-weight:500;letter-spacing:-.035em;margin:0;line-height:1.05}
@@ -287,6 +288,7 @@ a.comp:hover{background:#e9ecf1}
 [data-theme="dark"] .navlinks a{color:#b9bec7}
 [data-theme="dark"] .navlinks a.on{background:#f1f2f4;color:#111}
 [data-theme="dark"] .iconbtn,[data-theme="dark"] .labtag{background:#232428;color:#e7e8eb}
+[data-theme="dark"] .iconbtn.on{background:#f1f2f4;color:#111}
 [data-theme="dark"] .avatar{background:#f1f2f4;color:#111}
 [data-theme="dark"] .navsearch{background:#232428}
 [data-theme="dark"] .navsearch input{color:#f1f2f4}

@@ -110,5 +110,5 @@ ${notice}
   <button class="pill danger" type="submit">Reset scores</button>
 </form>
 <script src="/js/settings-ai.js" defer></script>`;
-  return html(layout("Settings – Kanji", body, { theme, back }), status);
+  return html(layout("Settings – Kanji", body, { theme, back, active: "settings" }), status);
 }
