@@ -12,12 +12,20 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 <td width="50%"><a href="docs/screenshots/kanji-page.png"><img src="docs/screenshots/kanji-page.png" alt="Kanji detail page" width="100%"></a><br><sub><b>Kanji detail</b></sub></td>
 </tr>
 <tr>
-<td width="50%"><a href="docs/screenshots/find-by-component.png"><img src="docs/screenshots/find-by-component.png" alt="Find kanji by components" width="100%"></a><br><sub><b>Find by components</b></sub></td>
-<td width="50%"><a href="docs/screenshots/jlpt-list.png"><img src="docs/screenshots/jlpt-list.png" alt="JLPT list" width="100%"></a><br><sub><b>JLPT list</b></sub></td>
+<td width="50%"><a href="docs/screenshots/kanji-edit.png"><img src="docs/screenshots/kanji-edit.png" alt="Editing a kanji: keyword, flags, story and image" width="100%"></a><br><sub><b>Kanji edit</b></sub></td>
+<td width="50%"><a href="docs/screenshots/review.png"><img src="docs/screenshots/review.png" alt="Review question: the kanji and its example words" width="100%"></a><br><sub><b>Review</b></sub></td>
 </tr>
 <tr>
-<td width="50%"><a href="docs/screenshots/my-list.png"><img src="docs/screenshots/my-list.png" alt="My list" width="100%"></a><br><sub><b>My list</b></sub></td>
 <td width="50%"><a href="docs/screenshots/search.png"><img src="docs/screenshots/search.png" alt="Word search results for dance" width="100%"></a><br><sub><b>Word search</b></sub></td>
+<td width="50%"><a href="docs/screenshots/find-by-component.png"><img src="docs/screenshots/find-by-component.png" alt="Find kanji by components" width="100%"></a><br><sub><b>Find by components</b></sub></td>
+</tr>
+<tr>
+<td width="50%"><a href="docs/screenshots/jlpt-list.png"><img src="docs/screenshots/jlpt-list.png" alt="JLPT list" width="100%"></a><br><sub><b>JLPT list</b></sub></td>
+<td width="50%"><a href="docs/screenshots/my-list.png"><img src="docs/screenshots/my-list.png" alt="My list" width="100%"></a><br><sub><b>My list</b></sub></td>
+</tr>
+<tr>
+<td width="50%"><a href="docs/screenshots/screenshot-view.png"><img src="docs/screenshots/screenshot-view.png" alt="Screenshot view: the image with furigana and translation, its editor and the analysis" width="100%"></a><br><sub><b>Screenshot view</b></sub></td>
+<td width="50%"></td>
 </tr>
 </table>
 
