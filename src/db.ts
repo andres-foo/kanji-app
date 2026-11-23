@@ -20,9 +20,18 @@ export const db = new Database(DB_PATH, { readwrite: true });
 db.run("ATTACH DATABASE ? AS ref", [REFERENCE_DB_PATH]);
 db.run("ATTACH DATABASE ? AS phr", [PHRASE_DB_PATH]);
 
+// other_forms is reference data, but the user can override it from the edit
+// page now that kanji data is split: the override lives in user_kanjis and the
+// combined view prefers it. Databases created before the override get the
+// column on startup.
+if (db.query(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'user_kanjis'`).get()
+  && !(db.query(`PRAGMA table_info(user_kanjis)`).all() as { name: string }[]).some((column) => column.name === "other_forms")) {
+  db.run(`ALTER TABLE user_kanjis ADD COLUMN other_forms TEXT`);
+}
+
 db.run(`CREATE TEMP VIEW IF NOT EXISTS kanjis AS
   SELECT k.literal, k.meanings, k.onReadings, k.kunReadings, k.strokes,
-         k.jlpt, k.frequency, k.grade, u.components, k.other_forms,
+         k.jlpt, k.frequency, k.grade, u.components, COALESCE(u.other_forms, k.other_forms) AS other_forms,
          u.story, u.added, u.score, u.added_at, u.unfinished,
          u.is_component, u.component_group, u.related, k.low_priority,
          u.keyword, u.last_reviewed, u.due_date

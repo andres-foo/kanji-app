@@ -174,11 +174,27 @@ export async function kanjiRedesignView(literal: string, base: string, q = "") {
       }).join("")
     : `<span class="sub">Nothing else uses it.</span>`;
 
+  // Related and other forms hold kanji lists, usually separated by semicolons.
+  // Link the characters the database knows and leave the rest as plain text.
+  const linkedKanji = (value: string | null) => {
+    const tokens = [...new Set(String(value ?? "").split(/[\s;、,]+/).map((t) => t.trim()).filter(Boolean))];
+    if (!tokens.length) return null;
+    const known = new Set(
+      (db.query(`SELECT literal FROM kanjis WHERE literal IN (${tokens.map(() => "?").join(",")})`).all(...tokens) as { literal: string }[])
+        .map((r) => r.literal),
+    );
+    return tokens.map((t) => known.has(t)
+      ? `<a class="kl" href="${base}/${enc(t)}${q ? `?q=${enc(q)}` : ""}">${esc(t)}</a>`
+      : `<span class="kl off">${esc(t)}</span>`).join("");
+  };
+
   const details = [
     ["On readings", k.onReadings ? readingList(k.onReadings) : null],
     ["Kun readings", k.kunReadings ? readingList(k.kunReadings) : null],
     ["Strokes", k.strokes], ["Grade", k.grade], ["JLPT", k.jlpt ? `N${k.jlpt}` : null],
     ["Frequency", k.frequency ? `#${k.frequency}` : null],
+    ["Related", linkedKanji(k.related)],
+    ["Other forms", linkedKanji(k.other_forms)],
   ].map(([lab, val]) => `<div class="detail"><span>${lab}</span><b>${val ?? "–"}</b></div>`).join("");
 
   const typeLabel: Record<string, string> = { bad: "Bad", neutral: "Neutral", good: "Good", easy: "Easy" };

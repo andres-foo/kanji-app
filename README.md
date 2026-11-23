@@ -35,7 +35,7 @@ It is a small, self-hosted, server-rendered web app that runs on top of your own
 
 **Suggested words.** When a kanji has fewer than three added example words, its Examples in your list card suggests up to five unadded words. Suggestions prefer common words, then N4/N5 words.
 
-**Write and edit.** Adding a kanji takes a click. Every entry has a story field for your mnemonic with simple formatting (`=keyword=`, `_component_`, `?note?`, `#link#`), rendered while you type with a code toggle for the raw markers, and the keyword, components, related forms, flags and image are edited on the same page.
+**Write and edit.** Adding a kanji takes a click. Every entry has a story field for your mnemonic with simple formatting (`=keyword=`, `_component_`, `?note?`, `#link#`), rendered while you type with a code toggle for the raw markers, and the keyword, components, related and other forms, flags and image are edited on the same page. Related and other forms also appear as links in the kanji page details.
 
 **Review and measure.** A simple spaced-repetition system moves each kanji's score and uses it to pick the next interval; the queue is split into new, due today and overdue. Answer with the buttons, the keyboard (`Space` to reveal, `A S D F` to answer) or a controller (`A` to reveal, `LT LB RB RT` to answer), and watch the dashboard stats for the list size, the due queue, the level trend and the answer mix.
 

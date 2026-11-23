@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS user_kanjis (
   literal TEXT PRIMARY KEY,
   components TEXT,
+  other_forms TEXT,
   related TEXT,
   story TEXT,
   keyword TEXT,

@@ -70,6 +70,7 @@ export async function kanjiRedesignEditView(literal: string, q = "") {
     <div class="efields">
       ${field("keyword", "Keyword", k.keyword)}
       ${componentField}
+      ${field("other_forms", "Other forms", k.other_forms)}
       ${field("related", "Related", k.related)}
     </div>
     <div class="echecks">${check("added", "Added", added)}${check("unfinished", "Unfinished", unfinished)}${check("is_component", "Is component", k.is_component === 1)}</div>

@@ -79,13 +79,14 @@ export async function updateKanji(req: Request, literal: string) {
       : null;
     db.run(
       `INSERT INTO user_kanjis
-         (literal, keyword, components, related, story, unfinished, is_component, component_group,
+         (literal, keyword, components, other_forms, related, story, unfinished, is_component, component_group,
           score, due_date, last_reviewed, added, added_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                CASE WHEN ? = 1 THEN datetime('now', 'localtime') ELSE NULL END)
        ON CONFLICT(literal) DO UPDATE SET
          keyword = excluded.keyword,
          components = excluded.components,
+         other_forms = excluded.other_forms,
          related = excluded.related,
          story = excluded.story,
          unfinished = excluded.unfinished,
@@ -95,7 +96,7 @@ export async function updateKanji(req: Request, literal: string) {
          due_date = excluded.due_date,
          last_reviewed = excluded.last_reviewed,
          added = excluded.added`,
-      [literal, text("keyword"), text("components"), text("related"), text("story"),
+      [literal, text("keyword"), text("components"), text("other_forms"), text("related"), text("story"),
        flag("unfinished"), isComponent, componentGroup, score, dueDate, lastReviewed, added, added],
     );
   } catch (e) {

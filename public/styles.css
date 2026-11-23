@@ -113,6 +113,10 @@ h1 .lite{color:var(--muted);font-weight:400}
 .detail{background:#f6f7f9;border-radius:13px;padding:9px 11px}
 .detail span{display:block;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800}
 .detail b{display:block;font-size:12.5px;margin-top:4px}
+.detail .kl{font-family:var(--jp);text-decoration:none;color:inherit}
+.detail .kl+.kl{margin-left:7px}
+.detail .kl.off{color:var(--muted)}
+.detail a.kl:hover{color:var(--cyan);text-decoration:underline;text-underline-offset:2px}
 .story{background:linear-gradient(180deg,#fbfbfc,#f6f7f9);border-radius:17px;padding:15px 18px;margin-top:10px;font-size:14px;line-height:1.65;color:#2a2c31}
 .story em{font-style:normal;background:var(--cyan);border-radius:5px;padding:1px 5px;font-weight:700}
 .story .note{color:#6f747d;border-bottom:1px dashed #b9bec7}
@@ -383,7 +387,7 @@ a.comp:hover{background:#e9ecf1}
 .nav .pill{font-size:12px}
 .efield span{font-size:10px}
 .efield input{font-size:14px;padding:12px 13px}
-.efield input[name="components"],.efield input[name="related"]{font-size:16px;line-height:1.4}
+.efield input[name="components"],.efield input[name="related"],.efield input[name="other_forms"]{font-size:16px;line-height:1.4}
 .component-field{position:relative}
 .component-field-suggestions{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:35;padding:5px;border:1px solid #e4e7ec;border-radius:12px;background:#fff;box-shadow:0 12px 30px rgba(15,20,30,.16);max-height:220px;overflow:auto}
 .component-field-suggestions[hidden]{display:none}
