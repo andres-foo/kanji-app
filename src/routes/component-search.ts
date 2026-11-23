@@ -11,7 +11,8 @@ export function componentSuggestions(url: URL) {
 export function componentResults(url: URL) {
   const selected = parseSelected(url.searchParams.get("components"));
   const addedOnly = url.searchParams.get("added") === "1";
-  return new Response(componentResultsHtml(selected, addedOnly), {
+  const includeSubcomponents = url.searchParams.get("sub") === "1";
+  return new Response(componentResultsHtml(selected, addedOnly, includeSubcomponents), {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
   });
 }

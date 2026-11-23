@@ -3,9 +3,11 @@ const suggestions = document.getElementById("component-suggestions");
 const selectedEl = document.getElementById("component-selected");
 const resultsEl = document.getElementById("component-results");
 const addedOnly = document.getElementById("component-added-only");
+const subcomponents = document.getElementById("component-subcomponents");
 
-const state = JSON.parse(document.getElementById("component-search-state")?.textContent || '{"selected":[],"addedOnly":false}');
+const state = JSON.parse(document.getElementById("component-search-state")?.textContent || '{"selected":[],"addedOnly":false,"includeSubcomponents":false}');
 let selected = Array.isArray(state.selected) ? state.selected : [];
+if (subcomponents) subcomponents.checked = Boolean(state.includeSubcomponents);
 let suggestionAbort = null;
 let resultsAbort = null;
 let suggestTimer = 0;
@@ -28,6 +30,7 @@ const queryString = () => {
   const params = new URLSearchParams();
   if (selected.length) params.set("components", selected.map((item) => item.literal).join(","));
   if (addedOnly?.checked) params.set("added", "1");
+  if (subcomponents?.checked) params.set("sub", "1");
   return params.toString();
 };
 
@@ -136,6 +139,11 @@ selectedEl?.addEventListener("click", (event) => {
 });
 
 addedOnly?.addEventListener("change", () => {
+  updateUrl();
+  refreshResults();
+});
+
+subcomponents?.addEventListener("change", () => {
   updateUrl();
   refreshResults();
 });
