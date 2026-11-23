@@ -503,6 +503,8 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 .listhead h1{font-size:42px;font-weight:500;letter-spacing:-.04em;margin:4px 0 2px}
 .listhead .sub{font-size:14px}
 .listhead .tabs{flex:none}
+/* left column of the list header: title, subtitle and the status tabs */
+.listmain{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0}
 .listcard{padding:22px}
 /* ---------- nav: search field and the labelled component chip ---------- */
 .navsearch{position:relative;flex:1 1 300px;max-width:600px;width:auto;min-width:0;margin:0}
@@ -620,6 +622,7 @@ html[data-input="pad"] body.keys .reviewbar .pad{display:inline-flex}
 [data-theme="dark"] .lkt:hover{background:var(--cyan);color:#08181b}
 @media(max-width:800px){
   .listhead{flex-direction:column;align-items:flex-start;gap:12px}
+  .listmain{width:100%}
   .listhead h1{font-size:34px}
   .lgrid{grid-template-columns:repeat(auto-fill,minmax(42px,1fr))}
 }

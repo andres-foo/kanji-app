@@ -70,10 +70,16 @@ export function jlptPage(url: URL) {
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 // every added kanji, grouped either by the month it was added (newest first) or by score (lowest first)
+// and optionally narrowed to finished or unfinished characters (same tabs as the JLPT page)
 export function myListPage(url: URL) {
   const by = url.searchParams.get("by") === "score" ? "score" : "date";
-  const rows = db.query(`SELECT literal, added, unfinished, score, added_at, frequency FROM kanjis WHERE COALESCE(added, 0) = 1`)
+  const showRaw = url.searchParams.get("show");
+  const show = showRaw === "finished" || showRaw === "unfinished" ? showRaw : "all";
+  const allRows = db.query(`SELECT literal, added, unfinished, score, added_at, frequency FROM kanjis WHERE COALESCE(added, 0) = 1`)
     .all() as ListRow[];
+  const finishedTotal = allRows.filter((r) => r.unfinished !== 1).length;
+  const unfinishedTotal = allRows.length - finishedTotal;
+  const rows = show === "all" ? allRows : allRows.filter((r) => show === "finished" ? r.unfinished !== 1 : r.unfinished === 1);
 
   const groups = new Map<string, { heading: string; order: number; list: ListRow[] }>();
   const put = (key: string, heading: string, order: number, r: ListRow) => {
@@ -95,12 +101,28 @@ export function myListPage(url: URL) {
     return section(g.heading, g.list);
   });
 
-  const tab = (id: string, text: string) => `<a class="tab${by === id ? " on" : ""}" href="/my-list?by=${id}">${text}</a>`;
-  const unfinished = rows.filter((r) => r.unfinished === 1).length;
+  // keep the other dimension of the filter in every link, so the two tab rows combine
+  const href = (next: { by?: string; show?: string }) => {
+    const params = new URLSearchParams();
+    if ((next.by ?? by) === "score") params.set("by", "score");
+    if ((next.show ?? show) !== "all") params.set("show", next.show ?? show);
+    const qs = params.toString();
+    return qs ? `/my-list?${qs}` : "/my-list";
+  };
+  const byTab = (id: string, text: string) => `<a class="tab${by === id ? " on" : ""}" href="${href({ by: id })}">${text}</a>`;
+  const showTab = (id: string, text: string, count: number) => `<a class="tab${show === id ? " on" : ""}" href="${href({ show: id })}">${text} ${count}</a>`;
   const head = `<div class="listhead">
-    <div><h1>Your kanji</h1><p class="sub">${rows.length} characters · ${rows.length - unfinished} finished · ${unfinished} unfinished</p></div>
-    ${rows.length ? `<div class="tabs">${tab("date", "By date added")}${tab("score", "By score")}</div>` : ""}
+    <div class="listmain">
+      <div><h1>Your kanji</h1><p class="sub">${allRows.length} characters · ${finishedTotal} finished · ${unfinishedTotal} unfinished</p></div>
+      ${allRows.length ? `<div class="tabs">${showTab("all", "All", allRows.length)}${showTab("finished", "Finished", finishedTotal)}${showTab("unfinished", "Unfinished", unfinishedTotal)}</div>` : ""}
+    </div>
+    ${allRows.length ? `<div class="tabs">${byTab("date", "By date added")}${byTab("score", "By score")}</div>` : ""}
   </div>`;
-  const body = head + (sections.length ? `<div class="card listcard">${sections.join("")}</div>` : emptyCard("No kanji in your list yet.", "Search for a kanji and add it to start."));
+  const empty = sections.length
+    ? ""
+    : allRows.length
+      ? emptyCard(show === "finished" ? "No finished kanji" : "No unfinished kanji", `No ${show} kanji in your list.`)
+      : emptyCard("No kanji in your list yet.", "Search for a kanji and add it to start.");
+  const body = head + (sections.length ? `<div class="card listcard">${sections.join("")}</div>` : empty);
   return page("My list – Kanji", body, "my-list");
 }
